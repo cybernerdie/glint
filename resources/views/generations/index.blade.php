@@ -6,70 +6,67 @@
 @section('content')
 
     <div class="page-header">
-        <div class="page-header-row">
-            <div>
-                <div class="page-title">Generations</div>
-                <div class="page-desc">Individual LLM API calls</div>
+        <div class="page-title">Generations</div>
+        <div class="page-desc">Individual LLM API calls</div>
+    </div>
+
+    <form method="GET" action="{{ route('glint.generations.index') }}" class="filter-bar">
+        <div class="filter-row">
+            <label for="gen-provider" class="sr-only">Filter by provider</label>
+            <select id="gen-provider" name="provider" class="input" onchange="this.form.submit()">
+                <option value="">All providers</option>
+                @foreach($providers as $p)
+                    <option value="{{ $p }}" {{ $provider === $p ? 'selected' : '' }}>{{ $p }}</option>
+                @endforeach
+            </select>
+
+            <label for="gen-model" class="sr-only">Filter by model</label>
+            <select id="gen-model" name="model" class="input" onchange="this.form.submit()">
+                <option value="">All models</option>
+                @foreach($models as $m)
+                    <option value="{{ $m }}" {{ $model === $m ? 'selected' : '' }}>{{ $m }}</option>
+                @endforeach
+            </select>
+
+            <input type="hidden" name="status" id="gen-status-val" value="{{ $status }}">
+            <div class="status-pills" role="group" aria-label="Filter by status">
+                <button type="button"
+                        class="status-pill {{ !$status ? 'is-active' : '' }}"
+                        onclick="document.getElementById('gen-status-val').value=''; this.closest('form').submit()">All</button>
+                @foreach($statuses as $s)
+                    <button type="button"
+                            class="status-pill {{ $status === $s->value ? 'is-active' : '' }}"
+                            onclick="document.getElementById('gen-status-val').value='{{ $s->value }}'; this.closest('form').submit()">
+                        {{ ucfirst($s->value) }}
+                    </button>
+                @endforeach
             </div>
-            <form method="GET" action="{{ route('glint.generations.index') }}">
+
+            <div class="filter-row-end">
                 @include('glint::partials.filters.date-range', [
                     'activePeriod' => $period,
                     'activeFrom'   => $fromDate,
                     'activeTo'     => $toDate,
                 ])
-            </form>
-        </div>
-    </div>
-
-    <form method="GET" action="{{ route('glint.generations.index') }}" class="filter-bar">
-        <input type="hidden" name="period" value="{{ $period }}">
-        <input type="hidden" name="from" value="{{ $fromDate }}">
-        <input type="hidden" name="to" value="{{ $toDate }}">
-
-        <label for="gen-provider" class="sr-only">Filter by provider</label>
-        <select id="gen-provider" name="provider" class="input" onchange="this.form.submit()">
-            <option value="">All providers</option>
-            @foreach($providers as $p)
-                <option value="{{ $p }}" {{ $provider === $p ? 'selected' : '' }}>{{ $p }}</option>
-            @endforeach
-        </select>
-
-        <label for="gen-model" class="sr-only">Filter by model</label>
-        <select id="gen-model" name="model" class="input" onchange="this.form.submit()">
-            <option value="">All models</option>
-            @foreach($models as $m)
-                <option value="{{ $m }}" {{ $model === $m ? 'selected' : '' }}>{{ $m }}</option>
-            @endforeach
-        </select>
-
-        <input type="hidden" name="status" id="gen-status-val" value="{{ $status }}">
-        <div class="status-pills" role="group" aria-label="Filter by status">
-            <button type="button"
-                    class="status-pill {{ !$status ? 'is-active' : '' }}"
-                    onclick="document.getElementById('gen-status-val').value=''; this.closest('form').submit()">All</button>
-            @foreach($statuses as $s)
-                <button type="button"
-                        class="status-pill {{ $status === $s->value ? 'is-active' : '' }}"
-                        onclick="document.getElementById('gen-status-val').value='{{ $s->value }}'; this.closest('form').submit()">
-                    {{ ucfirst($s->value) }}
-                </button>
-            @endforeach
+            </div>
         </div>
 
-        @if($provider)
-            <a href="{{ route('glint.generations.index', array_merge(request()->query(), ['provider' => ''])) }}" class="filter-chip">
-                {{ $provider }} <span class="filter-chip-x">&times;</span>
-            </a>
-        @endif
-        @if($model)
-            <a href="{{ route('glint.generations.index', array_merge(request()->query(), ['model' => ''])) }}" class="filter-chip">
-                {{ $model }} <span class="filter-chip-x">&times;</span>
-            </a>
-        @endif
         @if($provider || $model || $status || $period !== 'today')
-            <a href="{{ route('glint.generations.index') }}" class="filter-chip filter-chip-muted">
-                Clear all <span class="filter-chip-x">&times;</span>
-            </a>
+            <div class="filter-chips">
+                @if($provider)
+                    <a href="{{ route('glint.generations.index', array_merge(request()->query(), ['provider' => ''])) }}" class="filter-chip">
+                        {{ $provider }} <span class="filter-chip-x">&times;</span>
+                    </a>
+                @endif
+                @if($model)
+                    <a href="{{ route('glint.generations.index', array_merge(request()->query(), ['model' => ''])) }}" class="filter-chip">
+                        {{ $model }} <span class="filter-chip-x">&times;</span>
+                    </a>
+                @endif
+                <a href="{{ route('glint.generations.index') }}" class="filter-chip filter-chip-muted">
+                    Clear all <span class="filter-chip-x">&times;</span>
+                </a>
+            </div>
         @endif
     </form>
 

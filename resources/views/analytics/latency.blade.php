@@ -5,20 +5,21 @@
 @section('content')
 
     <div class="page-header">
-        <div class="page-header-row">
-            <div>
-                <div class="page-title">Latency</div>
-                <div class="page-desc">Percentile latency, throughput, and worst-case analysis</div>
-            </div>
-            <form method="GET" action="{{ route('glint.analytics.latency') }}">
+        <div class="page-title">Latency</div>
+        <div class="page-desc">Percentile latency, throughput, and worst-case analysis</div>
+    </div>
+
+    <form method="GET" action="{{ route('glint.analytics.latency') }}" class="filter-bar">
+        <div class="filter-row">
+            <div class="filter-row-end">
                 @include('glint::partials.filters.date-range', [
                     'activePeriod' => $period,
                     'activeFrom'   => $fromDate,
                     'activeTo'     => $toDate,
                 ])
-            </form>
+            </div>
         </div>
-    </div>
+    </form>
 
     @php
         $fmtMs = static function (int $ms): string {

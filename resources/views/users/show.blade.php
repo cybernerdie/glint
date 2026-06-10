@@ -13,22 +13,23 @@
     </nav>
 
     <div class="page-header">
-        <div class="page-header-row">
-            <div>
-                <div class="page-title" style="font-family:var(--font-mono);font-size:17px;letter-spacing:-0.2px">
-                    {{ $userId }}
-                </div>
-                <div class="page-desc">User activity and trace history</div>
-            </div>
-            <form method="GET" action="{{ route('glint.users.show', $userId) }}">
+        <div class="page-title" style="font-family:var(--font-mono);font-size:17px;letter-spacing:-0.2px">
+            {{ $userId }}
+        </div>
+        <div class="page-desc">User activity and trace history</div>
+    </div>
+
+    <form method="GET" action="{{ route('glint.users.show', $userId) }}" class="filter-bar">
+        <div class="filter-row">
+            <div class="filter-row-end">
                 @include('glint::partials.filters.date-range', [
                     'activePeriod' => $period,
                     'activeFrom'   => $fromDate,
                     'activeTo'     => $toDate,
                 ])
-            </form>
+            </div>
         </div>
-    </div>
+    </form>
 
     {{-- KPI cards --}}
     <div class="kpi-grid">

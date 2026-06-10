@@ -507,10 +507,30 @@
         /* ─── Filter bar ──────────────────────────────────────── */
         .filter-bar {
             display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 16px;
+        }
+
+        .filter-row {
+            display: flex;
             align-items: center;
             gap: 8px;
             flex-wrap: wrap;
-            margin-bottom: 16px;
+        }
+
+        .filter-row-end {
+            margin-left: auto;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+        }
+
+        .filter-chips {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
         }
 
         .input {
@@ -538,7 +558,7 @@
 
         select.input {
             cursor: pointer;
-            border-radius: 20px;
+            border-radius: 8px;
             padding: 0 30px 0 14px;
             height: 34px;
             font-size: 12.5px;
@@ -1056,52 +1076,6 @@
             flex-wrap: wrap;
         }
 
-        .date-range-label {
-            font-size: 11.5px;
-            font-weight: 600;
-            color: var(--text-3);
-            letter-spacing: 0.02em;
-            white-space: nowrap;
-            flex-shrink: 0;
-        }
-
-        .period-tabs {
-            display: inline-flex;
-            background: var(--surface-2);
-            border: 1px solid var(--border);
-            border-radius: 9px;
-            padding: 3px;
-            gap: 1px;
-        }
-
-        .period-tab {
-            padding: 5px 12px;
-            border-radius: 7px;
-            font-size: 12.5px;
-            font-weight: 500;
-            color: var(--text-3);
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            transition: background 0.1s, color 0.1s, box-shadow 0.1s;
-            white-space: nowrap;
-            font-family: var(--font-ui);
-            letter-spacing: -0.01em;
-            line-height: 1;
-        }
-
-        .period-tab:hover {
-            color: var(--text-1);
-            background: rgba(255,255,255,0.8);
-        }
-
-        .period-tab.is-active {
-            background: var(--accent);
-            color: #fff;
-            font-weight: 600;
-            box-shadow: 0 1px 2px rgba(232,81,10,0.35);
-        }
-
         .custom-range {
             display: flex;
             align-items: center;
@@ -1401,20 +1375,23 @@
         }
         .row-link-mono:hover { color: var(--accent); }
 
-        /* ─── Status pill tabs (filter bar) ──────────────────── */
+        /* ─── Status segmented control (filter bar) ──────────── */
         .status-pills {
             display: inline-flex;
             background: var(--surface);
             border: 1px solid var(--border);
-            border-radius: 20px;
+            border-radius: 8px;
             padding: 2px;
             gap: 1px;
             box-shadow: var(--shadow-sm);
+            height: 34px;
+            align-items: center;
         }
 
         .status-pill {
-            padding: 4px 13px;
-            border-radius: 20px;
+            padding: 0 12px;
+            height: 28px;
+            border-radius: 6px;
             font-size: 12.5px;
             font-weight: 500;
             color: var(--text-2);
@@ -1424,8 +1401,8 @@
             font-family: var(--font-ui);
             letter-spacing: -0.01em;
             white-space: nowrap;
-            transition: background 0.1s, color 0.1s;
-            line-height: 1;
+            transition: background 0.12s, color 0.12s;
+            line-height: 28px;
         }
 
         .status-pill:hover { color: var(--text-1); background: var(--surface-2); }

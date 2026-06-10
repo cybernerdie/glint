@@ -6,20 +6,21 @@
 @section('content')
 
     <div class="page-header">
-        <div class="page-header-row">
-            <div>
-                <div class="page-title">Dashboard</div>
-                <div class="page-desc">Overview of your LLM activity</div>
-            </div>
-            <form method="GET" action="{{ route('glint.dashboard') }}">
+        <div class="page-title">Dashboard</div>
+        <div class="page-desc">Overview of your LLM activity</div>
+    </div>
+
+    <form method="GET" action="{{ route('glint.dashboard') }}" class="filter-bar">
+        <div class="filter-row">
+            <div class="filter-row-end">
                 @include('glint::partials.filters.date-range', [
                     'activePeriod' => $period,
                     'activeFrom'   => $fromDate,
                     'activeTo'     => $toDate,
                 ])
-            </form>
+            </div>
         </div>
-    </div>
+    </form>
 
     {{-- KPI cards --}}
     <div class="kpi-grid">

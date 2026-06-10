@@ -8,38 +8,25 @@
       $activeTo      — current custom "to" date string (Y-m-d)
 --}}
 <div class="date-range-row"
-     x-data="{
-         period: @js($activePeriod ?: 'today'),
-         setPreset(val) {
-             this.period = val;
-             if (val !== 'custom') {
-                 this.$nextTick(() => this.$el.closest('form').submit());
-             }
-         }
-     }">
+     x-data="{ period: @js($activePeriod ?: 'today') }">
 
-    {{-- Hidden input carries the selected period on submit --}}
-    <input type="hidden" name="period" :value="period">
+    <label class="sr-only" for="glint-period-select">Date range</label>
+    <select
+        id="glint-period-select"
+        name="period"
+        class="input"
+        style="width:148px"
+        x-model="period"
+        @change="period !== 'custom' && $nextTick(() => $el.closest('form').submit())"
+    >
+        <option value="today">Today</option>
+        <option value="week">This week</option>
+        <option value="month">This month</option>
+        <option value="3months">Last 3 months</option>
+        <option value="custom">Custom range</option>
+    </select>
 
-    <div class="period-tabs" role="group" aria-label="Date range presets">
-        @foreach([
-            'today'    => 'Today',
-            'week'     => 'This week',
-            'month'    => 'This month',
-            '3months'  => 'Last 3 months',
-            'custom'   => 'Custom',
-        ] as $value => $label)
-            <button type="button"
-                    class="period-tab"
-                    :class="period === @js($value) ? 'is-active' : ''"
-                    @click="setPreset(@js($value))"
-                    aria-pressed="{{ ($activePeriod ?: 'today') === $value ? 'true' : 'false' }}">
-                {{ $label }}
-            </button>
-        @endforeach
-    </div>
-
-    {{-- Custom date range inputs — visible only when period === 'custom' --}}
+    {{-- Custom date inputs — shown only when Custom is selected --}}
     <div class="custom-range" x-show="period === 'custom'" style="display:none">
         <label class="sr-only" for="glint-date-from">From</label>
         <input
@@ -48,7 +35,7 @@
             name="from"
             value="{{ $activeFrom ?? '' }}"
             class="input"
-            style="width:150px"
+            style="width:140px"
         >
         <span class="custom-range-sep">—</span>
         <label class="sr-only" for="glint-date-to">To</label>
@@ -58,7 +45,7 @@
             name="to"
             value="{{ $activeTo ?? '' }}"
             class="input"
-            style="width:150px"
+            style="width:140px"
         >
         <button type="submit" class="btn btn-primary btn-sm">Apply</button>
     </div>

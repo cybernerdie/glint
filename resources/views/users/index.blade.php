@@ -5,47 +5,44 @@
 @section('content')
 
     <div class="page-header">
-        <div class="page-header-row">
-            <div>
-                <div class="page-title">Users</div>
-                <div class="page-desc">LLM activity and cost breakdown by user</div>
-            </div>
-            <form method="GET" action="{{ route('glint.users.index') }}">
+        <div class="page-title">Users</div>
+        <div class="page-desc">LLM activity and cost breakdown by user</div>
+    </div>
+
+    <form method="GET" action="{{ route('glint.users.index') }}" class="filter-bar">
+        <div class="filter-row">
+            <label for="users-search" class="sr-only">Search by user ID</label>
+            <input
+                id="users-search"
+                type="text"
+                name="search"
+                value="{{ $search }}"
+                placeholder="Search user ID..."
+                class="input"
+                style="width:220px"
+                autocomplete="off"
+            >
+
+            <div class="filter-row-end">
                 @include('glint::partials.filters.date-range', [
                     'activePeriod' => $period,
                     'activeFrom'   => $fromDate,
                     'activeTo'     => $toDate,
                 ])
-            </form>
+            </div>
         </div>
-    </div>
 
-    <form method="GET" action="{{ route('glint.users.index') }}" class="filter-bar">
-        <input type="hidden" name="period" value="{{ $period }}">
-        <input type="hidden" name="from" value="{{ $fromDate }}">
-        <input type="hidden" name="to" value="{{ $toDate }}">
-
-        <label for="users-search" class="sr-only">Search by user ID</label>
-        <input
-            id="users-search"
-            type="text"
-            name="search"
-            value="{{ $search }}"
-            placeholder="Search user ID..."
-            class="input"
-            style="width:220px"
-            autocomplete="off"
-        >
-
-        @if($search)
-            <a href="{{ route('glint.users.index', array_merge(request()->query(), ['search' => ''])) }}" class="filter-chip">
-                "{{ $search }}" <span class="filter-chip-x">&times;</span>
-            </a>
-        @endif
         @if($search || $period !== 'today')
-            <a href="{{ route('glint.users.index') }}" class="filter-chip filter-chip-muted">
-                Clear all <span class="filter-chip-x">&times;</span>
-            </a>
+            <div class="filter-chips">
+                @if($search)
+                    <a href="{{ route('glint.users.index', array_merge(request()->query(), ['search' => ''])) }}" class="filter-chip">
+                        "{{ $search }}" <span class="filter-chip-x">&times;</span>
+                    </a>
+                @endif
+                <a href="{{ route('glint.users.index') }}" class="filter-chip filter-chip-muted">
+                    Clear all <span class="filter-chip-x">&times;</span>
+                </a>
+            </div>
         @endif
     </form>
 

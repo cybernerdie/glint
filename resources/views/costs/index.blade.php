@@ -5,43 +5,40 @@
 @section('content')
 
     <div class="page-header">
-        <div class="page-header-row">
-            <div>
-                <div class="page-title">Costs</div>
-                <div class="page-desc">LLM spend breakdown by provider and model</div>
-            </div>
-            <form method="GET" action="{{ route('glint.costs.index') }}">
+        <div class="page-title">Costs</div>
+        <div class="page-desc">LLM spend breakdown by provider and model</div>
+    </div>
+
+    <form method="GET" action="{{ route('glint.costs.index') }}" class="filter-bar">
+        <div class="filter-row">
+            <label for="cost-provider" class="sr-only">Filter by provider</label>
+            <select id="cost-provider" name="provider" class="input" onchange="this.form.submit()">
+                <option value="">All providers</option>
+                @foreach($providers as $p)
+                    <option value="{{ $p }}" {{ $provider === $p ? 'selected' : '' }}>{{ $p }}</option>
+                @endforeach
+            </select>
+
+            <div class="filter-row-end">
                 @include('glint::partials.filters.date-range', [
                     'activePeriod' => $period,
                     'activeFrom'   => $fromDate,
                     'activeTo'     => $toDate,
                 ])
-            </form>
+            </div>
         </div>
-    </div>
 
-    <form method="GET" action="{{ route('glint.costs.index') }}" class="filter-bar">
-        <input type="hidden" name="period" value="{{ $period }}">
-        <input type="hidden" name="from" value="{{ $fromDate }}">
-        <input type="hidden" name="to" value="{{ $toDate }}">
-
-        <label for="cost-provider" class="sr-only">Filter by provider</label>
-        <select id="cost-provider" name="provider" class="input" onchange="this.form.submit()">
-            <option value="">All providers</option>
-            @foreach($providers as $p)
-                <option value="{{ $p }}" {{ $provider === $p ? 'selected' : '' }}>{{ $p }}</option>
-            @endforeach
-        </select>
-
-        @if($provider)
-            <a href="{{ route('glint.costs.index', array_merge(request()->query(), ['provider' => ''])) }}" class="filter-chip">
-                {{ $provider }} <span class="filter-chip-x">&times;</span>
-            </a>
-        @endif
         @if($provider || $period !== 'today')
-            <a href="{{ route('glint.costs.index') }}" class="filter-chip filter-chip-muted">
-                Clear all <span class="filter-chip-x">&times;</span>
-            </a>
+            <div class="filter-chips">
+                @if($provider)
+                    <a href="{{ route('glint.costs.index', array_merge(request()->query(), ['provider' => ''])) }}" class="filter-chip">
+                        {{ $provider }} <span class="filter-chip-x">&times;</span>
+                    </a>
+                @endif
+                <a href="{{ route('glint.costs.index') }}" class="filter-chip filter-chip-muted">
+                    Clear all <span class="filter-chip-x">&times;</span>
+                </a>
+            </div>
         @endif
     </form>
 

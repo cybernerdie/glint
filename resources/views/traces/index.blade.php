@@ -6,79 +6,75 @@
 @section('content')
 
     <div class="page-header">
-        <div class="page-header-row">
-            <div>
-                <div class="page-title">Traces</div>
-                <div class="page-desc">Request-level trace history</div>
+        <div class="page-title">Traces</div>
+        <div class="page-desc">Request-level trace history</div>
+    </div>
+
+    <form method="GET" action="{{ route('glint.traces.index') }}" class="filter-bar">
+        <div class="filter-row">
+            <label for="traces-search" class="sr-only">Search by name</label>
+            <input
+                id="traces-search"
+                type="text"
+                name="search"
+                value="{{ $search }}"
+                placeholder="Search by name..."
+                class="input"
+                style="width:200px"
+                autocomplete="off"
+            >
+
+            <label for="traces-user" class="sr-only">Filter by user ID</label>
+            <input
+                id="traces-user"
+                type="text"
+                name="user_id"
+                value="{{ $userId }}"
+                placeholder="User ID..."
+                class="input"
+                style="width:160px"
+                autocomplete="off"
+            >
+
+            <input type="hidden" name="status" id="traces-status-val" value="{{ $status }}">
+            <div class="status-pills" role="group" aria-label="Filter by status">
+                <button type="button"
+                        class="status-pill {{ !$status ? 'is-active' : '' }}"
+                        onclick="document.getElementById('traces-status-val').value=''; this.closest('form').submit()">All</button>
+                @foreach($statuses as $s)
+                    <button type="button"
+                            class="status-pill {{ $status === $s->value ? 'is-active' : '' }}"
+                            onclick="document.getElementById('traces-status-val').value='{{ $s->value }}'; this.closest('form').submit()">
+                        {{ ucfirst($s->value) }}
+                    </button>
+                @endforeach
             </div>
-            <form method="GET" action="{{ route('glint.traces.index') }}">
+
+            <div class="filter-row-end">
                 @include('glint::partials.filters.date-range', [
                     'activePeriod' => $period,
                     'activeFrom'   => $fromDate,
                     'activeTo'     => $toDate,
                 ])
-            </form>
-        </div>
-    </div>
-
-    <form method="GET" action="{{ route('glint.traces.index') }}" class="filter-bar">
-        <input type="hidden" name="period" value="{{ $period }}">
-        <input type="hidden" name="from" value="{{ $fromDate }}">
-        <input type="hidden" name="to" value="{{ $toDate }}">
-
-        <label for="traces-search" class="sr-only">Search by name</label>
-        <input
-            id="traces-search"
-            type="text"
-            name="search"
-            value="{{ $search }}"
-            placeholder="Search by name..."
-            class="input"
-            style="width:200px"
-            autocomplete="off"
-        >
-
-        <label for="traces-user" class="sr-only">Filter by user ID</label>
-        <input
-            id="traces-user"
-            type="text"
-            name="user_id"
-            value="{{ $userId }}"
-            placeholder="User ID..."
-            class="input"
-            style="width:160px"
-            autocomplete="off"
-        >
-
-        <input type="hidden" name="status" id="traces-status-val" value="{{ $status }}">
-        <div class="status-pills" role="group" aria-label="Filter by status">
-            <button type="button"
-                    class="status-pill {{ !$status ? 'is-active' : '' }}"
-                    onclick="document.getElementById('traces-status-val').value=''; this.closest('form').submit()">All</button>
-            @foreach($statuses as $s)
-                <button type="button"
-                        class="status-pill {{ $status === $s->value ? 'is-active' : '' }}"
-                        onclick="document.getElementById('traces-status-val').value='{{ $s->value }}'; this.closest('form').submit()">
-                    {{ ucfirst($s->value) }}
-                </button>
-            @endforeach
+            </div>
         </div>
 
-        @if($search)
-            <a href="{{ route('glint.traces.index', array_merge(request()->query(), ['search' => ''])) }}" class="filter-chip">
-                "{{ $search }}" <span class="filter-chip-x">&times;</span>
-            </a>
-        @endif
-        @if($userId)
-            <a href="{{ route('glint.traces.index', array_merge(request()->query(), ['user_id' => ''])) }}" class="filter-chip">
-                user: {{ $userId }} <span class="filter-chip-x">&times;</span>
-            </a>
-        @endif
-
-        @if($search || $status || $userId || $period !== 'today')
-            <a href="{{ route('glint.traces.index') }}" class="filter-chip filter-chip-muted">
-                Clear all <span class="filter-chip-x">&times;</span>
-            </a>
+        @if($search || $userId || $status || $period !== 'today')
+            <div class="filter-chips">
+                @if($search)
+                    <a href="{{ route('glint.traces.index', array_merge(request()->query(), ['search' => ''])) }}" class="filter-chip">
+                        "{{ $search }}" <span class="filter-chip-x">&times;</span>
+                    </a>
+                @endif
+                @if($userId)
+                    <a href="{{ route('glint.traces.index', array_merge(request()->query(), ['user_id' => ''])) }}" class="filter-chip">
+                        user: {{ $userId }} <span class="filter-chip-x">&times;</span>
+                    </a>
+                @endif
+                <a href="{{ route('glint.traces.index') }}" class="filter-chip filter-chip-muted">
+                    Clear all <span class="filter-chip-x">&times;</span>
+                </a>
+            </div>
         @endif
     </form>
 
