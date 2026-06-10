@@ -6,6 +6,17 @@ use Cybernerdie\Glint\Console\Commands\InstallCommand;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Console\Kernel;
 
+// Ensure config/glint.php exists before each test so that InstallCommand
+// always asks the overwrite confirmation prompt. The testbench skeleton's
+// config directory may not contain the file on a fresh CI checkout.
+beforeEach(function () {
+    file_put_contents(config_path('glint.php'), '<?php return [];');
+});
+
+afterEach(function () {
+    @unlink(config_path('glint.php'));
+});
+
 it('has the correct signature', function () {
     expect((new InstallCommand)->getName())->toBe('glint:install');
 });

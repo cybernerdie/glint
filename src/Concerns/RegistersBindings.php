@@ -21,10 +21,14 @@ trait RegistersBindings
         $this->app->scoped(TraceContext::class, fn () => new TraceContext);
 
         // PricingRegistry is a singleton — loaded once, JSON parsed once.
-        $pricingPath = Config::string('glint.pricing_path', config_path('glint_pricing.json'));
+        // Path is resolved lazily inside the closure so that test environments
+        // can override glint.pricing_path in getEnvironmentSetUp() (which runs
+        // after register() in Testbench) and still get the correct path.
         $this->app->singleton(
             PricingRegistry::class,
-            fn ($app) => new PricingRegistry($pricingPath)
+            fn ($app) => new PricingRegistry(
+                Config::string('glint.pricing_path', config_path('glint_pricing.json'))
+            )
         );
 
         // GlintFilterRegistry is a singleton — filters are registered at boot
