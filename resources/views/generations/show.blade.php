@@ -1,6 +1,6 @@
 @extends('glint::layout')
 
-@section('page-title', ($generation->name ?: 'Generation').' — Generation')
+@section('page-title', $generation->name ?: 'Generation')
 
 @section('content')
 
@@ -9,7 +9,7 @@
         <span class="breadcrumb-sep">/</span>
         <a href="{{ route('glint.generations.index') }}" class="breadcrumb-link">Generations</a>
         <span class="breadcrumb-sep">/</span>
-        <span class="breadcrumb-current">{{ substr($generation->id, 0, 16) }}&hellip;</span>
+        <span class="breadcrumb-current">{{ $generation->name ?: substr($generation->id, 0, 12).'…' }}</span>
     </nav>
 
     <div class="page-header">

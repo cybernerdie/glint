@@ -1,6 +1,6 @@
 @extends('glint::layout')
 
-@section('page-title', ($trace->name ?: 'Trace').' — Trace')
+@section('page-title', $trace->name ?: 'Unnamed Trace')
 
 @section('content')
 
@@ -9,7 +9,7 @@
         <span class="breadcrumb-sep">/</span>
         <a href="{{ route('glint.traces.index') }}" class="breadcrumb-link">Traces</a>
         <span class="breadcrumb-sep">/</span>
-        <span class="breadcrumb-current">{{ substr($trace->id, 0, 16) }}&hellip;</span>
+        <span class="breadcrumb-current">{{ $trace->name ?: substr($trace->id, 0, 12).'…' }}</span>
     </nav>
 
     <div class="page-header">
