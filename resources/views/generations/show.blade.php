@@ -86,7 +86,7 @@
                     <label>Streaming</label>
                     <div class="field-val">
                         @if($generation->is_streaming)
-                            <span class="badge badge-running"><span class="badge-dot"></span>streaming</span>
+                            <span class="badge badge-running">streaming</span>
                         @else
                             <span class="field-val-muted">No</span>
                         @endif

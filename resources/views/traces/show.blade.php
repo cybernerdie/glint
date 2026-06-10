@@ -239,7 +239,7 @@
                 <div class="span-card" x-data="{ open: false }">
                     <div class="span-card-header" @click="open = !open">
                         <div style="display:flex;align-items:center;gap:12px;min-width:0">
-                            <span class="badge badge-neutral"><span class="badge-dot"></span>{{ $span->type->value }}</span>
+                            <span class="badge badge-neutral">{{ $span->type->value }}</span>
                             <span style="font-size:13.5px;font-weight:500;color:var(--text-1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ $span->name }}</span>
                         </div>
                         <div style="display:flex;align-items:center;gap:14px;flex-shrink:0">
