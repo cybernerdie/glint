@@ -830,8 +830,8 @@
 
         /* Error block */
         .error-card {
-            background: #FFF5F5;
-            border: 1px solid #FED7D7;
+            background: var(--error-bg);
+            border: 1px solid rgba(185,28,28,0.15);
             border-radius: var(--radius-lg);
             overflow: hidden;
             margin-bottom: 16px;
@@ -842,8 +842,8 @@
             align-items: center;
             gap: 7px;
             padding: 10px 16px;
-            border-bottom: 1px solid #FED7D7;
-            background: #FFF0F0;
+            border-bottom: 1px solid rgba(185,28,28,0.15);
+            background: var(--error-bg);
         }
 
         .error-card-title {
@@ -869,8 +869,8 @@
             display: inline-flex;
             align-items: center;
             padding: 3px 9px;
-            background: #F3F3F6;
-            border: 1px solid #E0E0E8;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
             border-radius: 9999px;
             font-family: var(--font-mono);
             font-size: 11.5px;
