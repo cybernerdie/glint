@@ -1,0 +1,74 @@
+{
+    "name": "cybernerdie/laravel-glint",
+    "description": "Built-in LLM observability for Laravel. No external services. No manual wrapping. Just install and see everything.",
+    "keywords": ["laravel", "llm", "observability", "ai", "tracing", "openai", "anthropic"],
+    "homepage": "https://github.com/cybernerdie/laravel-glint",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Joshua Paul",
+            "email": "veecthorpaul@gmail.com",
+            "homepage": "https://github.com/cybernerdie",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "illuminate/contracts": "^11.0|^12.0|^13.0",
+        "illuminate/support": "^11.0|^12.0|^13.0"
+    },
+    "require-dev": {
+        "larastan/larastan": "^3.0",
+        "laravel/pint": "^1.0",
+        "laravel/pulse": "^1.0",
+        "mockery/mockery": "^1.6",
+        "orchestra/testbench": "^9.0|^10.0|^11.0",
+        "pestphp/pest": "^3.0",
+        "pestphp/pest-plugin-laravel": "^3.0"
+    },
+    "suggest": {
+        "echolabsdev/prism": "Required for Prism auto-instrumentation driver (^0.100)",
+        "useiconic/neuron-ai": "Required for the neuron-ai auto-instrumentation driver",
+        "illuminate/ai": "Required for the laravel-ai auto-instrumentation driver (Laravel 12+)",
+        "illuminate/notifications": "Required for alert notification delivery",
+        "laravel/pulse": "Required for the Glint Pulse dashboard card (^1.0)",
+        "laravel/slack-notification-channel": "Required for Slack alert channel"
+    },
+    "autoload": {
+        "psr-4": {
+            "Cybernerdie\\Glint\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Cybernerdie\\Glint\\Database\\Factories\\": "database/factories/",
+            "Tests\\": "tests/",
+            "Prism\\Prism\\": "tests/Stubs/Prism/",
+            "NeuronAI\\": "tests/Stubs/NeuronAi/",
+            "Illuminate\\AI\\": "tests/Stubs/LaravelAi/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Cybernerdie\\Glint\\GlintServiceProvider"
+            ],
+            "aliases": {
+                "Glint": "Cybernerdie\\Glint\\Facades\\Glint"
+            }
+        }
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "support": {
+        "issues": "https://github.com/cybernerdie/laravel-glint/issues",
+        "source": "https://github.com/cybernerdie/laravel-glint"
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
