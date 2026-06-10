@@ -47,8 +47,6 @@ final class GenerationsController
             return $query->paginate(25)->withQueryString();
         }, collect());
 
-        // Single query for both dropdowns — pluck and split in PHP
-        // rather than issuing two separate SELECT DISTINCT round-trips.
         $filters = rescue(function () {
             $rows = GlintAggregate::query()
                 ->select(['provider', 'model'])

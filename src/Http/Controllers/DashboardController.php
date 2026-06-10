@@ -97,7 +97,6 @@ final class DashboardController
             collect()
         );
 
-        // Top trace names by count — horizontal bar chart.
         $topTraceNames = rescue(
             fn () => GlintTrace::query()
                 ->select(['name', DB::raw('COUNT(*) as trace_count')])
@@ -111,7 +110,6 @@ final class DashboardController
             collect()
         );
 
-        // Top models by cost — mini cost table on dashboard.
         $topModelCosts = rescue(
             fn () => GlintAggregate::query()
                 ->select([
@@ -130,7 +128,6 @@ final class DashboardController
             collect()
         );
 
-        // Top users by cost — mini consumption bar on dashboard.
         $topUserCosts = rescue(
             fn () => GlintTrace::query()
                 ->select([

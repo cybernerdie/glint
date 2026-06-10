@@ -24,9 +24,7 @@ final class AnalyticsController
 
         [$fromDt, $toDt] = $this->resolveDateRange($period, $fromDate, $toDate);
 
-        // Trace latency percentiles (p50/p90/p95/p99) computed PHP-side.
-        // We load raw duration_ms rows, group by trace name, sort, then
-        // compute percentiles in memory — avoids DB-specific PERCENTILE_CONT.
+        // Percentiles are computed PHP-side to avoid DB-specific PERCENTILE_CONT.
         $tracePercentiles = rescue(function () use ($fromDt, $toDt): array {
             $rows = GlintTrace::query()
                 ->select(['name', 'duration_ms'])
@@ -65,7 +63,6 @@ final class AnalyticsController
             return array_slice($result, 0, 10);
         }, []);
 
-        // Generation latency percentiles (p50/p90/p95/p99) by model.
         $generationPercentiles = rescue(function () use ($fromDt, $toDt): array {
             $rows = GlintGeneration::query()
                 ->select(['model', 'provider', 'duration_ms'])
@@ -107,7 +104,6 @@ final class AnalyticsController
             return $result;
         }, []);
 
-        // Top trace use cases by avg duration
         $traceLatency = rescue(
             fn () => GlintTrace::query()
                 ->select([
@@ -128,7 +124,6 @@ final class AnalyticsController
             collect()
         );
 
-        // Avg tokens/sec by model
         $tokenThroughput = rescue(
             fn () => GlintGeneration::query()
                 ->select([
@@ -150,7 +145,6 @@ final class AnalyticsController
             collect()
         );
 
-        // Top users by max latency
         $userLatency = rescue(
             fn () => GlintTrace::query()
                 ->select([

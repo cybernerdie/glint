@@ -189,11 +189,6 @@ final class GlintRecorder
 
     private function upsertAggregate(GlintGeneration $generation): void
     {
-        // One atomic upsert per period bucket. Writing all four periods (hour/day/week/month)
-        // on every finished generation ensures alert rules and cost queries can use any
-        // period granularity without missing data.
-        // NOTE: For high-traffic apps, consider batching these increments via a scheduled
-        // job rather than writing on every single LLM call.
         $this->safeWrite('upsertAggregate', function () use ($generation): void {
             $durationMs = (int) $generation->duration_ms;
             $totalTokens = (int) $generation->total_tokens;
@@ -231,8 +226,6 @@ final class GlintRecorder
                 ]);
 
                 if ($inserted === 0) {
-                    // Row already exists — increment counters using ? bindings
-                    // so no string-concatenated SQL is needed (Larastan literal-string safe).
                     DB::update(
                         <<<'SQL'
                         UPDATE glint_aggregates

@@ -64,8 +64,6 @@ final class TracesController
             abort(404);
         }
 
-        // Cap at 500 rows each — agent-loop traces can accumulate hundreds of
-        // spans/generations and loading all at once would exhaust memory.
         $spans = rescue(
             fn () => $trace->spans()->orderBy('started_at')->limit(500)->get(),
             collect()

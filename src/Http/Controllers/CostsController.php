@@ -27,8 +27,6 @@ final class CostsController
 
         [$fromDt, $toDt] = $this->resolveDateRange($period, $fromDate, $toDate);
 
-        // Use the pre-aggregated glint_aggregates table for the per-provider/model breakdown
-        // to avoid an expensive full-table GROUP BY scan on glint_generations.
         $costByProviderModel = rescue(
             fn () => GlintAggregate::query()
                 ->selectRaw('provider, model, SUM(total_cost_usd) as total_cost, SUM(total_requests) as total_requests, SUM(total_tokens) as total_tokens')
@@ -41,7 +39,6 @@ final class CostsController
             collect()
         );
 
-        // Derive total cost from same filtered set.
         $totalCost = rescue(
             fn () => GlintAggregate::query()
                 ->when($provider !== '', fn ($q) => $q->where('provider', $provider))
@@ -68,7 +65,6 @@ final class CostsController
             collect()
         );
 
-        // Top trace use cases by cost (join traces → generations)
         $topTraceUseCases = rescue(
             fn () => GlintTrace::query()
                 ->select([
@@ -89,7 +85,6 @@ final class CostsController
             collect()
         );
 
-        // Top generation names by cost
         $topGenerationUseCases = rescue(
             fn () => GlintGeneration::query()
                 ->select([

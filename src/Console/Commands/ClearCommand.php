@@ -41,9 +41,6 @@ final class ClearCommand extends Command
 
         foreach ($models as $modelClass => $table) {
             try {
-                // Single DELETE query; return value is the affected-row count.
-                // Wrapped in try/catch so a missing table (e.g. migrations not yet run)
-                // produces a graceful warning rather than an unhandled exception.
                 $deleted = $modelClass::query()->delete();
                 $count = is_numeric($deleted) ? (int) $deleted : 0;
                 $this->components->twoColumnDetail($table, "<fg=green>{$count} records deleted</>");

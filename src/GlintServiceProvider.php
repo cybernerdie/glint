@@ -122,10 +122,7 @@ final class GlintServiceProvider extends ServiceProvider
             'neuron-ai' => Instrumentation\NeuronAiInstrumentation::class,
         ];
 
-        // HttpClientInstrumentation, LaravelAiInstrumentation, and
-        // GlintNeuronAiObserver carry per-request mutable state ($pending,
-        // $toolStartTimes). Bind them as scoped so Octane re-creates them
-        // each request, preventing state from leaking across requests.
+        // Scoped so Octane re-creates them per request, preventing mutable state leakage.
         $this->app->scoped(Instrumentation\HttpClientInstrumentation::class);
         $this->app->scoped(Instrumentation\LaravelAiInstrumentation::class);
         $this->app->scoped(Instrumentation\NeuronAi\GlintNeuronAiObserver::class);

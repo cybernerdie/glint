@@ -118,8 +118,6 @@ final class TracingProvider
         $parts = explode('\\', $class);
         $shortName = strtolower(end($parts));
 
-        // Hardcoded map handles Prism providers named with or without the "Provider" suffix
-        // (e.g. "AnthropicProvider" → "anthropic", "Anthropic" → "anthropic").
         $providerMap = [
             'anthropic' => 'anthropic',
             'anthropicprovider' => 'anthropic',
