@@ -19,11 +19,11 @@ final class GenerationsController
     public function index(Request $request): ViewContract
     {
         $provider = $request->string('provider')->toString();
-        $model    = $request->string('model')->toString();
-        $status   = $request->string('status')->toString();
-        $period   = $request->string('period')->toString() ?: 'today';
+        $model = $request->string('model')->toString();
+        $status = $request->string('status')->toString();
+        $period = $request->string('period')->toString() ?: 'today';
         $fromDate = $request->string('from')->toString();
-        $toDate   = $request->string('to')->toString();
+        $toDate = $request->string('to')->toString();
 
         [$fromDt, $toDt] = $this->resolveDateRange($period, $fromDate, $toDate);
 
@@ -59,13 +59,13 @@ final class GenerationsController
 
             return [
                 'providers' => $rows->pluck('provider')->unique()->values(),
-                'models'    => $rows->pluck('model')->unique()->values(),
+                'models' => $rows->pluck('model')->unique()->values(),
             ];
         }, ['providers' => collect(), 'models' => collect()]);
 
         $providers = $filters['providers'];
-        $models    = $filters['models'];
-        $statuses  = RecordStatus::cases();
+        $models = $filters['models'];
+        $statuses = RecordStatus::cases();
 
         return View::make('glint::generations.index', compact(
             'generations', 'provider', 'model', 'status', 'providers', 'models', 'statuses',

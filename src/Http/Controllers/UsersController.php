@@ -17,10 +17,10 @@ final class UsersController
 
     public function index(Request $request): ViewContract
     {
-        $search   = $request->string('search')->toString();
-        $period   = $request->string('period')->toString() ?: 'today';
+        $search = $request->string('search')->toString();
+        $period = $request->string('period')->toString() ?: 'today';
         $fromDate = $request->string('from')->toString();
-        $toDate   = $request->string('to')->toString();
+        $toDate = $request->string('to')->toString();
 
         [$fromDt, $toDt] = $this->resolveDateRange($period, $fromDate, $toDate);
 
@@ -50,9 +50,9 @@ final class UsersController
 
     public function show(Request $request, string $userId): ViewContract
     {
-        $period   = $request->string('period')->toString() ?: 'today';
+        $period = $request->string('period')->toString() ?: 'today';
         $fromDate = $request->string('from')->toString();
-        $toDate   = $request->string('to')->toString();
+        $toDate = $request->string('to')->toString();
 
         [$fromDt, $toDt] = $this->resolveDateRange($period, $fromDate, $toDate);
 
@@ -73,11 +73,11 @@ final class UsersController
 
         $attrs = $statsRow ? $statsRow->getAttributes() : [];
         $stats = [
-            'trace_count'  => isset($attrs['trace_count']) && is_numeric($attrs['trace_count']) ? (int) $attrs['trace_count'] : 0,
-            'total_cost'   => isset($attrs['total_cost']) && is_numeric($attrs['total_cost']) ? (float) $attrs['total_cost'] : 0.0,
+            'trace_count' => isset($attrs['trace_count']) && is_numeric($attrs['trace_count']) ? (int) $attrs['trace_count'] : 0,
+            'total_cost' => isset($attrs['total_cost']) && is_numeric($attrs['total_cost']) ? (float) $attrs['total_cost'] : 0.0,
             'avg_duration' => isset($attrs['avg_duration']) && is_numeric($attrs['avg_duration']) ? (int) $attrs['avg_duration'] : 0,
             'total_tokens' => isset($attrs['total_tokens']) && is_numeric($attrs['total_tokens']) ? (int) $attrs['total_tokens'] : 0,
-            'error_count'  => isset($attrs['error_count']) && is_numeric($attrs['error_count']) ? (int) $attrs['error_count'] : 0,
+            'error_count' => isset($attrs['error_count']) && is_numeric($attrs['error_count']) ? (int) $attrs['error_count'] : 0,
         ];
 
         $traces = rescue(function () use ($userId, $fromDt, $toDt) {

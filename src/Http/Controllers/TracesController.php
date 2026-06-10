@@ -17,12 +17,12 @@ final class TracesController
 
     public function index(Request $request): ViewContract
     {
-        $search   = $request->string('search')->toString();
-        $status   = $request->string('status')->toString();
-        $userId   = $request->string('user_id')->toString();
-        $period   = $request->string('period')->toString() ?: 'today';
+        $search = $request->string('search')->toString();
+        $status = $request->string('status')->toString();
+        $userId = $request->string('user_id')->toString();
+        $period = $request->string('period')->toString() ?: 'today';
         $fromDate = $request->string('from')->toString();
-        $toDate   = $request->string('to')->toString();
+        $toDate = $request->string('to')->toString();
 
         [$fromDt, $toDt] = $this->resolveDateRange($period, $fromDate, $toDate);
 

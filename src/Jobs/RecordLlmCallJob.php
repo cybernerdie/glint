@@ -19,7 +19,6 @@ final class RecordLlmCallJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    /** @var int */
     public int $tries = 3;
 
     /**

@@ -18,9 +18,9 @@ final class AnalyticsController
 
     public function latency(Request $request): ViewContract
     {
-        $period   = $request->string('period')->toString() ?: 'today';
+        $period = $request->string('period')->toString() ?: 'today';
         $fromDate = $request->string('from')->toString();
-        $toDate   = $request->string('to')->toString();
+        $toDate = $request->string('to')->toString();
 
         [$fromDt, $toDt] = $this->resolveDateRange($period, $fromDate, $toDate);
 
@@ -51,16 +51,16 @@ final class AnalyticsController
             foreach ($grouped as $name => $durations) {
                 sort($durations);
                 $result[] = [
-                    'name'  => $name,
+                    'name' => $name,
                     'count' => count($durations),
-                    'p50'   => $this->percentile($durations, 50),
-                    'p90'   => $this->percentile($durations, 90),
-                    'p95'   => $this->percentile($durations, 95),
-                    'p99'   => $this->percentile($durations, 99),
+                    'p50' => $this->percentile($durations, 50),
+                    'p90' => $this->percentile($durations, 90),
+                    'p95' => $this->percentile($durations, 95),
+                    'p99' => $this->percentile($durations, 99),
                 ];
             }
 
-            usort($result, static fn (array $a, array $b): int => ($b['p95'] ?? 0) <=> ($a['p95'] ?? 0));
+            usort($result, static fn (array $a, array $b): int => $b['p95'] <=> $a['p95']);
 
             return array_slice($result, 0, 10);
         }, []);
@@ -83,7 +83,7 @@ final class AnalyticsController
                 if ($row->duration_ms === null) {
                     continue;
                 }
-                $grouped[$row->model][]  = $row->duration_ms;
+                $grouped[$row->model][] = $row->duration_ms;
                 $providers[$row->model] ??= $row->provider;
             }
 
@@ -92,17 +92,17 @@ final class AnalyticsController
             foreach ($grouped as $model => $durations) {
                 sort($durations);
                 $result[] = [
-                    'model'    => $model,
+                    'model' => $model,
                     'provider' => $providers[$model] ?? '',
-                    'count'    => count($durations),
-                    'p50'      => $this->percentile($durations, 50),
-                    'p90'      => $this->percentile($durations, 90),
-                    'p95'      => $this->percentile($durations, 95),
-                    'p99'      => $this->percentile($durations, 99),
+                    'count' => count($durations),
+                    'p50' => $this->percentile($durations, 50),
+                    'p90' => $this->percentile($durations, 90),
+                    'p95' => $this->percentile($durations, 95),
+                    'p99' => $this->percentile($durations, 99),
                 ];
             }
 
-            usort($result, static fn (array $a, array $b): int => ($b['p95'] ?? 0) <=> ($a['p95'] ?? 0));
+            usort($result, static fn (array $a, array $b): int => $b['p95'] <=> $a['p95']);
 
             return $result;
         }, []);
@@ -180,7 +180,7 @@ final class AnalyticsController
     /**
      * Compute a percentile value from a pre-sorted list of integers.
      *
-     * @param list<int> $sorted Already-sorted list of integer millisecond values.
+     * @param  list<int>  $sorted  Already-sorted list of integer millisecond values.
      */
     private function percentile(array $sorted, int $p): int
     {

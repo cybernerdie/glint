@@ -21,9 +21,9 @@ final class CostsController
     public function index(Request $request): ViewContract
     {
         $provider = $request->string('provider')->toString();
-        $period   = $request->string('period')->toString() ?: 'today';
+        $period = $request->string('period')->toString() ?: 'today';
         $fromDate = $request->string('from')->toString();
-        $toDate   = $request->string('to')->toString();
+        $toDate = $request->string('to')->toString();
 
         [$fromDt, $toDt] = $this->resolveDateRange($period, $fromDate, $toDate);
 

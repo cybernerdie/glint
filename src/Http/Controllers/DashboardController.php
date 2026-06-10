@@ -20,9 +20,9 @@ final class DashboardController
 
     public function index(Request $request): ViewContract
     {
-        $period   = $request->string('period')->toString() ?: 'today';
+        $period = $request->string('period')->toString() ?: 'today';
         $fromDate = $request->string('from')->toString();
-        $toDate   = $request->string('to')->toString();
+        $toDate = $request->string('to')->toString();
 
         [$fromDt, $toDt] = $this->resolveDateRange($period, $fromDate, $toDate);
 
@@ -43,11 +43,11 @@ final class DashboardController
                     ->first();
 
                 $attrs = $row ? $row->getAttributes() : [];
-                $total       = isset($attrs['total']) && is_numeric($attrs['total']) ? (int) $attrs['total'] : 0;
-                $errors      = isset($attrs['errors']) && is_numeric($attrs['errors']) ? (int) $attrs['errors'] : 0;
-                $totalCost   = isset($attrs['total_cost']) && is_numeric($attrs['total_cost']) ? (float) $attrs['total_cost'] : 0.0;
+                $total = isset($attrs['total']) && is_numeric($attrs['total']) ? (int) $attrs['total'] : 0;
+                $errors = isset($attrs['errors']) && is_numeric($attrs['errors']) ? (int) $attrs['errors'] : 0;
+                $totalCost = isset($attrs['total_cost']) && is_numeric($attrs['total_cost']) ? (float) $attrs['total_cost'] : 0.0;
                 $avgDuration = isset($attrs['avg_duration']) && is_numeric($attrs['avg_duration']) ? (int) $attrs['avg_duration'] : 0;
-                $errorRate   = $total > 0 ? round(($errors / $total) * 100, 1) : 0.0;
+                $errorRate = $total > 0 ? round(($errors / $total) * 100, 1) : 0.0;
 
                 $traceQuery = GlintTrace::query();
                 if ($fromDt !== null) {
@@ -58,25 +58,25 @@ final class DashboardController
                 }
 
                 return [
-                    'total_traces'     => $traceQuery->count(),
+                    'total_traces' => $traceQuery->count(),
                     'total_generations' => $total,
-                    'total_cost_usd'   => $totalCost,
-                    'avg_duration_ms'  => $avgDuration,
-                    'error_rate'       => $errorRate,
+                    'total_cost_usd' => $totalCost,
+                    'avg_duration_ms' => $avgDuration,
+                    'error_rate' => $errorRate,
                 ];
             }, [
-                'total_traces'      => 0,
+                'total_traces' => 0,
                 'total_generations' => 0,
-                'total_cost_usd'    => 0.0,
-                'avg_duration_ms'   => 0,
-                'error_rate'        => 0.0,
+                'total_cost_usd' => 0.0,
+                'avg_duration_ms' => 0,
+                'error_rate' => 0.0,
             ]);
         }), [
-            'total_traces'      => 0,
+            'total_traces' => 0,
             'total_generations' => 0,
-            'total_cost_usd'    => 0.0,
-            'avg_duration_ms'   => 0,
-            'error_rate'        => 0.0,
+            'total_cost_usd' => 0.0,
+            'avg_duration_ms' => 0,
+            'error_rate' => 0.0,
         ]);
 
         $recentTraces = rescue(

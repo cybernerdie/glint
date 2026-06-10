@@ -89,10 +89,10 @@ final class GlintServiceProvider extends ServiceProvider
 
     private function registerSyncListeners(): void
     {
-        Event::listen(LlmCallStarted::class,  [GlintRecorder::class, 'handleLlmCallStarted']);
+        Event::listen(LlmCallStarted::class, [GlintRecorder::class, 'handleLlmCallStarted']);
         Event::listen(LlmCallFinished::class, [GlintRecorder::class, 'handleLlmCallFinished']);
-        Event::listen(LlmToolCalled::class,   [GlintRecorder::class, 'handleLlmToolCalled']);
-        Event::listen(LlmCallFailed::class,   [GlintRecorder::class, 'handleLlmCallFailed']);
+        Event::listen(LlmToolCalled::class, [GlintRecorder::class, 'handleLlmToolCalled']);
+        Event::listen(LlmCallFailed::class, [GlintRecorder::class, 'handleLlmCallFailed']);
     }
 
     private function registerQueueListeners(): void

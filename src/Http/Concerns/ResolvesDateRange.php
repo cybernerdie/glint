@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cybernerdie\Glint\Http\Concerns;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 
 trait ResolvesDateRange
@@ -33,7 +34,7 @@ trait ResolvesDateRange
 
         if ($period === 'custom') {
             $from = $fromDate !== '' ? Carbon::parse($fromDate)->startOfDay() : null;
-            $to   = $toDate   !== '' ? Carbon::parse($toDate)->endOfDay()   : null;
+            $to = $toDate !== '' ? Carbon::parse($toDate)->endOfDay() : null;
 
             return [$from, $to];
         }
@@ -45,18 +46,16 @@ trait ResolvesDateRange
      * Apply from/to Carbon bounds to an Eloquent builder on a given column.
      *
      * @template TModel of \Illuminate\Database\Eloquent\Model
-     * @param  \Illuminate\Database\Eloquent\Builder<TModel>  $query
-     * @param  Carbon|null  $from
-     * @param  Carbon|null  $to
-     * @param  string  $column
-     * @return \Illuminate\Database\Eloquent\Builder<TModel>
+     *
+     * @param  Builder<TModel>  $query
+     * @return Builder<TModel>
      */
     private function applyDateRange(
-        \Illuminate\Database\Eloquent\Builder $query,
+        Builder $query,
         ?Carbon $from,
         ?Carbon $to,
         string $column = 'started_at',
-    ): \Illuminate\Database\Eloquent\Builder {
+    ): Builder {
         if ($from !== null) {
             $query->where($column, '>=', $from);
         }
