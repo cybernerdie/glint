@@ -39,7 +39,7 @@
             </a>
         @endif
         @if($provider || $period !== 'today')
-            <a href="{{ route('glint.costs.index') }}" class="filter-chip" style="background:rgba(0,0,0,0.04);border-color:var(--border);color:var(--text-2)">
+            <a href="{{ route('glint.costs.index') }}" class="filter-chip filter-chip-muted">
                 Clear all <span class="filter-chip-x">&times;</span>
             </a>
         @endif
@@ -49,7 +49,7 @@
     <div class="kpi-grid">
         <div class="kpi-card">
             <div class="kpi-label">Total Spend</div>
-            <div class="kpi-value kpi-value-sm" style="font-family:var(--font-mono);color:var(--accent)">
+            <div class="kpi-value kpi-value-sm kpi-value-cost">
                 ${{ number_format($totalCost, 4) }}
             </div>
             <div class="kpi-footer">
@@ -287,7 +287,7 @@
                     @foreach($topTraceUseCases as $row)
                         @php $pct = $totalCost > 0 ? round(((float) $row->total_cost / $totalCost) * 100, 1) : 0; @endphp
                         <tr>
-                            <td style="font-weight:500;font-family:var(--font-mono);font-size:12.5px">{{ $row->name }}</td>
+                            <td class="t-name">{{ $row->name }}</td>
                             <td class="t-muted t-mono">{{ number_format($row->trace_count) }}</td>
                             <td class="t-muted t-mono">{{ $row->total_tokens !== null ? number_format($row->total_tokens) : '—' }}</td>
                             <td class="t-mono" style="font-weight:600;color:var(--accent)">${{ number_format((float) $row->total_cost, 6) }}</td>
@@ -326,7 +326,7 @@
                     @foreach($topGenerationUseCases as $row)
                         @php $pct = $totalCost > 0 ? round(((float) $row->total_cost / $totalCost) * 100, 1) : 0; @endphp
                         <tr>
-                            <td style="font-weight:500;font-family:var(--font-mono);font-size:12.5px">{{ $row->name }}</td>
+                            <td class="t-name">{{ $row->name }}</td>
                             <td class="t-muted t-mono">{{ number_format($row->request_count) }}</td>
                             <td class="t-muted t-mono">{{ $row->total_tokens !== null ? number_format($row->total_tokens) : '—' }}</td>
                             <td class="t-mono" style="font-weight:600;color:var(--accent)">${{ number_format((float) $row->total_cost, 6) }}</td>

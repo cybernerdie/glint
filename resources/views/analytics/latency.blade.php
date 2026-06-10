@@ -63,7 +63,7 @@
                 <tbody>
                     @foreach($tracePercentiles as $row)
                         <tr>
-                            <td style="font-family:var(--font-mono);font-size:12.5px;font-weight:500">{{ $row['name'] }}</td>
+                            <td class="t-name">{{ $row['name'] }}</td>
                             <td class="t-muted t-mono">{{ number_format($row['count']) }}</td>
                             <td class="t-mono t-muted">{{ $fmtMs($row['p50']) }}</td>
                             <td class="t-mono t-muted">{{ $fmtMs($row['p90']) }}</td>
@@ -151,7 +151,7 @@
                     @foreach($traceLatency as $row)
                         @php $pct = round(($row->avg_duration / $maxDuration) * 100); @endphp
                         <tr>
-                            <td style="font-weight:500;font-family:var(--font-mono);font-size:12.5px">{{ $row->name }}</td>
+                            <td class="t-name">{{ $row->name }}</td>
                             <td class="t-muted t-mono">{{ number_format($row->trace_count) }}</td>
                             <td class="t-mono" style="font-weight:600">{{ $fmtMs((int) $row->avg_duration) }}</td>
                             <td class="t-muted t-mono">{{ $fmtMs((int) $row->max_duration) }}</td>

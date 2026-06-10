@@ -398,6 +398,11 @@
             font-size: 20px;
         }
 
+        .kpi-value-cost {
+            font-family: var(--font-mono);
+            color: var(--accent);
+        }
+
         .kpi-unit {
             font-size: 13px;
             font-weight: 400;
@@ -497,6 +502,7 @@
 
         .t-muted { color: var(--text-2); }
         .t-dim   { color: var(--text-3); }
+        .t-name  { font-family: var(--font-mono); font-size: 12.5px; font-weight: 500; }
 
         /* ─── Filter bar ──────────────────────────────────────── */
         .filter-bar {
@@ -1249,6 +1255,19 @@
 
         .llm-call-chevron.is-open { transform: rotate(180deg); }
 
+        .llm-stat-label {
+            font-size: 10.5px;
+            color: var(--text-3);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+        .llm-stat-val {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--text-1);
+            margin-left: 6px;
+        }
+
         .llm-call-body {
             border-top: 1px solid var(--border);
         }
@@ -1437,6 +1456,12 @@
         }
 
         .filter-chip:hover { background: rgba(232,81,10,0.14); }
+        .filter-chip-muted {
+            background: rgba(0,0,0,0.04);
+            border-color: var(--border);
+            color: var(--text-2);
+        }
+        .filter-chip-muted:hover { background: rgba(0,0,0,0.08); }
 
         .filter-chip-x {
             font-size: 15px;

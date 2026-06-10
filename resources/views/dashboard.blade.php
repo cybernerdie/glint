@@ -35,7 +35,7 @@
 
         <div class="kpi-card">
             <div class="kpi-label">Total Cost</div>
-            <div class="kpi-value kpi-value-sm" style="font-family:var(--font-mono);color:var(--accent)">
+            <div class="kpi-value kpi-value-sm kpi-value-cost">
                 ${{ number_format($stats['total_cost_usd'], 4) }}
             </div>
         </div>

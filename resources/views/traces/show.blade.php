@@ -198,8 +198,8 @@
                         <div style="display:flex;gap:24px;padding:10px 16px;border-top:1px solid var(--border);background:var(--surface-2)">
                             @if($gen->prompt_tokens !== null)
                                 <div>
-                                    <span style="font-size:10.5px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.06em">Prompt tokens</span>
-                                    <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-1);margin-left:6px">{{ number_format($gen->prompt_tokens) }}</span>
+                                    <span class="llm-stat-label">Prompt tokens</span>
+                                    <span class="llm-stat-val">{{ number_format($gen->prompt_tokens) }}</span>
                                 </div>
                             @endif
                             @if($gen->completion_tokens !== null)

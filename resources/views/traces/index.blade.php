@@ -76,7 +76,7 @@
         @endif
 
         @if($search || $status || $userId || $period !== 'today')
-            <a href="{{ route('glint.traces.index') }}" class="filter-chip" style="background:rgba(0,0,0,0.04);border-color:var(--border);color:var(--text-2)">
+            <a href="{{ route('glint.traces.index') }}" class="filter-chip filter-chip-muted">
                 Clear all <span class="filter-chip-x">&times;</span>
             </a>
         @endif
