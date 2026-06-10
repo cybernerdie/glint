@@ -606,59 +606,47 @@
         .badge {
             display: inline-flex;
             align-items: center;
-            gap: 5px;
-            padding: 3px 10px;
-            border-radius: 9999px;
-            font-size: 11.5px;
-            font-weight: 500;
+            padding: 2px 7px;
+            border-radius: 4px;
+            font-size: 10.5px;
+            font-weight: 600;
+            font-family: var(--font-mono);
             white-space: nowrap;
-            letter-spacing: 0.01em;
-        }
-
-        .badge-dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            flex-shrink: 0;
+            letter-spacing: 0.07em;
+            text-transform: uppercase;
+            line-height: 18px;
         }
 
         .badge-success {
             background: var(--success-bg);
             color: var(--success-text);
-            border: 1px solid rgba(21,128,61,0.15);
         }
-        .badge-success .badge-dot { background: var(--success); }
 
         .badge-error {
             background: var(--error-bg);
             color: var(--error-text);
-            border: 1px solid rgba(185,28,28,0.15);
         }
-        .badge-error .badge-dot { background: var(--error); }
 
         .badge-pending {
-            background: #F3F3F6;
-            color: #4A4A62;
-            border: 1px solid rgba(74,74,98,0.12);
+            background: #EDEDF2;
+            color: #5A5A72;
         }
-        .badge-pending .badge-dot { background: #9898AA; }
 
         .badge-running {
             background: var(--info-bg);
             color: var(--info-text);
-            border: 1px solid rgba(29,78,216,0.15);
-        }
-        .badge-running .badge-dot {
-            background: var(--info);
-            animation: dotPulse 1.4s ease-in-out infinite;
+            animation: badgePulse 1.6s ease-in-out infinite;
         }
 
         .badge-neutral {
-            background: #F0EFF8;
+            background: #EEEDF6;
             color: #5A5A7A;
-            border: 1px solid rgba(133,133,168,0.15);
         }
-        .badge-neutral .badge-dot { background: #8585A8; }
+
+        @keyframes badgePulse {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0.6; }
+        }
 
         /* ─── Pagination ──────────────────────────────────────── */
         .pagination {
