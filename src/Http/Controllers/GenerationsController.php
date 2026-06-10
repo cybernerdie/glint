@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Cybernerdie\Glint\Http\Controllers;
 
+use Cybernerdie\Glint\Enums\RecordStatus;
+use Cybernerdie\Glint\Http\Concerns\ResolvesDateRange;
 use Cybernerdie\Glint\Models\GlintAggregate;
 use Cybernerdie\Glint\Models\GlintGeneration;
 use Illuminate\Contracts\View\View as ViewContract;
@@ -12,12 +14,20 @@ use Illuminate\Support\Facades\View;
 
 final class GenerationsController
 {
+    use ResolvesDateRange;
+
     public function index(Request $request): ViewContract
     {
         $provider = $request->string('provider')->toString();
-        $model = $request->string('model')->toString();
+        $model    = $request->string('model')->toString();
+        $status   = $request->string('status')->toString();
+        $period   = $request->string('period')->toString() ?: 'today';
+        $fromDate = $request->string('from')->toString();
+        $toDate   = $request->string('to')->toString();
 
-        $generations = rescue(function () use ($provider, $model) {
+        [$fromDt, $toDt] = $this->resolveDateRange($period, $fromDate, $toDate);
+
+        $generations = rescue(function () use ($provider, $model, $status, $fromDt, $toDt) {
             $query = GlintGeneration::query()->latest('started_at');
 
             if ($provider !== '') {
@@ -28,7 +38,13 @@ final class GenerationsController
                 $query->where('model', $model);
             }
 
-            return $query->cursorPaginate(25)->withQueryString();
+            if ($status !== '' && in_array($status, ['success', 'error', 'pending'], true)) {
+                $query->where('status', $status);
+            }
+
+            $this->applyDateRange($query, $fromDt, $toDt);
+
+            return $query->paginate(25)->withQueryString();
         }, collect());
 
         // Single query for both dropdowns — pluck and split in PHP
@@ -43,14 +59,18 @@ final class GenerationsController
 
             return [
                 'providers' => $rows->pluck('provider')->unique()->values(),
-                'models' => $rows->pluck('model')->unique()->values(),
+                'models'    => $rows->pluck('model')->unique()->values(),
             ];
         }, ['providers' => collect(), 'models' => collect()]);
 
         $providers = $filters['providers'];
-        $models = $filters['models'];
+        $models    = $filters['models'];
+        $statuses  = RecordStatus::cases();
 
-        return View::make('glint::generations.index', compact('generations', 'provider', 'model', 'providers', 'models'));
+        return View::make('glint::generations.index', compact(
+            'generations', 'provider', 'model', 'status', 'providers', 'models', 'statuses',
+            'period', 'fromDate', 'toDate'
+        ));
     }
 
     public function show(string $generationId): ViewContract

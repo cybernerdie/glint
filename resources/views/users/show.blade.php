@@ -1,17 +1,25 @@
 @extends('glint::layout')
 
-@section('page-title', 'Traces')
-@section('refresh-interval', 5)
+@section('page-title', 'User')
 
 @section('content')
+
+    <a href="{{ route('glint.users.index') }}" class="back-link">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/>
+        </svg>
+        All users
+    </a>
 
     <div class="page-header">
         <div class="page-header-row">
             <div>
-                <div class="page-title">Traces</div>
-                <div class="page-desc">Request-level trace history</div>
+                <div class="page-title" style="font-family:var(--font-mono);font-size:17px;letter-spacing:-0.2px">
+                    {{ $userId }}
+                </div>
+                <div class="page-desc">User activity and trace history</div>
             </div>
-            <form method="GET" action="{{ route('glint.traces.index') }}">
+            <form method="GET" action="{{ route('glint.users.show', $userId) }}">
                 @include('glint::partials.filters.date-range', [
                     'activePeriod' => $period,
                     'activeFrom'   => $fromDate,
@@ -21,58 +29,57 @@
         </div>
     </div>
 
-    <form method="GET" action="{{ route('glint.traces.index') }}" class="filter-bar">
-        <input type="hidden" name="period" value="{{ $period }}">
-        <input type="hidden" name="from" value="{{ $fromDate }}">
-        <input type="hidden" name="to" value="{{ $toDate }}">
+    {{-- KPI cards --}}
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <div class="kpi-label">Total Traces</div>
+            <div class="kpi-value">{{ number_format($stats['trace_count']) }}</div>
+            <div class="kpi-footer">{{ match($period) { 'today' => 'Today', 'week' => 'This week', 'month' => 'This month', '3months' => 'Last 3 months', 'custom' => 'Custom range', default => 'Today' } }}</div>
+        </div>
 
-        <label for="traces-search" class="sr-only">Search by name</label>
-        <input
-            id="traces-search"
-            type="text"
-            name="search"
-            value="{{ $search }}"
-            placeholder="Search by name..."
-            class="input"
-            style="width:200px"
-            autocomplete="off"
-        >
+        <div class="kpi-card">
+            <div class="kpi-label">Total Cost</div>
+            <div class="kpi-value kpi-value-sm" style="font-family:var(--font-mono);color:var(--accent)">
+                ${{ number_format($stats['total_cost'], 4) }}
+            </div>
+            <div class="kpi-footer">USD</div>
+        </div>
 
-        <label for="traces-user" class="sr-only">Filter by user ID</label>
-        <input
-            id="traces-user"
-            type="text"
-            name="user_id"
-            value="{{ $userId }}"
-            placeholder="User ID..."
-            class="input"
-            style="width:160px"
-            autocomplete="off"
-        >
+        <div class="kpi-card">
+            <div class="kpi-label">Avg Duration</div>
+            <div class="kpi-value kpi-value-sm">
+                {{ number_format($stats['avg_duration']) }}<span class="kpi-unit">ms</span>
+            </div>
+            <div class="kpi-footer">Per trace</div>
+        </div>
 
-        <label for="traces-status" class="sr-only">Filter by status</label>
-        <select id="traces-status" name="status" class="input">
-            <option value="">All statuses</option>
-            @foreach($statuses as $s)
-                <option value="{{ $s->value }}" {{ $status === $s->value ? 'selected' : '' }}>
-                    {{ ucfirst($s->value) }}
-                </option>
-            @endforeach
-        </select>
+        <div class="kpi-card">
+            <div class="kpi-label">Total Tokens</div>
+            <div class="kpi-value kpi-value-sm">
+                {{ number_format($stats['total_tokens']) }}
+            </div>
+            <div class="kpi-footer">Across all traces</div>
+        </div>
 
-        <button type="submit" class="btn btn-primary">Filter</button>
+        <div class="kpi-card">
+            <div class="kpi-label">Errors</div>
+            <div class="kpi-value kpi-value-sm"
+                 style="color: {{ $stats['error_count'] > 0 ? 'var(--error)' : 'var(--success)' }}">
+                {{ number_format($stats['error_count']) }}
+            </div>
+            <div class="kpi-footer">Failed traces</div>
+        </div>
+    </div>
 
-        @if($search || $status || $userId || $period !== 'today')
-            <a href="{{ route('glint.traces.index') }}" class="btn btn-ghost">Clear all</a>
-        @endif
-    </form>
-
+    {{-- Traces --}}
     <div class="panel">
         <div class="panel-header">
             <span class="panel-title">Traces</span>
         </div>
 
-        @if(method_exists($traces, 'isEmpty') ? $traces->isEmpty() : count($traces) === 0)
+        @php $isEmpty = method_exists($traces, 'isEmpty') ? $traces->isEmpty() : count($traces) === 0; @endphp
+
+        @if($isEmpty)
             <div class="empty">
                 <svg class="empty-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.4">
                     <path stroke-linecap="round" stroke-linejoin="round"
@@ -80,10 +87,10 @@
                 </svg>
                 <div class="empty-title">No traces found</div>
                 <div class="empty-sub">
-                    @if($search || $status || $userId || $period)
-                        Try adjusting your filters, or <a href="{{ route('glint.traces.index') }}" class="text-link">clear them</a>.
+                    @if($period)
+                        Try a different date range.
                     @else
-                        Traces will appear here once your app makes LLM calls.
+                        This user has no recorded traces yet.
                     @endif
                 </div>
             </div>
@@ -94,7 +101,6 @@
                         <th>Trace ID</th>
                         <th>Name</th>
                         <th>Status</th>
-                        <th>User</th>
                         <th>Duration</th>
                         <th>Started</th>
                     </tr>
@@ -119,7 +125,6 @@
                                 </a>
                             </td>
                             <td>@include('glint::partials.status-badge', ['status' => $trace->status])</td>
-                            <td class="t-muted t-mono">{{ $trace->user_id ?? '—' }}</td>
                             <td class="t-muted t-mono">
                                 {{ $trace->duration_ms !== null ? number_format($trace->duration_ms).'ms' : '—' }}
                             </td>

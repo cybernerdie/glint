@@ -16,9 +16,11 @@ use Cybernerdie\Glint\Filtering\FilterEntry;
 use Cybernerdie\Glint\Filtering\GlintFilterRegistry;
 use Cybernerdie\Glint\Models\GlintGeneration;
 use Cybernerdie\Glint\Models\GlintSpan;
+use Cybernerdie\Glint\Models\GlintTrace;
 use Cybernerdie\Glint\Pricing\PricingRegistry;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 final class GlintRecorder
 {
@@ -47,7 +49,18 @@ final class GlintRecorder
             }
 
             if ($traceId === null) {
-                return;
+                // No active trace context (e.g. background job, Artisan command).
+                // Auto-create a headless trace so the generation is still recorded.
+                $traceId = (string) Str::ulid();
+
+                GlintTrace::create([
+                    'id' => $traceId,
+                    'name' => 'auto:'.$event->provider.'/'.$event->model,
+                    'status' => RecordStatus::Pending,
+                    'started_at' => now(),
+                ]);
+
+                $this->context->registerAutoTrace($event->generationId, $traceId);
             }
 
             GlintGeneration::firstOrCreate(
@@ -105,6 +118,7 @@ final class GlintRecorder
             ]);
 
             $this->upsertAggregate($generation);
+            $this->closeAutoTrace($event->generationId, RecordStatus::Success);
         });
     }
 
@@ -118,6 +132,8 @@ final class GlintRecorder
                 'duration_ms' => $event->durationMs,
                 'ended_at' => now(),
             ]);
+
+            $this->closeAutoTrace($event->generationId, RecordStatus::Error);
         });
     }
 
@@ -141,6 +157,34 @@ final class GlintRecorder
                 ]
             );
         });
+    }
+
+    private function closeAutoTrace(string $generationId, RecordStatus $status): void
+    {
+        $traceId = $this->context->autoTraceIdForGeneration($generationId);
+
+        if ($traceId === null) {
+            return;
+        }
+
+        $trace = GlintTrace::find($traceId);
+
+        if ($trace === null) {
+            $this->context->clearAutoTrace($generationId);
+
+            return;
+        }
+
+        $endedAt = now();
+        $durationMs = (int) $trace->started_at->diffInMilliseconds($endedAt);
+
+        $trace->update([
+            'status' => $status,
+            'duration_ms' => $durationMs,
+            'ended_at' => $endedAt,
+        ]);
+
+        $this->context->clearAutoTrace($generationId);
     }
 
     private function upsertAggregate(GlintGeneration $generation): void

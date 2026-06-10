@@ -6,12 +6,26 @@
 @section('content')
 
     <div class="page-header">
-        <div class="page-title">Generations</div>
-        <div class="page-subtitle">Individual LLM API calls</div>
+        <div class="page-header-row">
+            <div>
+                <div class="page-title">Generations</div>
+                <div class="page-desc">Individual LLM API calls</div>
+            </div>
+            <form method="GET" action="{{ route('glint.generations.index') }}">
+                @include('glint::partials.filters.date-range', [
+                    'activePeriod' => $period,
+                    'activeFrom'   => $fromDate,
+                    'activeTo'     => $toDate,
+                ])
+            </form>
+        </div>
     </div>
 
-    {{-- Filters --}}
     <form method="GET" action="{{ route('glint.generations.index') }}" class="filter-bar">
+        <input type="hidden" name="period" value="{{ $period }}">
+        <input type="hidden" name="from" value="{{ $fromDate }}">
+        <input type="hidden" name="to" value="{{ $toDate }}">
+
         <label for="gen-provider" class="sr-only">Filter by provider</label>
         <select id="gen-provider" name="provider" class="input">
             <option value="">All providers</option>
@@ -28,52 +42,84 @@
             @endforeach
         </select>
 
+        <label for="gen-status" class="sr-only">Filter by status</label>
+        <select id="gen-status" name="status" class="input">
+            <option value="">All statuses</option>
+            @foreach($statuses as $s)
+                <option value="{{ $s->value }}" {{ $status === $s->value ? 'selected' : '' }}>
+                    {{ ucfirst($s->value) }}
+                </option>
+            @endforeach
+        </select>
+
         <button type="submit" class="btn btn-primary">Filter</button>
 
-        @if($provider || $model)
-            <a href="{{ route('glint.generations.index') }}" class="btn btn-ghost">Clear</a>
+        @if($provider || $model || $status || $period !== 'today')
+            <a href="{{ route('glint.generations.index') }}" class="btn btn-ghost">Clear all</a>
         @endif
     </form>
 
-    <div class="table-wrap">
-        <div class="table-header">
-            <span class="table-title">Generations</span>
+    <div class="panel">
+        <div class="panel-header">
+            <span class="panel-title">Generations</span>
         </div>
 
         @if(method_exists($generations, 'isEmpty') ? $generations->isEmpty() : count($generations) === 0)
-            <div class="empty-state">
-                <div class="empty-state-icon">&#128270;</div>
-                <div class="empty-state-text">No generations found.</div>
+            <div class="empty">
+                <svg class="empty-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.4">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z"/>
+                </svg>
+                <div class="empty-title">No generations found</div>
+                <div class="empty-sub">
+                    @if($provider || $model || $status || $period)
+                        Try adjusting your filters, or <a href="{{ route('glint.generations.index') }}" class="text-link">clear them</a>.
+                    @else
+                        Generations appear here once your app makes LLM API calls.
+                    @endif
+                </div>
             </div>
         @else
             <table>
                 <thead>
                     <tr>
                         <th>ID</th>
+                        <th>Name</th>
                         <th>Provider</th>
                         <th>Model</th>
                         <th>Tokens</th>
                         <th>Cost</th>
                         <th>Duration</th>
                         <th>Status</th>
-                        <th>Started At</th>
+                        <th>Started</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($generations as $gen)
                         <tr>
-                            <td class="td-mono">
-                                <a href="{{ route('glint.generations.show', $gen->id) }}" class="link td-mono">
+                            <td class="t-dim t-mono">
+                                <a href="{{ route('glint.generations.show', $gen->id) }}"
+                                   style="color:var(--text-3);text-decoration:none;font-family:var(--font-mono);font-size:12px"
+                                   onmouseover="this.style.color='var(--accent)'"
+                                   onmouseout="this.style.color='var(--text-3)'">
                                     {{ substr($gen->id, 0, 8) }}&hellip;
                                 </a>
                             </td>
-                            <td>{{ $gen->provider }}</td>
-                            <td class="td-mono">{{ $gen->model }}</td>
-                            <td class="td-muted">{{ $gen->total_tokens !== null ? number_format($gen->total_tokens) : '—' }}</td>
-                            <td class="td-muted">{{ $gen->cost_usd !== null ? '$'.number_format($gen->cost_usd, 6) : '—' }}</td>
-                            <td class="td-muted">{{ $gen->duration_ms !== null ? number_format($gen->duration_ms).'ms' : '—' }}</td>
+                            <td style="font-weight:500">
+                                <a href="{{ route('glint.generations.show', $gen->id) }}"
+                                   style="color:var(--text-1);text-decoration:none"
+                                   onmouseover="this.style.color='var(--accent)'"
+                                   onmouseout="this.style.color='var(--text-1)'">
+                                    {{ $gen->name ?: '—' }}
+                                </a>
+                            </td>
+                            <td class="t-muted">{{ $gen->provider }}</td>
+                            <td class="t-mono">{{ $gen->model }}</td>
+                            <td class="t-muted t-mono">{{ $gen->total_tokens !== null ? number_format($gen->total_tokens) : '—' }}</td>
+                            <td class="t-mono" style="color:var(--accent)">{{ $gen->cost_usd !== null ? '$'.number_format($gen->cost_usd, 6) : '—' }}</td>
+                            <td class="t-muted t-mono">{{ $gen->duration_ms !== null ? number_format($gen->duration_ms).'ms' : '—' }}</td>
                             <td>@include('glint::partials.status-badge', ['status' => $gen->status])</td>
-                            <td class="td-muted">{{ $gen->started_at?->format('Y-m-d H:i:s') ?? '—' }}</td>
+                            <td class="t-muted" style="font-size:12.5px">{{ $gen->started_at?->format('Y-m-d H:i:s') ?? '—' }}</td>
                         </tr>
                     @endforeach
                 </tbody>
@@ -81,7 +127,7 @@
 
             @if(method_exists($generations, 'links'))
                 <div class="pagination">
-                    {{ $generations->links('glint::cursor-pagination') }}
+                    {{ $generations->links('glint::pagination') }}
                 </div>
             @endif
         @endif

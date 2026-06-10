@@ -80,7 +80,9 @@ final class VerifyCommand extends Command
 
         // ── Active drivers ────────────────────────────────────────────────────
         $driversRaw = Config::get('glint.drivers', ['http']);
-        $drivers = is_array($driversRaw) ? $driversRaw : ['http'];
+        $drivers = is_array($driversRaw)
+            ? array_values(array_filter(array_map(fn (mixed $d): ?string => is_string($d) ? $d : null, $driversRaw)))
+            : ['http'];
         $this->components->twoColumnDetail('Active drivers', '<fg=cyan>'.implode(', ', $drivers).'</>');
 
         // ── Pricing registry ──────────────────────────────────────────────────

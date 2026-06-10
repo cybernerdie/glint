@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cybernerdie\Glint\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Config;
 
 final class InstallCommand extends Command
 {
@@ -96,9 +97,9 @@ final class InstallCommand extends Command
 
         $this->newLine();
 
-        $mode = config('glint.recording.mode', 'queue');
+        $mode = Config::string('glint.recording.mode', 'queue');
         if ($mode === 'queue') {
-            $queue = config('glint.queue.queue', 'default');
+            $queue = Config::string('glint.queue.queue', 'default');
             $this->line('  <fg=yellow>Queue mode is active.</> Start a worker to process recordings:');
             $this->line("    php artisan queue:work --queue={$queue}");
             $this->newLine();

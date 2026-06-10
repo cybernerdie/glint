@@ -24,6 +24,15 @@ final class TraceContext
     /** @var array<string, string> generationId => traceId */
     private array $generationMap = [];
 
+    /**
+     * Tracks auto-created "headless" traces — those created by GlintRecorder when
+     * an LLM call fires outside any HTTP request or manual Glint::trace() context
+     * (e.g. from a queued job or Artisan command).
+     *
+     * @var array<string, string> generationId => auto-created traceId
+     */
+    private array $autoTraceMap = [];
+
     private ?string $activeSpanId = null;
 
     public function openTrace(string $traceId, bool $sampled): void
@@ -70,6 +79,21 @@ final class TraceContext
     public function activeSpanId(): ?string
     {
         return $this->activeSpanId;
+    }
+
+    public function registerAutoTrace(string $generationId, string $traceId): void
+    {
+        $this->autoTraceMap[$generationId] = $traceId;
+    }
+
+    public function autoTraceIdForGeneration(string $generationId): ?string
+    {
+        return $this->autoTraceMap[$generationId] ?? null;
+    }
+
+    public function clearAutoTrace(string $generationId): void
+    {
+        unset($this->autoTraceMap[$generationId]);
     }
 
     /**

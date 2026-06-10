@@ -103,7 +103,7 @@ final class GlintServiceProvider extends ServiceProvider
         $rawQueue = Config::get('glint.queue.queue');
         $queue = is_string($rawQueue) && $rawQueue !== '' ? $rawQueue : null;
 
-        $dispatch = fn (object $e) => RecordLlmCallJob::dispatch($e)->onConnection($connection)->onQueue($queue);
+        $dispatch = fn (LlmCallStarted|LlmCallFinished|LlmToolCalled|LlmCallFailed $e) => RecordLlmCallJob::dispatch($e)->onConnection($connection)->onQueue($queue);
 
         foreach ([LlmCallStarted::class, LlmCallFinished::class, LlmToolCalled::class, LlmCallFailed::class] as $event) {
             Event::listen($event, $dispatch);
