@@ -18,6 +18,7 @@ use Cybernerdie\Glint\Models\GlintGeneration;
 use Cybernerdie\Glint\Models\GlintSpan;
 use Cybernerdie\Glint\Models\GlintTrace;
 use Cybernerdie\Glint\Pricing\PricingRegistry;
+use Illuminate\Database\Query\Expression;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -238,11 +239,11 @@ final class GlintRecorder
                     [
                         'total_requests' => DB::raw('glint_aggregates.total_requests + 1'),
                         'successful_requests' => DB::raw('glint_aggregates.successful_requests + 1'),
-                        'total_tokens' => DB::raw('glint_aggregates.total_tokens + '.intval($totalTokens)),
-                        'prompt_tokens' => DB::raw('glint_aggregates.prompt_tokens + '.intval($promptTokens)),
-                        'completion_tokens' => DB::raw('glint_aggregates.completion_tokens + '.intval($completionTokens)),
-                        'total_cost_usd' => DB::raw('glint_aggregates.total_cost_usd + '.$costUsd),
-                        'avg_duration_ms' => DB::raw('(COALESCE(glint_aggregates.avg_duration_ms, 0) * glint_aggregates.total_requests + '.intval($durationMs).') / (glint_aggregates.total_requests + 1)'),
+                        'total_tokens' => new Expression('glint_aggregates.total_tokens + '.intval($totalTokens)),
+                        'prompt_tokens' => new Expression('glint_aggregates.prompt_tokens + '.intval($promptTokens)),
+                        'completion_tokens' => new Expression('glint_aggregates.completion_tokens + '.intval($completionTokens)),
+                        'total_cost_usd' => new Expression('glint_aggregates.total_cost_usd + '.$costUsd),
+                        'avg_duration_ms' => new Expression('(COALESCE(glint_aggregates.avg_duration_ms, 0) * glint_aggregates.total_requests + '.intval($durationMs).') / (glint_aggregates.total_requests + 1)'),
                         'updated_at' => now()->toDateTimeString(),
                     ]
                 );
