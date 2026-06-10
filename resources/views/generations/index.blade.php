@@ -103,18 +103,12 @@
                         <tr onclick="window.location.href='{{ route('glint.generations.show', $gen->id) }}'"
                             style="cursor:pointer">
                             <td class="t-dim t-mono">
-                                <a href="{{ route('glint.generations.show', $gen->id) }}"
-                                   style="color:var(--text-3);text-decoration:none;font-family:var(--font-mono);font-size:12px"
-                                   onmouseover="this.style.color='var(--accent)'"
-                                   onmouseout="this.style.color='var(--text-3)'">
+                                <a href="{{ route('glint.generations.show', $gen->id) }}" class="row-link-dim">
                                     {{ substr($gen->id, 0, 8) }}&hellip;
                                 </a>
                             </td>
-                            <td style="font-weight:500">
-                                <a href="{{ route('glint.generations.show', $gen->id) }}"
-                                   style="color:var(--text-1);text-decoration:none"
-                                   onmouseover="this.style.color='var(--accent)'"
-                                   onmouseout="this.style.color='var(--text-1)'">
+                            <td>
+                                <a href="{{ route('glint.generations.show', $gen->id) }}" class="row-link">
                                     {{ $gen->name ?: '—' }}
                                 </a>
                             </td>

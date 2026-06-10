@@ -369,10 +369,7 @@
                         <tr onclick="window.location.href='{{ route('glint.traces.show', $trace->id) }}'"
                             style="cursor:pointer">
                             <td>
-                                <a href="{{ route('glint.traces.show', $trace->id) }}"
-                                   style="color:var(--text-1);text-decoration:none;font-weight:500"
-                                   onmouseover="this.style.color='var(--accent)'"
-                                   onmouseout="this.style.color='var(--text-1)'">
+                                <a href="{{ route('glint.traces.show', $trace->id) }}" class="row-link">
                                     {{ $trace->name ?: 'Unnamed' }}
                                 </a>
                             </td>

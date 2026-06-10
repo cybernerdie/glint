@@ -33,6 +33,11 @@
             @endforeach
         </select>
 
+        @if($provider)
+            <a href="{{ route('glint.costs.index', array_merge(request()->query(), ['provider' => ''])) }}" class="filter-chip">
+                {{ $provider }} <span class="filter-chip-x">&times;</span>
+            </a>
+        @endif
         @if($provider || $period !== 'today')
             <a href="{{ route('glint.costs.index') }}" class="filter-chip" style="background:rgba(0,0,0,0.04);border-color:var(--border);color:var(--text-2)">
                 Clear all <span class="filter-chip-x">&times;</span>
@@ -48,13 +53,7 @@
                 ${{ number_format($totalCost, 4) }}
             </div>
             <div class="kpi-footer">
-                @if($period === 'today') Today
-                @elseif($period === 'week') This week
-                @elseif($period === 'month') This month
-                @elseif($period === '3months') Last 3 months
-                @elseif($period === 'custom' && $fromDate && $toDate) {{ $fromDate }} — {{ $toDate }}
-                @else Today
-                @endif
+                @include('glint::partials.period-label', ['period' => $period, 'fromDate' => $fromDate, 'toDate' => $toDate])
             </div>
         </div>
 

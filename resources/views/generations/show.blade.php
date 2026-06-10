@@ -1,6 +1,6 @@
 @extends('glint::layout')
 
-@section('page-title', 'Generation Detail')
+@section('page-title', ($generation->name ?: 'Generation').' — Generation')
 
 @section('content')
 

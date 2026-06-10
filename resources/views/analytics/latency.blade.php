@@ -236,12 +236,10 @@
                 <tbody>
                     @foreach($userLatency as $row)
                         @php $pct = round(($row->max_duration / $maxUserDuration) * 100); @endphp
-                        <tr>
+                        <tr onclick="window.location.href='{{ route('glint.users.show', $row->user_id) }}'"
+                            style="cursor:pointer">
                             <td>
-                                <a href="{{ route('glint.users.show', $row->user_id) }}"
-                                   style="color:var(--text-1);text-decoration:none;font-family:var(--font-mono);font-size:12.5px;font-weight:500"
-                                   onmouseover="this.style.color='var(--accent)'"
-                                   onmouseout="this.style.color='var(--text-1)'">
+                                <a href="{{ route('glint.users.show', $row->user_id) }}" class="row-link-mono">
                                     {{ $row->user_id }}
                                 </a>
                             </td>

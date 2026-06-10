@@ -1,6 +1,6 @@
 @extends('glint::layout')
 
-@section('page-title', 'Trace Detail')
+@section('page-title', ($trace->name ?: 'Trace').' — Trace')
 
 @section('content')
 

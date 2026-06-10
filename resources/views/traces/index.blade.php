@@ -119,18 +119,12 @@
                         <tr onclick="window.location.href='{{ route('glint.traces.show', $trace->id) }}'"
                             style="cursor:pointer">
                             <td class="t-mono t-dim">
-                                <a href="{{ route('glint.traces.show', $trace->id) }}"
-                                   style="color:var(--text-3);text-decoration:none;font-family:var(--font-mono);font-size:12px"
-                                   onmouseover="this.style.color='var(--accent)'"
-                                   onmouseout="this.style.color='var(--text-3)'">
+                                <a href="{{ route('glint.traces.show', $trace->id) }}" class="row-link-dim">
                                     {{ substr($trace->id, 0, 8) }}&hellip;
                                 </a>
                             </td>
                             <td>
-                                <a href="{{ route('glint.traces.show', $trace->id) }}"
-                                   style="color:var(--text-1);text-decoration:none;font-weight:500"
-                                   onmouseover="this.style.color='var(--accent)'"
-                                   onmouseout="this.style.color='var(--text-1)'">
+                                <a href="{{ route('glint.traces.show', $trace->id) }}" class="row-link">
                                     {{ $trace->name ?: 'Unnamed' }}
                                 </a>
                             </td>

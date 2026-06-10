@@ -679,14 +679,30 @@
         .pagination {
             display: flex;
             align-items: center;
-            justify-content: center;
-            gap: 6px;
-            padding: 14px 18px;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px 18px;
             border-top: 1px solid var(--border);
         }
 
-        .pagination a,
-        .pagination span {
+        .pagination-count {
+            font-size: 12px;
+            color: var(--text-3);
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .pagination nav ul {
+            display: flex;
+            gap: 4px;
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            flex-wrap: wrap;
+        }
+
+        .pagination nav a,
+        .pagination nav span {
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -705,20 +721,20 @@
             box-shadow: var(--shadow-sm);
         }
 
-        .pagination a:hover {
+        .pagination nav a:hover {
             background: var(--surface-2);
             color: var(--text-1);
             border-color: var(--border-strong);
         }
 
-        .pagination .active span {
+        .pagination nav .active span {
             background: var(--accent);
             color: #fff;
             border-color: var(--accent);
             font-weight: 600;
         }
 
-        .pagination .disabled span { opacity: 0.35; cursor: not-allowed; box-shadow: none; }
+        .pagination nav .disabled span { opacity: 0.35; cursor: not-allowed; box-shadow: none; }
 
         /* ─── Detail cards (show pages) ───────────────────────── */
         .info-card {
@@ -1365,6 +1381,34 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
 
+        /* ─── Table row links ────────────────────────────────── */
+        .row-link {
+            color: var(--text-1);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.1s;
+        }
+        .row-link:hover { color: var(--accent); }
+
+        .row-link-dim {
+            color: var(--text-3);
+            text-decoration: none;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            transition: color 0.1s;
+        }
+        .row-link-dim:hover { color: var(--accent); }
+
+        .row-link-mono {
+            color: var(--text-1);
+            text-decoration: none;
+            font-family: var(--font-mono);
+            font-size: 12.5px;
+            font-weight: 500;
+            transition: color 0.1s;
+        }
+        .row-link-mono:hover { color: var(--accent); }
+
         /* ─── Status pill tabs (filter bar) ──────────────────── */
         .status-pills {
             display: inline-flex;
@@ -1646,6 +1690,10 @@
                 <span class="topbar-page">@yield('page-title', 'Dashboard')</span>
             </div>
             <div class="topbar-right">
+                <span x-show="live" class="topbar-live" style="display:none">
+                    <span class="live-indicator is-pulsing"></span>
+                    Live
+                </span>
                 <span class="topbar-clock" x-text="clock"></span>
             </div>
         </header>

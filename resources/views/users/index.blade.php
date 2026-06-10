@@ -91,10 +91,7 @@
                         <tr onclick="window.location.href='{{ route('glint.users.show', $user->user_id) }}'"
                             style="cursor:pointer">
                             <td>
-                                <a href="{{ route('glint.users.show', $user->user_id) }}"
-                                   style="color:var(--text-1);text-decoration:none;font-family:var(--font-mono);font-size:12.5px;font-weight:500"
-                                   onmouseover="this.style.color='var(--accent)'"
-                                   onmouseout="this.style.color='var(--text-1)'">
+                                <a href="{{ route('glint.users.show', $user->user_id) }}" class="row-link-mono">
                                     {{ $user->user_id }}
                                 </a>
                             </td>

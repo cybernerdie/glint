@@ -1,15 +1,16 @@
 @extends('glint::layout')
 
-@section('page-title', 'User')
+@section('page-title', $userId)
 
 @section('content')
 
-    <a href="{{ route('glint.users.index') }}" class="back-link">
-        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/>
-        </svg>
-        All users
-    </a>
+    <nav class="breadcrumb">
+        <a href="{{ route('glint.dashboard') }}" class="breadcrumb-link">Glint</a>
+        <span class="breadcrumb-sep">/</span>
+        <a href="{{ route('glint.users.index') }}" class="breadcrumb-link">Users</a>
+        <span class="breadcrumb-sep">/</span>
+        <span class="breadcrumb-current">{{ $userId }}</span>
+    </nav>
 
     <div class="page-header">
         <div class="page-header-row">
@@ -34,7 +35,7 @@
         <div class="kpi-card">
             <div class="kpi-label">Total Traces</div>
             <div class="kpi-value">{{ number_format($stats['trace_count']) }}</div>
-            <div class="kpi-footer">{{ match($period) { 'today' => 'Today', 'week' => 'This week', 'month' => 'This month', '3months' => 'Last 3 months', 'custom' => 'Custom range', default => 'Today' } }}</div>
+            <div class="kpi-footer">@include('glint::partials.period-label', ['period' => $period, 'fromDate' => $fromDate, 'toDate' => $toDate])</div>
         </div>
 
         <div class="kpi-card">
@@ -87,7 +88,7 @@
                 </svg>
                 <div class="empty-title">No traces found</div>
                 <div class="empty-sub">
-                    @if($period)
+                    @if($period && $period !== 'today')
                         Try a different date range.
                     @else
                         This user has no recorded traces yet.
@@ -107,20 +108,15 @@
                 </thead>
                 <tbody>
                     @foreach($traces as $trace)
-                        <tr>
+                        <tr onclick="window.location.href='{{ route('glint.traces.show', $trace->id) }}'"
+                            style="cursor:pointer">
                             <td class="t-mono t-dim">
-                                <a href="{{ route('glint.traces.show', $trace->id) }}"
-                                   style="color:var(--text-3);text-decoration:none;font-family:var(--font-mono);font-size:12px"
-                                   onmouseover="this.style.color='var(--accent)'"
-                                   onmouseout="this.style.color='var(--text-3)'">
+                                <a href="{{ route('glint.traces.show', $trace->id) }}" class="row-link-dim">
                                     {{ substr($trace->id, 0, 8) }}&hellip;
                                 </a>
                             </td>
                             <td>
-                                <a href="{{ route('glint.traces.show', $trace->id) }}"
-                                   style="color:var(--text-1);text-decoration:none;font-weight:500"
-                                   onmouseover="this.style.color='var(--accent)'"
-                                   onmouseout="this.style.color='var(--text-1)'">
+                                <a href="{{ route('glint.traces.show', $trace->id) }}" class="row-link">
                                     {{ $trace->name ?: 'Unnamed' }}
                                 </a>
                             </td>
