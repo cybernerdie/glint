@@ -56,6 +56,16 @@
             @endforeach
         </div>
 
+        @if($provider)
+            <a href="{{ route('glint.generations.index', array_merge(request()->query(), ['provider' => ''])) }}" class="filter-chip">
+                {{ $provider }} <span class="filter-chip-x">&times;</span>
+            </a>
+        @endif
+        @if($model)
+            <a href="{{ route('glint.generations.index', array_merge(request()->query(), ['model' => ''])) }}" class="filter-chip">
+                {{ $model }} <span class="filter-chip-x">&times;</span>
+            </a>
+        @endif
         @if($provider || $model || $status || $period !== 'today')
             <a href="{{ route('glint.generations.index') }}" class="filter-chip" style="background:rgba(0,0,0,0.04);border-color:var(--border);color:var(--text-2)">
                 Clear all <span class="filter-chip-x">&times;</span>
@@ -101,7 +111,7 @@
                 <tbody>
                     @foreach($generations as $gen)
                         <tr onclick="window.location.href='{{ route('glint.generations.show', $gen->id) }}'"
-                            style="cursor:pointer">
+>
                             <td class="t-dim t-mono">
                                 <a href="{{ route('glint.generations.show', $gen->id) }}" class="row-link-dim">
                                     {{ substr($gen->id, 0, 8) }}&hellip;

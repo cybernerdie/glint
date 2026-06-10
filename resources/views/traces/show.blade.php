@@ -154,7 +154,7 @@
                     <div class="llm-call-body" x-show="open" style="display:none">
                         {{-- Error --}}
                         @if($gen->error_message)
-                            <div style="padding:12px 16px;background:#FFF5F5;border-bottom:1px solid #FED7D7">
+                            <div style="padding:12px 16px;background:var(--error-bg);border-bottom:1px solid rgba(185,28,28,0.15)">
                                 <div style="font-size:11px;font-weight:600;color:var(--error-text);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Error</div>
                                 <div style="font-family:var(--font-mono);font-size:12px;color:var(--error-text);white-space:pre-wrap">{{ $gen->error_message }}</div>
                             </div>

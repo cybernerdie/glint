@@ -89,7 +89,7 @@
                 <tbody>
                     @foreach($users as $user)
                         <tr onclick="window.location.href='{{ route('glint.users.show', $user->user_id) }}'"
-                            style="cursor:pointer">
+>
                             <td>
                                 <a href="{{ route('glint.users.show', $user->user_id) }}" class="row-link-mono">
                                     {{ $user->user_id }}

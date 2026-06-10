@@ -367,7 +367,7 @@
                 <tbody>
                     @foreach($recentTraces as $trace)
                         <tr onclick="window.location.href='{{ route('glint.traces.show', $trace->id) }}'"
-                            style="cursor:pointer">
+>
                             <td>
                                 <a href="{{ route('glint.traces.show', $trace->id) }}" class="row-link">
                                     {{ $trace->name ?: 'Unnamed' }}
