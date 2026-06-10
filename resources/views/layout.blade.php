@@ -18,7 +18,7 @@
         /* ─── Design tokens ───────────────────────────────────── */
         :root {
             /* Page & surfaces */
-            --page:          #F5F5F3;
+            --page:          #F6F6F4;
             --sidebar-bg:    #131316;
             --surface:       #FFFFFF;
             --surface-2:     #F9F9F7;
@@ -485,6 +485,7 @@
 
         tbody tr { transition: background 0.08s; }
         tbody tr:hover td { background: #F7F7F5; }
+        tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
         tbody tr a { transition: color 0.1s; }
         tbody tr:has(a):hover { cursor: pointer; }
 
@@ -1364,6 +1365,134 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
 
+        /* ─── Status pill tabs (filter bar) ──────────────────── */
+        .status-pills {
+            display: inline-flex;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 2px;
+            gap: 1px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .status-pill {
+            padding: 4px 13px;
+            border-radius: 20px;
+            font-size: 12.5px;
+            font-weight: 500;
+            color: var(--text-2);
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-family: var(--font-ui);
+            letter-spacing: -0.01em;
+            white-space: nowrap;
+            transition: background 0.1s, color 0.1s;
+            line-height: 1;
+        }
+
+        .status-pill:hover { color: var(--text-1); background: var(--surface-2); }
+
+        .status-pill.is-active {
+            background: var(--accent);
+            color: #fff;
+            font-weight: 600;
+            box-shadow: 0 1px 2px rgba(232,81,10,0.3);
+        }
+
+        /* ─── Active filter chips ─────────────────────────────── */
+        .filter-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 0 10px;
+            height: 28px;
+            border-radius: 9999px;
+            background: var(--accent-dim);
+            border: 1px solid rgba(232,81,10,0.2);
+            color: var(--accent);
+            font-size: 12px;
+            font-weight: 500;
+            text-decoration: none;
+            white-space: nowrap;
+            transition: background 0.1s;
+        }
+
+        .filter-chip:hover { background: rgba(232,81,10,0.14); }
+
+        .filter-chip-x {
+            font-size: 15px;
+            line-height: 1;
+            opacity: 0.55;
+            margin-left: 1px;
+        }
+
+        /* ─── Breadcrumb ──────────────────────────────────────── */
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .breadcrumb-link {
+            color: var(--text-3);
+            text-decoration: none;
+            font-weight: 400;
+            transition: color 0.1s;
+        }
+
+        .breadcrumb-link:hover { color: var(--text-1); }
+
+        .breadcrumb-sep {
+            color: var(--border-strong);
+            font-size: 12px;
+            user-select: none;
+        }
+
+        .breadcrumb-current {
+            color: var(--text-2);
+            font-weight: 500;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            max-width: 360px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* ─── Copy button (code blocks) ───────────────────────── */
+        .copy-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 9px;
+            height: 24px;
+            border-radius: 5px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text-3);
+            font-size: 11px;
+            font-weight: 500;
+            font-family: var(--font-ui);
+            cursor: pointer;
+            letter-spacing: 0.01em;
+            transition: all 0.1s;
+        }
+
+        .copy-btn:hover { background: var(--surface-2); color: var(--text-1); border-color: var(--border-strong); }
+
+        .copy-btn.is-copied {
+            color: var(--success-text);
+            border-color: rgba(21,128,61,0.22);
+            background: var(--success-bg);
+        }
+
+        .copy-btn svg { width: 11px; height: 11px; }
+
         /* ─── Responsive ──────────────────────────────────────── */
         @media (max-width: 900px) {
             :root { --sidebar-w: 200px; }
@@ -1526,5 +1655,18 @@
         </main>
     </div>
 
+    <script>
+    function glintCopy(btn) {
+        var body = btn.closest('.code-card').querySelector('.code-body');
+        navigator.clipboard.writeText(body.textContent.trim()).then(function () {
+            btn.classList.add('is-copied');
+            btn.querySelector('.copy-label').textContent = 'Copied!';
+            setTimeout(function () {
+                btn.classList.remove('is-copied');
+                btn.querySelector('.copy-label').textContent = 'Copy';
+            }, 2000);
+        }).catch(function () {});
+    }
+    </script>
 </body>
 </html>

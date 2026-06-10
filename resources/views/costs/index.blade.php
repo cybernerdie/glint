@@ -26,17 +26,17 @@
         <input type="hidden" name="to" value="{{ $toDate }}">
 
         <label for="cost-provider" class="sr-only">Filter by provider</label>
-        <select id="cost-provider" name="provider" class="input">
+        <select id="cost-provider" name="provider" class="input" onchange="this.form.submit()">
             <option value="">All providers</option>
             @foreach($providers as $p)
                 <option value="{{ $p }}" {{ $provider === $p ? 'selected' : '' }}>{{ $p }}</option>
             @endforeach
         </select>
 
-        <button type="submit" class="btn btn-primary">Filter</button>
-
         @if($provider || $period !== 'today')
-            <a href="{{ route('glint.costs.index') }}" class="btn btn-ghost">Clear all</a>
+            <a href="{{ route('glint.costs.index') }}" class="filter-chip" style="background:rgba(0,0,0,0.04);border-color:var(--border);color:var(--text-2)">
+                Clear all <span class="filter-chip-x">&times;</span>
+            </a>
         @endif
     </form>
 

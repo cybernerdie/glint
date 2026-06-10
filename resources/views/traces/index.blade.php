@@ -50,20 +50,35 @@
             autocomplete="off"
         >
 
-        <label for="traces-status" class="sr-only">Filter by status</label>
-        <select id="traces-status" name="status" class="input">
-            <option value="">All statuses</option>
+        <input type="hidden" name="status" id="traces-status-val" value="{{ $status }}">
+        <div class="status-pills" role="group" aria-label="Filter by status">
+            <button type="button"
+                    class="status-pill {{ !$status ? 'is-active' : '' }}"
+                    onclick="document.getElementById('traces-status-val').value=''; this.closest('form').submit()">All</button>
             @foreach($statuses as $s)
-                <option value="{{ $s->value }}" {{ $status === $s->value ? 'selected' : '' }}>
+                <button type="button"
+                        class="status-pill {{ $status === $s->value ? 'is-active' : '' }}"
+                        onclick="document.getElementById('traces-status-val').value='{{ $s->value }}'; this.closest('form').submit()">
                     {{ ucfirst($s->value) }}
-                </option>
+                </button>
             @endforeach
-        </select>
+        </div>
 
-        <button type="submit" class="btn btn-primary">Filter</button>
+        @if($search)
+            <a href="{{ route('glint.traces.index', array_merge(request()->query(), ['search' => ''])) }}" class="filter-chip">
+                "{{ $search }}" <span class="filter-chip-x">&times;</span>
+            </a>
+        @endif
+        @if($userId)
+            <a href="{{ route('glint.traces.index', array_merge(request()->query(), ['user_id' => ''])) }}" class="filter-chip">
+                user: {{ $userId }} <span class="filter-chip-x">&times;</span>
+            </a>
+        @endif
 
         @if($search || $status || $userId || $period !== 'today')
-            <a href="{{ route('glint.traces.index') }}" class="btn btn-ghost">Clear all</a>
+            <a href="{{ route('glint.traces.index') }}" class="filter-chip" style="background:rgba(0,0,0,0.04);border-color:var(--border);color:var(--text-2)">
+                Clear all <span class="filter-chip-x">&times;</span>
+            </a>
         @endif
     </form>
 
@@ -101,7 +116,8 @@
                 </thead>
                 <tbody>
                     @foreach($traces as $trace)
-                        <tr>
+                        <tr onclick="window.location.href='{{ route('glint.traces.show', $trace->id) }}'"
+                            style="cursor:pointer">
                             <td class="t-mono t-dim">
                                 <a href="{{ route('glint.traces.show', $trace->id) }}"
                                    style="color:var(--text-3);text-decoration:none;font-family:var(--font-mono);font-size:12px"

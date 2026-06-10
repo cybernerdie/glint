@@ -37,10 +37,15 @@
             autocomplete="off"
         >
 
-        <button type="submit" class="btn btn-primary">Filter</button>
-
+        @if($search)
+            <a href="{{ route('glint.users.index', array_merge(request()->query(), ['search' => ''])) }}" class="filter-chip">
+                "{{ $search }}" <span class="filter-chip-x">&times;</span>
+            </a>
+        @endif
         @if($search || $period !== 'today')
-            <a href="{{ route('glint.users.index') }}" class="btn btn-ghost">Clear all</a>
+            <a href="{{ route('glint.users.index') }}" class="filter-chip" style="background:rgba(0,0,0,0.04);border-color:var(--border);color:var(--text-2)">
+                Clear all <span class="filter-chip-x">&times;</span>
+            </a>
         @endif
     </form>
 
@@ -83,7 +88,8 @@
                 </thead>
                 <tbody>
                     @foreach($users as $user)
-                        <tr>
+                        <tr onclick="window.location.href='{{ route('glint.users.show', $user->user_id) }}'"
+                            style="cursor:pointer">
                             <td>
                                 <a href="{{ route('glint.users.show', $user->user_id) }}"
                                    style="color:var(--text-1);text-decoration:none;font-family:var(--font-mono);font-size:12.5px;font-weight:500"

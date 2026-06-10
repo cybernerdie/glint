@@ -4,12 +4,13 @@
 
 @section('content')
 
-    <a href="{{ route('glint.traces.index') }}" class="back-link">
-        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
-        </svg>
-        Back to Traces
-    </a>
+    <nav class="breadcrumb">
+        <a href="{{ route('glint.dashboard') }}" class="breadcrumb-link">Glint</a>
+        <span class="breadcrumb-sep">/</span>
+        <a href="{{ route('glint.traces.index') }}" class="breadcrumb-link">Traces</a>
+        <span class="breadcrumb-sep">/</span>
+        <span class="breadcrumb-current">{{ substr($trace->id, 0, 16) }}&hellip;</span>
+    </nav>
 
     <div class="page-header">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -72,6 +73,10 @@
         <div class="code-card">
             <div class="code-header">
                 <span class="code-label">Input</span>
+                <button type="button" class="copy-btn" onclick="glintCopy(this)">
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                    <span class="copy-label">Copy</span>
+                </button>
             </div>
             <div class="code-body">{{ $trace->input }}</div>
         </div>
@@ -81,6 +86,10 @@
         <div class="code-card">
             <div class="code-header">
                 <span class="code-label">Output</span>
+                <button type="button" class="copy-btn" onclick="glintCopy(this)">
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                    <span class="copy-label">Copy</span>
+                </button>
             </div>
             <div class="code-body">{{ $trace->output }}</div>
         </div>
@@ -90,6 +99,10 @@
         <div class="code-card">
             <div class="code-header">
                 <span class="code-label">Metadata</span>
+                <button type="button" class="copy-btn" onclick="glintCopy(this)">
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                    <span class="copy-label">Copy</span>
+                </button>
             </div>
             <div class="code-body">{{ json_encode($trace->metadata, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) }}</div>
         </div>

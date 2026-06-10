@@ -27,7 +27,7 @@
         <input type="hidden" name="to" value="{{ $toDate }}">
 
         <label for="gen-provider" class="sr-only">Filter by provider</label>
-        <select id="gen-provider" name="provider" class="input">
+        <select id="gen-provider" name="provider" class="input" onchange="this.form.submit()">
             <option value="">All providers</option>
             @foreach($providers as $p)
                 <option value="{{ $p }}" {{ $provider === $p ? 'selected' : '' }}>{{ $p }}</option>
@@ -35,27 +35,31 @@
         </select>
 
         <label for="gen-model" class="sr-only">Filter by model</label>
-        <select id="gen-model" name="model" class="input">
+        <select id="gen-model" name="model" class="input" onchange="this.form.submit()">
             <option value="">All models</option>
             @foreach($models as $m)
                 <option value="{{ $m }}" {{ $model === $m ? 'selected' : '' }}>{{ $m }}</option>
             @endforeach
         </select>
 
-        <label for="gen-status" class="sr-only">Filter by status</label>
-        <select id="gen-status" name="status" class="input">
-            <option value="">All statuses</option>
+        <input type="hidden" name="status" id="gen-status-val" value="{{ $status }}">
+        <div class="status-pills" role="group" aria-label="Filter by status">
+            <button type="button"
+                    class="status-pill {{ !$status ? 'is-active' : '' }}"
+                    onclick="document.getElementById('gen-status-val').value=''; this.closest('form').submit()">All</button>
             @foreach($statuses as $s)
-                <option value="{{ $s->value }}" {{ $status === $s->value ? 'selected' : '' }}>
+                <button type="button"
+                        class="status-pill {{ $status === $s->value ? 'is-active' : '' }}"
+                        onclick="document.getElementById('gen-status-val').value='{{ $s->value }}'; this.closest('form').submit()">
                     {{ ucfirst($s->value) }}
-                </option>
+                </button>
             @endforeach
-        </select>
-
-        <button type="submit" class="btn btn-primary">Filter</button>
+        </div>
 
         @if($provider || $model || $status || $period !== 'today')
-            <a href="{{ route('glint.generations.index') }}" class="btn btn-ghost">Clear all</a>
+            <a href="{{ route('glint.generations.index') }}" class="filter-chip" style="background:rgba(0,0,0,0.04);border-color:var(--border);color:var(--text-2)">
+                Clear all <span class="filter-chip-x">&times;</span>
+            </a>
         @endif
     </form>
 
@@ -96,7 +100,8 @@
                 </thead>
                 <tbody>
                     @foreach($generations as $gen)
-                        <tr>
+                        <tr onclick="window.location.href='{{ route('glint.generations.show', $gen->id) }}'"
+                            style="cursor:pointer">
                             <td class="t-dim t-mono">
                                 <a href="{{ route('glint.generations.show', $gen->id) }}"
                                    style="color:var(--text-3);text-decoration:none;font-family:var(--font-mono);font-size:12px"

@@ -38,7 +38,6 @@
             <div class="kpi-value kpi-value-sm" style="font-family:var(--font-mono);color:var(--accent)">
                 ${{ number_format($stats['total_cost_usd'], 4) }}
             </div>
-            <div class="kpi-footer">USD</div>
         </div>
 
         <div class="kpi-card">
@@ -46,7 +45,6 @@
             <div class="kpi-value kpi-value-sm">
                 {{ number_format($stats['avg_duration_ms']) }}<span class="kpi-unit">ms</span>
             </div>
-            <div class="kpi-footer">Per generation</div>
         </div>
 
         <div class="kpi-card">
@@ -55,7 +53,6 @@
                  style="color: {{ $stats['error_rate'] > 10 ? 'var(--error)' : ($stats['error_rate'] > 5 ? 'var(--warning)' : 'var(--success)') }}">
                 {{ $stats['error_rate'] }}<span class="kpi-unit">%</span>
             </div>
-            <div class="kpi-footer">Of all generations</div>
         </div>
     </div>
 
@@ -369,7 +366,8 @@
                 </thead>
                 <tbody>
                     @foreach($recentTraces as $trace)
-                        <tr>
+                        <tr onclick="window.location.href='{{ route('glint.traces.show', $trace->id) }}'"
+                            style="cursor:pointer">
                             <td>
                                 <a href="{{ route('glint.traces.show', $trace->id) }}"
                                    style="color:var(--text-1);text-decoration:none;font-weight:500"
