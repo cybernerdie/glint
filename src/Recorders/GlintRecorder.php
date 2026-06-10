@@ -18,7 +18,6 @@ use Cybernerdie\Glint\Models\GlintGeneration;
 use Cybernerdie\Glint\Models\GlintSpan;
 use Cybernerdie\Glint\Models\GlintTrace;
 use Cybernerdie\Glint\Pricing\PricingRegistry;
-use Illuminate\Database\Query\Expression;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -212,41 +211,56 @@ final class GlintRecorder
             ];
 
             foreach ($periodAts as $period => $periodAt) {
-                DB::table('glint_aggregates')->upsert(
-                    [
+                $inserted = DB::table('glint_aggregates')->insertOrIgnore([
+                    'period' => $period,
+                    'period_at' => $periodAt,
+                    'provider' => $generation->provider,
+                    'model' => $generation->model,
+                    'user_id' => null,
+                    'team_id' => null,
+                    'total_requests' => 1,
+                    'successful_requests' => 1,
+                    'failed_requests' => 0,
+                    'total_tokens' => $totalTokens,
+                    'prompt_tokens' => $promptTokens,
+                    'completion_tokens' => $completionTokens,
+                    'total_cost_usd' => (float) $costUsd,
+                    'avg_duration_ms' => $durationMs,
+                    'created_at' => now()->toDateTimeString(),
+                    'updated_at' => now()->toDateTimeString(),
+                ]);
+
+                if ($inserted === 0) {
+                    // Row already exists — increment counters using ? bindings
+                    // so no string-concatenated SQL is needed (Larastan literal-string safe).
+                    DB::update(
+                        <<<'SQL'
+                        UPDATE glint_aggregates
+                        SET total_requests     = total_requests + 1,
+                            successful_requests = successful_requests + 1,
+                            total_tokens       = total_tokens + ?,
+                            prompt_tokens      = prompt_tokens + ?,
+                            completion_tokens  = completion_tokens + ?,
+                            total_cost_usd     = total_cost_usd + ?,
+                            avg_duration_ms    = (COALESCE(avg_duration_ms, 0) * total_requests + ?) / (total_requests + 1),
+                            updated_at         = ?
+                        WHERE period = ? AND period_at = ? AND provider = ? AND model = ?
+                          AND user_id IS NULL AND team_id IS NULL
+                        SQL,
                         [
-                            'period' => $period,
-                            'period_at' => $periodAt,
-                            'provider' => $generation->provider,
-                            'model' => $generation->model,
-                            'user_id' => null,
-                            'team_id' => null,
-                            'total_requests' => 1,
-                            'successful_requests' => 1,
-                            'failed_requests' => 0,
-                            'total_tokens' => $totalTokens,
-                            'prompt_tokens' => $promptTokens,
-                            'completion_tokens' => $completionTokens,
-                            'total_cost_usd' => (float) $costUsd,
-                            'avg_duration_ms' => $durationMs,
-                            'created_at' => now()->toDateTimeString(),
-                            'updated_at' => now()->toDateTimeString(),
-                        ],
-                    ],
-                    // Unique key columns (must match the glint_agg_unique index)
-                    ['period', 'period_at', 'provider', 'model', 'user_id', 'team_id'],
-                    // Columns to increment on conflict
-                    [
-                        'total_requests' => DB::raw('glint_aggregates.total_requests + 1'),
-                        'successful_requests' => DB::raw('glint_aggregates.successful_requests + 1'),
-                        'total_tokens' => new Expression('glint_aggregates.total_tokens + '.intval($totalTokens)),
-                        'prompt_tokens' => new Expression('glint_aggregates.prompt_tokens + '.intval($promptTokens)),
-                        'completion_tokens' => new Expression('glint_aggregates.completion_tokens + '.intval($completionTokens)),
-                        'total_cost_usd' => new Expression('glint_aggregates.total_cost_usd + '.$costUsd),
-                        'avg_duration_ms' => new Expression('(COALESCE(glint_aggregates.avg_duration_ms, 0) * glint_aggregates.total_requests + '.intval($durationMs).') / (glint_aggregates.total_requests + 1)'),
-                        'updated_at' => now()->toDateTimeString(),
-                    ]
-                );
+                            $totalTokens,
+                            $promptTokens,
+                            $completionTokens,
+                            (float) $costUsd,
+                            $durationMs,
+                            now()->toDateTimeString(),
+                            $period,
+                            $periodAt,
+                            $generation->provider,
+                            $generation->model,
+                        ]
+                    );
+                }
             }
         });
     }
