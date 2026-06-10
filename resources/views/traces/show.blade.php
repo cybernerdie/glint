@@ -204,20 +204,20 @@
                             @endif
                             @if($gen->completion_tokens !== null)
                                 <div>
-                                    <span style="font-size:10.5px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.06em">Completion tokens</span>
-                                    <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-1);margin-left:6px">{{ number_format($gen->completion_tokens) }}</span>
+                                    <span class="llm-stat-label">Completion tokens</span>
+                                    <span class="llm-stat-val">{{ number_format($gen->completion_tokens) }}</span>
                                 </div>
                             @endif
                             @if($gen->temperature !== null)
                                 <div>
-                                    <span style="font-size:10.5px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.06em">Temperature</span>
-                                    <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-1);margin-left:6px">{{ $gen->temperature }}</span>
+                                    <span class="llm-stat-label">Temperature</span>
+                                    <span class="llm-stat-val">{{ $gen->temperature }}</span>
                                 </div>
                             @endif
                             @if($gen->finish_reason)
                                 <div>
-                                    <span style="font-size:10.5px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.06em">Finish reason</span>
-                                    <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-1);margin-left:6px">{{ $gen->finish_reason }}</span>
+                                    <span class="llm-stat-label">Finish reason</span>
+                                    <span class="llm-stat-val">{{ $gen->finish_reason }}</span>
                                 </div>
                             @endif
                         </div>
