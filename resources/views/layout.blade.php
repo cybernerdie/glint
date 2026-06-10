@@ -602,21 +602,6 @@
         }
         .text-link:hover { color: var(--accent-hover); }
 
-        /* Back link */
-        .back-link {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            font-size: 12.5px;
-            color: var(--text-2);
-            text-decoration: none;
-            font-weight: 500;
-            transition: color 0.1s;
-            margin-bottom: 14px;
-        }
-        .back-link:hover { color: var(--text-1); }
-        .back-link svg { width: 14px; height: 14px; }
-
         /* ─── Status badges ───────────────────────────────────── */
         .badge {
             display: inline-flex;

@@ -140,10 +140,9 @@
                                 <span class="llm-call-stat">{{ number_format($gen->duration_ms) }}ms</span>
                             @endif
                             <a href="{{ route('glint.generations.show', $gen->id) }}"
-                               style="font-size:11.5px;color:var(--text-3);text-decoration:none;font-family:var(--font-mono)"
-                               onclick="event.stopPropagation()"
-                               onmouseover="this.style.color='var(--accent)'"
-                               onmouseout="this.style.color='var(--text-3)'">
+                               class="row-link-dim"
+                               style="font-size:11.5px"
+                               onclick="event.stopPropagation()">
                                 view
                             </a>
                             <svg class="llm-call-chevron" :class="open ? 'is-open' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
