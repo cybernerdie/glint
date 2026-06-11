@@ -21,7 +21,7 @@ final class GenerationsController
         $provider = $request->string('provider')->toString();
         $model = $request->string('model')->toString();
         $status = $request->string('status')->toString();
-        $period = $request->string('period')->toString() ?: 'today';
+        $period = $this->normalizePeriod($request->string('period')->toString());
         $fromDate = $request->string('from')->toString();
         $toDate = $request->string('to')->toString();
 

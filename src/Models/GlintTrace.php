@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Config;
 
 /**
  * @property string $id
- * @property string $name
+ * @property string|null $name
  * @property string|null $user_id
  * @property string|null $session_id
  * @property RecordStatus $status

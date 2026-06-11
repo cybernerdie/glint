@@ -2,78 +2,63 @@
 
 @section('page-title', $userId)
 
+@section('breadcrumb')
+    <span class="topbar-sep">/</span>
+    <a href="{{ route('glint.users.index') }}" class="breadcrumb-link">Users</a>
+    <span class="topbar-sep">/</span>
+    <span class="breadcrumb-current">{{ $userId }}</span>
+@endsection
+
 @section('content')
 
-    <nav class="breadcrumb">
-        <a href="{{ route('glint.dashboard') }}" class="breadcrumb-link">Glint</a>
-        <span class="breadcrumb-sep">/</span>
-        <a href="{{ route('glint.users.index') }}" class="breadcrumb-link">Users</a>
-        <span class="breadcrumb-sep">/</span>
-        <span class="breadcrumb-current">{{ $userId }}</span>
-    </nav>
-
-    <div class="page-header">
-        <div class="page-title" style="font-family:var(--font-mono);font-size:17px;letter-spacing:-0.2px">
-            {{ $userId }}
+    <div class="page-head">
+        <div>
+            <div class="page-title" style="font-family:var(--font-mono);font-size:19px">{{ $userId }}</div>
+            <div class="page-desc">User activity and trace history</div>
         </div>
-        <div class="page-desc">User activity and trace history</div>
+        <form method="GET" action="{{ route('glint.users.show', $userId) }}" class="page-toolbar">
+            @include('glint::partials.filters.date-range', [
+                'activePeriod' => $period,
+                'activeFrom'   => $fromDate,
+                'activeTo'     => $toDate,
+            ])
+        </form>
     </div>
 
-    <form method="GET" action="{{ route('glint.users.show', $userId) }}" class="filter-bar">
-        <div class="filter-row">
-            <div class="filter-row-end">
-                @include('glint::partials.filters.date-range', [
-                    'activePeriod' => $period,
-                    'activeFrom'   => $fromDate,
-                    'activeTo'     => $toDate,
-                ])
-            </div>
-        </div>
-    </form>
-
-    {{-- KPI cards --}}
-    <div class="kpi-grid">
-        <div class="kpi-card">
-            <div class="kpi-label">Total Traces</div>
-            <div class="kpi-value">{{ number_format($stats['trace_count']) }}</div>
-            <div class="kpi-footer">@include('glint::partials.period-label', ['period' => $period, 'fromDate' => $fromDate, 'toDate' => $toDate])</div>
+    <div class="metric-strip">
+        <div class="metric">
+            <div class="metric-label">Traces</div>
+            <div class="metric-value">{{ number_format($stats['trace_count']) }}</div>
+            <div class="metric-foot">@include('glint::partials.period-label', ['period' => $period, 'fromDate' => $fromDate, 'toDate' => $toDate])</div>
         </div>
 
-        <div class="kpi-card">
-            <div class="kpi-label">Total Cost</div>
-            <div class="kpi-value kpi-value-sm kpi-value-cost">
-                ${{ number_format($stats['total_cost'], 4) }}
-            </div>
-            <div class="kpi-footer">USD</div>
+        <div class="metric">
+            <div class="metric-label">Total Cost</div>
+            <div class="metric-value">${{ number_format($stats['total_cost'], 2) }}</div>
+            <div class="metric-foot"><span class="t-mono" style="font-size:11px">${{ number_format($stats['total_cost'], 4) }}</span> USD</div>
         </div>
 
-        <div class="kpi-card">
-            <div class="kpi-label">Avg Duration</div>
-            <div class="kpi-value kpi-value-sm">
-                {{ number_format($stats['avg_duration']) }}<span class="kpi-unit">ms</span>
-            </div>
-            <div class="kpi-footer">Per trace</div>
+        <div class="metric">
+            <div class="metric-label">Avg Duration</div>
+            <div class="metric-value">{{ number_format($stats['avg_duration']) }}<span class="metric-unit">ms</span></div>
+            <div class="metric-foot">Per trace</div>
         </div>
 
-        <div class="kpi-card">
-            <div class="kpi-label">Total Tokens</div>
-            <div class="kpi-value kpi-value-sm">
-                {{ number_format($stats['total_tokens']) }}
-            </div>
-            <div class="kpi-footer">Across all traces</div>
+        <div class="metric">
+            <div class="metric-label">Tokens</div>
+            <div class="metric-value">{{ number_format($stats['total_tokens']) }}</div>
+            <div class="metric-foot">Across all traces</div>
         </div>
 
-        <div class="kpi-card">
-            <div class="kpi-label">Errors</div>
-            <div class="kpi-value kpi-value-sm"
-                 style="color: {{ $stats['error_count'] > 0 ? 'var(--error)' : 'var(--success)' }}">
-                {{ number_format($stats['error_count']) }}
+        <div class="metric">
+            <div class="metric-label">Errors</div>
+            <div class="metric-value">
+                <span class="{{ $stats['error_count'] > 0 ? 'is-bad' : '' }}">{{ number_format($stats['error_count']) }}</span>
             </div>
-            <div class="kpi-footer">Failed traces</div>
+            <div class="metric-foot">Failed traces</div>
         </div>
     </div>
 
-    {{-- Traces --}}
     <div class="panel">
         <div class="panel-header">
             <span class="panel-title">Traces</span>
@@ -89,7 +74,7 @@
                 </svg>
                 <div class="empty-title">No traces found</div>
                 <div class="empty-sub">
-                    @if($period && $period !== 'today')
+                    @if($period && $period !== '24h')
                         Try a different date range.
                     @else
                         This user has no recorded traces yet.
@@ -100,20 +85,19 @@
             <table>
                 <thead>
                     <tr>
-                        <th>Trace ID</th>
+                        <th>Trace</th>
                         <th>Name</th>
                         <th>Status</th>
-                        <th>Duration</th>
-                        <th>Started</th>
+                        <th class="num">Duration</th>
+                        <th class="num">Started</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($traces as $trace)
-                        <tr onclick="window.location.href='{{ route('glint.traces.show', $trace->id) }}'"
->
-                            <td class="t-mono t-dim">
-                                <a href="{{ route('glint.traces.show', $trace->id) }}" class="row-link-dim">
-                                    {{ substr($trace->id, 0, 8) }}&hellip;
+                        <tr onclick="if (!event.target.closest('a')) glintVisit('{{ route('glint.traces.show', $trace->id) }}')">
+                            <td>
+                                <a href="{{ route('glint.traces.show', $trace->id) }}" class="id-chip">
+                                    {{ substr($trace->id, 0, 8) }}
                                 </a>
                             </td>
                             <td>
@@ -122,10 +106,10 @@
                                 </a>
                             </td>
                             <td>@include('glint::partials.status-badge', ['status' => $trace->status])</td>
-                            <td class="t-muted t-mono">
+                            <td class="t-muted t-mono num">
                                 {{ $trace->duration_ms !== null ? number_format($trace->duration_ms).'ms' : '—' }}
                             </td>
-                            <td class="t-muted" style="font-size:12.5px">
+                            <td class="t-dim t-mono num" style="font-size:11.5px">
                                 {{ $trace->started_at?->format('Y-m-d H:i:s') ?? '—' }}
                             </td>
                         </tr>

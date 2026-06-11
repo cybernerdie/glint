@@ -3,6 +3,13 @@
 declare(strict_types=1);
 
 use Cybernerdie\Glint\Console\Commands\PublishCommand;
+use Illuminate\Support\Facades\File;
+
+afterEach(function () {
+    // Published views override the package views for every test that runs
+    // after this file — remove them so view resolution stays on resources/views.
+    File::deleteDirectory(resource_path('views/vendor/glint'));
+});
 
 it('has the correct signature', function () {
     expect((new PublishCommand)->getName())->toBe('glint:publish');

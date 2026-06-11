@@ -20,7 +20,7 @@ final class TracesController
         $search = $request->string('search')->toString();
         $status = $request->string('status')->toString();
         $userId = $request->string('user_id')->toString();
-        $period = $request->string('period')->toString() ?: 'today';
+        $period = $this->normalizePeriod($request->string('period')->toString());
         $fromDate = $request->string('from')->toString();
         $toDate = $request->string('to')->toString();
 

@@ -1,33 +1,42 @@
 {{--
-    Reusable date-range filter component.
-    Must be placed inside a <form> element.
+    Segmented period control (rolling windows).
+    Must be placed inside a <form> element — submits the form on change.
 
     Variables expected from the including view:
-      $activePeriod  — current period slug ('' | 'today' | 'week' | 'month' | '3months' | 'custom')
+      $activePeriod  — current period slug ('' | '24h' | '7d' | '30d' | '90d' | 'custom')
       $activeFrom    — current custom "from" date string (Y-m-d)
       $activeTo      — current custom "to" date string (Y-m-d)
 --}}
-<div class="date-range-row"
-     x-data="{ period: @js($activePeriod ?: 'today') }">
+@php $glintPeriod = $activePeriod ?: '24h'; @endphp
 
-    <label class="sr-only" for="glint-period-select">Date range</label>
-    <select
-        id="glint-period-select"
-        name="period"
-        class="input"
-        style="width:148px"
-        x-model="period"
-        @change="period !== 'custom' && $nextTick(() => $el.closest('form').submit())"
-    >
-        <option value="today">Today</option>
-        <option value="week">This week</option>
-        <option value="month">This month</option>
-        <option value="3months">Last 3 months</option>
-        <option value="custom">Custom range</option>
-    </select>
+<div class="seg-anchor" x-data="{ customOpen: false, period: @js($glintPeriod) }">
+    <input type="hidden" name="period" :value="period" value="{{ $glintPeriod }}">
 
-    {{-- Custom date inputs — shown only when Custom is selected --}}
-    <div class="custom-range" x-show="period === 'custom'" style="display:none">
+    <div class="seg" role="group" aria-label="Date range">
+        @foreach(['24h' => '24H', '7d' => '7D', '30d' => '30D', '90d' => '90D'] as $value => $label)
+            <button type="button"
+                    class="seg-btn {{ $glintPeriod === $value ? 'is-active' : '' }}"
+                    @click="period = '{{ $value }}'; $nextTick(() => $el.closest('form').requestSubmit())">
+                {{ $label }}
+            </button>
+        @endforeach
+
+        <button type="button"
+                class="seg-btn {{ $glintPeriod === 'custom' ? 'is-active' : '' }}"
+                aria-label="Custom date range"
+                @click="customOpen = !customOpen">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/>
+            </svg>
+            @if($glintPeriod === 'custom' && !empty($activeFrom) && !empty($activeTo))
+                <span style="font-size:11px;font-family:var(--font-mono)">{{ $activeFrom }} – {{ $activeTo }}</span>
+            @endif
+        </button>
+    </div>
+
+    {{-- Custom range popover — inputs only submit when a custom range is in play --}}
+    <div class="seg-pop" x-show="customOpen" style="display:none" @click.outside="customOpen = false">
         <label class="sr-only" for="glint-date-from">From</label>
         <input
             type="date"
@@ -36,8 +45,10 @@
             value="{{ $activeFrom ?? '' }}"
             class="input"
             style="width:140px"
+            :disabled="period !== 'custom' && !customOpen"
+            {{ $glintPeriod !== 'custom' ? 'disabled' : '' }}
         >
-        <span class="custom-range-sep">—</span>
+        <span class="custom-range-sep">–</span>
         <label class="sr-only" for="glint-date-to">To</label>
         <input
             type="date"
@@ -46,8 +57,12 @@
             value="{{ $activeTo ?? '' }}"
             class="input"
             style="width:140px"
+            :disabled="period !== 'custom' && !customOpen"
+            {{ $glintPeriod !== 'custom' ? 'disabled' : '' }}
         >
-        <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+        <button type="button" class="btn btn-primary btn-sm"
+                @click="period = 'custom'; $nextTick(() => $el.closest('form').requestSubmit())">
+            Apply
+        </button>
     </div>
-
 </div>

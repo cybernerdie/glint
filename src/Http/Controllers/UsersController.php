@@ -18,7 +18,7 @@ final class UsersController
     public function index(Request $request): ViewContract
     {
         $search = $request->string('search')->toString();
-        $period = $request->string('period')->toString() ?: 'today';
+        $period = $this->normalizePeriod($request->string('period')->toString());
         $fromDate = $request->string('from')->toString();
         $toDate = $request->string('to')->toString();
 
@@ -50,7 +50,7 @@ final class UsersController
 
     public function show(Request $request, string $userId): ViewContract
     {
-        $period = $request->string('period')->toString() ?: 'today';
+        $period = $this->normalizePeriod($request->string('period')->toString());
         $fromDate = $request->string('from')->toString();
         $toDate = $request->string('to')->toString();
 

@@ -18,7 +18,7 @@ final class AnalyticsController
 
     public function latency(Request $request): ViewContract
     {
-        $period = $request->string('period')->toString() ?: 'today';
+        $period = $this->normalizePeriod($request->string('period')->toString());
         $fromDate = $request->string('from')->toString();
         $toDate = $request->string('to')->toString();
 
@@ -28,7 +28,6 @@ final class AnalyticsController
         $tracePercentiles = rescue(function () use ($fromDt, $toDt): array {
             $rows = GlintTrace::query()
                 ->select(['name', 'duration_ms'])
-                ->whereNotNull('name')
                 ->whereNotNull('duration_ms')
                 ->when($fromDt, fn ($q) => $q->where('started_at', '>=', $fromDt))
                 ->when($toDt, fn ($q) => $q->where('started_at', '<=', $toDt))
@@ -41,7 +40,7 @@ final class AnalyticsController
                 if ($row->duration_ms === null) {
                     continue;
                 }
-                $grouped[(string) $row->name][] = $row->duration_ms;
+                $grouped[trim((string) $row->name) !== '' ? (string) $row->name : 'unnamed'][] = $row->duration_ms;
             }
 
             /** @var array<int, array{name: string, count: int, p50: int, p90: int, p95: int, p99: int}> $result */
@@ -104,26 +103,6 @@ final class AnalyticsController
             return $result;
         }, []);
 
-        $traceLatency = rescue(
-            fn () => GlintTrace::query()
-                ->select([
-                    'name',
-                    DB::raw('COUNT(*) as trace_count'),
-                    DB::raw('AVG(duration_ms) as avg_duration'),
-                    DB::raw('MAX(duration_ms) as max_duration'),
-                    DB::raw('MIN(duration_ms) as min_duration'),
-                ])
-                ->whereNotNull('name')
-                ->whereNotNull('duration_ms')
-                ->when($fromDt, fn ($q) => $q->where('started_at', '>=', $fromDt))
-                ->when($toDt, fn ($q) => $q->where('started_at', '<=', $toDt))
-                ->groupBy('name')
-                ->orderByDesc('avg_duration')
-                ->limit(20)
-                ->get(),
-            collect()
-        );
-
         $tokenThroughput = rescue(
             fn () => GlintGeneration::query()
                 ->select([
@@ -166,7 +145,7 @@ final class AnalyticsController
 
         return View::make('glint::analytics.latency', compact(
             'tracePercentiles', 'generationPercentiles',
-            'traceLatency', 'tokenThroughput', 'userLatency',
+            'tokenThroughput', 'userLatency',
             'period', 'fromDate', 'toDate'
         ));
     }

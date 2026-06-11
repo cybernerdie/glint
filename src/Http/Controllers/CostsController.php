@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace Cybernerdie\Glint\Http\Controllers;
 
-use Cybernerdie\Glint\Enums\AggregatePeriod;
 use Cybernerdie\Glint\Http\Concerns\ResolvesDateRange;
-use Cybernerdie\Glint\Models\GlintAggregate;
 use Cybernerdie\Glint\Models\GlintGeneration;
 use Cybernerdie\Glint\Models\GlintTrace;
 use Illuminate\Contracts\View\View as ViewContract;
@@ -18,21 +16,27 @@ final class CostsController
 {
     use ResolvesDateRange;
 
+    /**
+     * All figures on this page are derived from glint_generations (the raw
+     * source of truth) so totals, breakdowns, and top lists always agree
+     * with each other regardless of the selected period.
+     */
     public function index(Request $request): ViewContract
     {
         $provider = $request->string('provider')->toString();
-        $period = $request->string('period')->toString() ?: 'today';
+        $period = $this->normalizePeriod($request->string('period')->toString());
         $fromDate = $request->string('from')->toString();
         $toDate = $request->string('to')->toString();
 
         [$fromDt, $toDt] = $this->resolveDateRange($period, $fromDate, $toDate);
 
         $costByProviderModel = rescue(
-            fn () => GlintAggregate::query()
-                ->selectRaw('provider, model, SUM(total_cost_usd) as total_cost, SUM(total_requests) as total_requests, SUM(total_tokens) as total_tokens')
+            fn () => GlintGeneration::query()
+                ->selectRaw('provider, model, SUM(cost_usd) as total_cost, COUNT(*) as total_requests, SUM(total_tokens) as total_tokens')
+                ->whereNotNull('cost_usd')
                 ->when($provider !== '', fn ($q) => $q->where('provider', $provider))
-                ->when($fromDt, fn ($q) => $q->where('period_at', '>=', $fromDt))
-                ->when($toDt, fn ($q) => $q->where('period_at', '<=', $toDt))
+                ->when($fromDt, fn ($q) => $q->where('started_at', '>=', $fromDt))
+                ->when($toDt, fn ($q) => $q->where('started_at', '<=', $toDt))
                 ->groupBy('provider', 'model')
                 ->orderByDesc('total_cost')
                 ->get(),
@@ -40,28 +44,30 @@ final class CostsController
         );
 
         $totalCost = rescue(
-            fn () => GlintAggregate::query()
+            fn () => (float) GlintGeneration::query()
                 ->when($provider !== '', fn ($q) => $q->where('provider', $provider))
-                ->when($fromDt, fn ($q) => $q->where('period_at', '>=', $fromDt))
-                ->when($toDt, fn ($q) => $q->where('period_at', '<=', $toDt))
-                ->sum('total_cost_usd'),
+                ->when($fromDt, fn ($q) => $q->where('started_at', '>=', $fromDt))
+                ->when($toDt, fn ($q) => $q->where('started_at', '<=', $toDt))
+                ->sum('cost_usd'),
             0.0
         );
 
-        $dailyAggregates = rescue(
-            fn () => GlintAggregate::query()
-                ->where('period', AggregatePeriod::Day)
+        $costTrend = rescue(
+            fn () => GlintGeneration::query()
+                ->selectRaw('DATE(started_at) as date, SUM(cost_usd) as total')
+                ->whereNotNull('cost_usd')
                 ->when($provider !== '', fn ($q) => $q->where('provider', $provider))
-                ->when($fromDt, fn ($q) => $q->where('period_at', '>=', $fromDt))
-                ->when($toDt, fn ($q) => $q->where('period_at', '<=', $toDt))
-                ->when($fromDt === null && $toDt === null, fn ($q) => $q->where('period_at', '>=', now()->subDays(30)))
-                ->orderBy('period_at')
+                ->when($fromDt, fn ($q) => $q->where('started_at', '>=', $fromDt))
+                ->when($toDt, fn ($q) => $q->where('started_at', '<=', $toDt))
+                ->when($fromDt === null && $toDt === null, fn ($q) => $q->where('started_at', '>=', now()->subDays(30)->startOfDay()))
+                ->groupByRaw('DATE(started_at)')
+                ->orderBy('date')
                 ->get(),
             collect()
         );
 
         $providers = rescue(
-            fn () => GlintAggregate::query()->select('provider')->distinct()->orderBy('provider')->pluck('provider'),
+            fn () => GlintGeneration::query()->select('provider')->distinct()->orderBy('provider')->pluck('provider'),
             collect()
         );
 
@@ -105,7 +111,7 @@ final class CostsController
         );
 
         return View::make('glint::costs.index', compact(
-            'costByProviderModel', 'totalCost', 'dailyAggregates',
+            'costByProviderModel', 'totalCost', 'costTrend',
             'topTraceUseCases', 'topGenerationUseCases',
             'provider', 'providers', 'period', 'fromDate', 'toDate'
         ));

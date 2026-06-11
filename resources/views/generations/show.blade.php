@@ -2,105 +2,80 @@
 
 @section('page-title', $generation->name ?: 'Generation')
 
+@section('breadcrumb')
+    <span class="topbar-sep">/</span>
+    <a href="{{ route('glint.generations.index') }}" class="breadcrumb-link">Generations</a>
+    <span class="topbar-sep">/</span>
+    <span class="breadcrumb-current">{{ $generation->name ?: substr($generation->id, 0, 12).'…' }}</span>
+@endsection
+
 @section('content')
 
-    <nav class="breadcrumb">
-        <a href="{{ route('glint.dashboard') }}" class="breadcrumb-link">Glint</a>
-        <span class="breadcrumb-sep">/</span>
-        <a href="{{ route('glint.generations.index') }}" class="breadcrumb-link">Generations</a>
-        <span class="breadcrumb-sep">/</span>
-        <span class="breadcrumb-current">{{ $generation->name ?: substr($generation->id, 0, 12).'…' }}</span>
-    </nav>
-
-    <div class="page-header">
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <div class="page-title">{{ $generation->name ?: 'Generation' }}</div>
+    <div class="hero">
+        <div class="hero-title-row">
+            <div class="hero-title">{{ $generation->name ?: 'Generation' }}</div>
             @include('glint::partials.status-badge', ['status' => $generation->status])
+            @if($generation->is_streaming)
+                <span class="badge badge-running">streaming</span>
+            @endif
         </div>
-        <div class="page-desc" style="font-family:var(--font-mono);font-size:12px;margin-top:6px;color:var(--text-3)">
-            {{ $generation->id }}
+        <div class="hero-id">{{ $generation->id }}</div>
+    </div>
+
+    <div class="stat-strip">
+        <div class="stat">
+            <div class="stat-label">Model</div>
+            <div class="stat-value">{{ $generation->model }}</div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">Provider</div>
+            <div class="stat-value">{{ $generation->provider }}</div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">Duration</div>
+            <div class="stat-value">{{ $generation->duration_ms !== null ? number_format($generation->duration_ms).'ms' : '—' }}</div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">Cost</div>
+            <div class="stat-value is-cost">{{ $generation->cost_usd !== null ? '$'.number_format($generation->cost_usd, 6) : '—' }}</div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">Started</div>
+            <div class="stat-value">{{ $generation->started_at?->format('M j, H:i:s') ?? '—' }}</div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">Ended</div>
+            <div class="stat-value">{{ $generation->ended_at?->format('M j, H:i:s') ?? '—' }}</div>
         </div>
     </div>
 
-    {{-- Core info --}}
-    <div class="info-card">
-        <div class="info-card-header">
-            <span class="info-card-title">Generation Info</span>
+    <div class="stat-strip">
+        <div class="stat">
+            <div class="stat-label">Prompt Tokens</div>
+            <div class="stat-value">{{ $generation->prompt_tokens !== null ? number_format($generation->prompt_tokens) : '—' }}</div>
         </div>
-        <div class="info-card-body">
-            <div class="field-grid">
-                <div class="field">
-                    <label>Provider</label>
-                    <div class="field-val">{{ $generation->provider }}</div>
-                </div>
-                <div class="field">
-                    <label>Model</label>
-                    <div class="field-val-mono">{{ $generation->model }}</div>
-                </div>
-                <div class="field">
-                    <label>Duration</label>
-                    <div class="field-val-mono">{{ $generation->duration_ms !== null ? number_format($generation->duration_ms).'ms' : '—' }}</div>
-                </div>
-                <div class="field">
-                    <label>Cost (USD)</label>
-                    <div class="field-val-mono" style="color:var(--accent);font-weight:600">
-                        {{ $generation->cost_usd !== null ? '$'.number_format($generation->cost_usd, 6) : '—' }}
-                    </div>
-                </div>
-                <div class="field">
-                    <label>Started At</label>
-                    <div class="field-val-mono">{{ $generation->started_at?->format('Y-m-d H:i:s') ?? '—' }}</div>
-                </div>
-                <div class="field">
-                    <label>Ended At</label>
-                    <div class="field-val-mono">{{ $generation->ended_at?->format('Y-m-d H:i:s') ?? '—' }}</div>
-                </div>
-            </div>
+        <div class="stat">
+            <div class="stat-label">Completion Tokens</div>
+            <div class="stat-value">{{ $generation->completion_tokens !== null ? number_format($generation->completion_tokens) : '—' }}</div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">Total Tokens</div>
+            <div class="stat-value">{{ $generation->total_tokens !== null ? number_format($generation->total_tokens) : '—' }}</div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">Temperature</div>
+            <div class="stat-value">{{ $generation->temperature ?? '—' }}</div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">Finish Reason</div>
+            <div class="stat-value">{{ $generation->finish_reason ?? '—' }}</div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">Streaming</div>
+            <div class="stat-value">{{ $generation->is_streaming ? 'Yes' : 'No' }}</div>
         </div>
     </div>
 
-    {{-- Tokens & parameters --}}
-    <div class="info-card">
-        <div class="info-card-header">
-            <span class="info-card-title">Tokens &amp; Parameters</span>
-        </div>
-        <div class="info-card-body">
-            <div class="field-grid">
-                <div class="field">
-                    <label>Prompt Tokens</label>
-                    <div class="field-val-mono">{{ $generation->prompt_tokens !== null ? number_format($generation->prompt_tokens) : '—' }}</div>
-                </div>
-                <div class="field">
-                    <label>Completion Tokens</label>
-                    <div class="field-val-mono">{{ $generation->completion_tokens !== null ? number_format($generation->completion_tokens) : '—' }}</div>
-                </div>
-                <div class="field">
-                    <label>Total Tokens</label>
-                    <div class="field-val-mono" style="font-weight:600">{{ $generation->total_tokens !== null ? number_format($generation->total_tokens) : '—' }}</div>
-                </div>
-                <div class="field">
-                    <label>Finish Reason</label>
-                    <div class="field-val-muted">{{ $generation->finish_reason ?? '—' }}</div>
-                </div>
-                <div class="field">
-                    <label>Streaming</label>
-                    <div class="field-val">
-                        @if($generation->is_streaming)
-                            <span class="badge badge-running">streaming</span>
-                        @else
-                            <span class="field-val-muted">No</span>
-                        @endif
-                    </div>
-                </div>
-                <div class="field">
-                    <label>Temperature</label>
-                    <div class="field-val-mono">{{ $generation->temperature ?? '—' }}</div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    {{-- Parent trace link --}}
     @if($generation->trace_id)
         <div style="margin-bottom:16px">
             <a href="{{ route('glint.traces.show', $generation->trace_id) }}" class="btn btn-ghost btn-sm">
@@ -114,7 +89,6 @@
         </div>
     @endif
 
-    {{-- Error --}}
     @if($generation->error_message)
         <div class="error-card">
             <div class="error-card-header">
@@ -127,43 +101,31 @@
         </div>
     @endif
 
-    {{-- Prompt --}}
     @if($generation->prompt)
         <div class="code-card">
             <div class="code-header">
                 <span class="code-label">Prompt</span>
-                <button type="button" class="copy-btn" onclick="glintCopy(this)">
-                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                    <span class="copy-label">Copy</span>
-                </button>
+                @include('glint::partials.copy-button')
             </div>
             <div class="code-body">{{ is_array($generation->prompt) ? json_encode($generation->prompt, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : $generation->prompt }}</div>
         </div>
     @endif
 
-    {{-- Completion --}}
     @if($generation->completion)
         <div class="code-card">
             <div class="code-header">
                 <span class="code-label">Completion</span>
-                <button type="button" class="copy-btn" onclick="glintCopy(this)">
-                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                    <span class="copy-label">Copy</span>
-                </button>
+                @include('glint::partials.copy-button')
             </div>
             <div class="code-body">{{ $generation->completion }}</div>
         </div>
     @endif
 
-    {{-- Metadata --}}
     @if(!empty($generation->metadata))
         <div class="code-card">
             <div class="code-header">
                 <span class="code-label">Metadata</span>
-                <button type="button" class="copy-btn" onclick="glintCopy(this)">
-                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                    <span class="copy-label">Copy</span>
-                </button>
+                @include('glint::partials.copy-button')
             </div>
             <div class="code-body">{{ json_encode($generation->metadata, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) }}</div>
         </div>
