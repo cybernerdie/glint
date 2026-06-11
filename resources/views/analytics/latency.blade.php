@@ -7,7 +7,6 @@
     <div class="page-head">
         <div>
             <div class="page-title">Latency</div>
-            <div class="page-desc">Percentile latency, throughput, and worst-case analysis</div>
         </div>
         <form method="GET" action="{{ route('glint.analytics.latency') }}" class="page-toolbar">
             @include('glint::partials.filters.date-range', [

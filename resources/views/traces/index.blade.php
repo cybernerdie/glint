@@ -10,7 +10,6 @@
     <div class="page-head">
         <div>
             <div class="page-title">Traces</div>
-            <div class="page-desc">Request-level trace history</div>
         </div>
         <div class="page-toolbar">
             @include('glint::partials.filters.date-range', [

@@ -8,7 +8,6 @@
     <div class="page-head">
         <div>
             <div class="page-title">Dashboard</div>
-            <div class="page-desc">Overview of your LLM activity</div>
         </div>
         <form method="GET" action="{{ route('glint.dashboard') }}" class="page-toolbar">
             @include('glint::partials.filters.date-range', [

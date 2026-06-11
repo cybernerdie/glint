@@ -9,7 +9,6 @@
     <div class="page-head">
         <div>
             <div class="page-title">Users</div>
-            <div class="page-desc">LLM activity and cost breakdown by user</div>
         </div>
         <div class="page-toolbar">
             @include('glint::partials.filters.date-range', [

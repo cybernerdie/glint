@@ -7,7 +7,6 @@
     <div class="page-head">
         <div>
             <div class="page-title">Costs</div>
-            <div class="page-desc">LLM spend breakdown by provider and model</div>
         </div>
         <form method="GET" action="{{ route('glint.costs.index') }}" class="page-toolbar">
             <label for="cost-provider" class="sr-only">Filter by provider</label>

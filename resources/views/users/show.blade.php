@@ -14,7 +14,6 @@
     <div class="page-head">
         <div>
             <div class="page-title" style="font-family:var(--font-mono);font-size:19px">{{ $userId }}</div>
-            <div class="page-desc">User activity and trace history</div>
         </div>
         <form method="GET" action="{{ route('glint.users.show', $userId) }}" class="page-toolbar">
             @include('glint::partials.filters.date-range', [

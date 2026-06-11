@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('page-title', 'Dashboard') — Glint</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,{{ rawurlencode(trim(view('glint::partials.logo', ['variant' => 'icon'])->render())) }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ route('glint.touch-icon') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -271,6 +273,28 @@
         .nav-link:hover svg { opacity: 0.75; }
         .nav-link.is-active svg { opacity: 1; color: var(--accent-bright); }
 
+        /* Mobile nav toggle — hidden on desktop */
+        .nav-toggle {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 38px;
+            margin-left: auto;
+            border-radius: 8px;
+            border: 1px solid var(--border-strong);
+            background: transparent;
+            color: var(--text-2);
+            cursor: pointer;
+        }
+
+        .nav-toggle svg { width: 18px; height: 18px; }
+
+        .sidebar.is-open .nav-toggle {
+            color: var(--text-1);
+            background: var(--surface-2);
+        }
+
         /* Footer */
         .sidebar-footer {
             padding: 12px 18px;
@@ -421,12 +445,6 @@
             color: var(--text-1);
             letter-spacing: -0.02em;
             line-height: 1.2;
-        }
-
-        .page-desc {
-            font-size: 13.5px;
-            color: var(--text-3);
-            margin-top: 5px;
         }
 
         .page-toolbar {
@@ -1639,33 +1657,104 @@
             .sidebar {
                 width: 100%;
                 height: auto;
-                position: static;
+                position: sticky;
+                top: 0;
+                overflow: visible;
                 border-right: none;
                 border-bottom: 1px solid var(--border);
+                z-index: 40;
             }
 
             .main { margin-left: 0; }
 
+            body.glint-loading::after { left: 0; }
+
+            .sidebar-brand { padding: 10px 16px; }
+            .brand-tagline { display: none; }
+            .nav-toggle { display: inline-flex; }
+
+            /* Nav is collapsed behind the hamburger; sticky so it is always reachable */
             .sidebar-nav {
-                display: flex;
+                display: none;
                 flex-wrap: wrap;
                 gap: 4px;
-                padding: 8px;
+                padding: 0 10px 12px;
             }
 
-            .nav-group { margin-bottom: 0; }
+            .sidebar.is-open .sidebar-nav { display: flex; }
+
+            /* Only one sticky bar on mobile — the nav header */
+            .topbar { position: static; }
+
+            .nav-group { margin-bottom: 0; display: flex; gap: 4px; }
             .nav-group-label { display: none; }
             .sidebar-footer { display: none; }
 
-            .nav-link { font-size: 12px; padding: 6px 8px; }
+            .nav-link { font-size: 12.5px; padding: 7px 10px; margin-bottom: 0; }
             .nav-link::before { display: none; }
+            .nav-link svg { display: none; }
 
-            .content { padding: 16px; }
+            .topbar { padding: 0 16px; }
+            .breadcrumb-current { max-width: 140px; }
+
+            .content { padding: 16px 16px 48px; }
+
+            .page-head { align-items: flex-start; flex-direction: column; gap: 12px; }
+            .page-title { font-size: 19px; }
+
+            /* Segmented controls: tighter pills so 24H–90D + calendar fit a phone */
+            .seg-btn { padding: 0 10px; font-size: 12px; }
+            .status-pill { padding: 0 10px; font-size: 12px; }
+
+            /* Custom-range popover wraps within the viewport */
+            .seg-pop {
+                flex-wrap: wrap;
+                max-width: min(340px, calc(100vw - 32px));
+            }
+            .seg-pop .input { width: 100% !important; flex: 1 1 120px; }
+            .seg-pop .btn { flex: 1 1 100%; }
+
+            /* Panel toolbars stack; inputs take the full row */
+            .panel-toolbar { gap: 8px; }
+            .panel-toolbar .search-wrap { width: 100%; }
+            .panel-toolbar .search-wrap .input { width: 100% !important; }
+            .panel-toolbar > .input { width: 100% !important; }
+            .panel-toolbar .status-pills { margin-left: 0 !important; }
+
             .metric-strip { grid-template-columns: repeat(2, 1fr); }
             .metric + .metric::before { display: none; }
-            .metric { border-top: 1px solid var(--border); }
+            .metric { border-top: 1px solid var(--border); padding: 16px 18px 14px; }
+            .metric:first-child, .metric:nth-child(2) { border-top: none; }
+            .metric-value { font-size: 24px; }
+
+            .stat-strip { grid-template-columns: repeat(2, 1fr); }
+            .stat + .stat::before { display: none; }
+            .stat { border-top: 1px solid var(--border); }
+            .stat:first-child, .stat:nth-child(2) { border-top: none; }
+
+            .hero-title { font-size: 19px; }
+
+            /* Collapsible call/span headers wrap their stat row */
+            .llm-call-header, .span-card-header { flex-wrap: wrap; row-gap: 6px; }
+            .llm-call-right { flex-wrap: wrap; gap: 10px; }
+
+            .listbar-row { padding: 10px 16px; }
+            .listbar-val { min-width: 56px; }
+
             .panel { overflow-x: auto; }
             table { min-width: 560px; }
+            th, td { padding: 0 14px; }
+
+            .empty { padding: 40px 20px 44px; }
+            .empty-icon { padding: 22px; }
+
+            .pagination { flex-wrap: wrap; }
+        }
+
+        @media (max-width: 420px) {
+            .topbar-clock { display: none; }
+            .seg-btn { padding: 0 8px; }
+            .metric-value { font-size: 21px; }
         }
     </style>
 </head>
@@ -1674,14 +1763,18 @@
     <aside class="sidebar">
         <div class="sidebar-brand">
             <div class="brand-mark">
-                <svg viewBox="0 0 16 16" fill="white" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M8 0.5 Q8.9 5.2 14.5 8 Q8.9 10.8 8 15.5 Q7.1 10.8 1.5 8 Q7.1 5.2 8 0.5Z"/>
-                </svg>
+                @include('glint::partials.logo')
             </div>
             <div>
                 <div class="brand-name">Laravel Glint</div>
                 <div class="brand-tagline">LLM Observability</div>
             </div>
+            <button type="button" class="nav-toggle" aria-label="Toggle navigation"
+                    onclick="document.querySelector('.sidebar').classList.toggle('is-open')">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/>
+                </svg>
+            </button>
         </div>
 
         <nav class="sidebar-nav">
@@ -1891,6 +1984,8 @@
                     document.title = doc.title;
                     if (opts.push !== false) { history.pushState({ glint: true }, '', url); }
                     setActiveNav(new URL(url, window.location.href));
+                    var sidebar = document.querySelector('.sidebar');
+                    if (sidebar) { sidebar.classList.remove('is-open'); }
                     window.scrollTo(0, y);
 
                     if (focusId) {

@@ -10,7 +10,6 @@
     <div class="page-head">
         <div>
             <div class="page-title">Generations</div>
-            <div class="page-desc">Individual LLM API calls</div>
         </div>
         <div class="page-toolbar">
             @include('glint::partials.filters.date-range', [
