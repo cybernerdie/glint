@@ -1895,7 +1895,7 @@
                     <span class="live-indicator" :class="paused ? '' : 'is-pulsing'"></span>
                     <span x-text="paused ? 'Paused' : 'Live'"></span>
                 </button>
-                <span class="topbar-clock">Updated <span x-text="ago"></span> ago</span>
+                <span class="topbar-clock" x-show="live">Updated <span x-text="ago"></span> ago</span>
             </div>
         </header>
 

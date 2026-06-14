@@ -1,6 +1,7 @@
 @extends('glint::layout')
 
 @section('page-title', 'Users')
+@section('refresh-interval', 30)
 
 @section('content')
 
