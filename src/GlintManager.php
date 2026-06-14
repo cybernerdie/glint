@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cybernerdie\Glint;
 
+use Cybernerdie\Glint\Concerns\ProtectsWrites;
 use Cybernerdie\Glint\Context\TraceContext;
 use Cybernerdie\Glint\Contracts\GenerationInterface;
 use Cybernerdie\Glint\Contracts\GlintClientInterface;
@@ -26,9 +27,13 @@ use Cybernerdie\Glint\Tracing\ActiveSpan;
 use Cybernerdie\Glint\Tracing\ActiveTrace;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Str;
+use Illuminate\Support\Traits\Macroable;
 
 final class GlintManager implements GlintClientInterface
 {
+    use Macroable;
+    use ProtectsWrites;
+
     public function __construct(
         private readonly TraceContext $context,
         private readonly PricingRegistry $pricing,
@@ -89,7 +94,7 @@ final class GlintManager implements GlintClientInterface
 
         $this->context->openTrace($traceId, true);
 
-        rescue(fn () => GlintTrace::create([
+        $this->protectedWrite(fn () => GlintTrace::create([
             'id' => $traceId,
             'name' => $name,
             'metadata' => $metadata,
@@ -108,10 +113,10 @@ final class GlintManager implements GlintClientInterface
         }
 
         $spanId = (string) Str::ulid();
-        $traceId = $this->context->traceId() ?? (string) Str::ulid();
+        $traceId = $this->context->traceId() ?? $this->createHeadlessTrace($name);
         $startedAt = now();
 
-        rescue(fn () => GlintSpan::create([
+        $this->protectedWrite(fn () => GlintSpan::create([
             'id' => $spanId,
             'trace_id' => $traceId,
             'name' => $name,
@@ -132,10 +137,10 @@ final class GlintManager implements GlintClientInterface
         }
 
         $generationId = (string) Str::ulid();
-        $traceId = $this->context->traceId() ?? (string) Str::ulid();
+        $traceId = $this->context->traceId() ?? $this->createHeadlessTrace($name);
         $startedAt = now();
 
-        rescue(fn () => GlintGeneration::create([
+        $this->protectedWrite(fn () => GlintGeneration::create([
             'id' => $generationId,
             'trace_id' => $traceId,
             'name' => $name,
@@ -147,5 +152,23 @@ final class GlintManager implements GlintClientInterface
         ]));
 
         return new ActiveGeneration($generationId, $this->pricing, $provider, $model, $startedAt);
+    }
+
+    /**
+     * Create a headless trace so a manually-created span or generation never
+     * references a trace_id that has no corresponding row.
+     */
+    private function createHeadlessTrace(string $name): string
+    {
+        $traceId = (string) Str::ulid();
+
+        $this->protectedWrite(fn () => GlintTrace::create([
+            'id' => $traceId,
+            'name' => 'auto:'.$name,
+            'status' => RecordStatus::Pending,
+            'started_at' => now(),
+        ]));
+
+        return $traceId;
     }
 }

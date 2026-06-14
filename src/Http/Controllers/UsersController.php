@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cybernerdie\Glint\Http\Controllers;
 
+use Cybernerdie\Glint\Enums\RecordStatus;
 use Cybernerdie\Glint\Http\Concerns\ResolvesDateRange;
 use Cybernerdie\Glint\Models\GlintTrace;
 use Illuminate\Contracts\View\View as ViewContract;
@@ -58,15 +59,18 @@ final class UsersController
 
         $statsRow = rescue(
             fn () => GlintTrace::query()
-                ->select([
-                    DB::raw('COUNT(DISTINCT glint_traces.id) as trace_count'),
-                    DB::raw('SUM(glint_generations.cost_usd) as total_cost'),
-                    DB::raw('AVG(glint_traces.duration_ms) as avg_duration'),
-                    DB::raw('SUM(glint_generations.total_tokens) as total_tokens'),
-                    DB::raw("COUNT(CASE WHEN glint_traces.status = 'error' THEN 1 END) as error_count"),
-                ])
+                ->selectRaw(
+                    'COUNT(DISTINCT glint_traces.id) as trace_count, '
+                    .'SUM(glint_generations.cost_usd) as total_cost, '
+                    .'AVG(glint_traces.duration_ms) as avg_duration, '
+                    .'SUM(glint_generations.total_tokens) as total_tokens, '
+                    .'COUNT(CASE WHEN glint_traces.status = ? THEN 1 END) as error_count',
+                    [RecordStatus::Error->value]
+                )
                 ->leftJoin('glint_generations', 'glint_generations.trace_id', '=', 'glint_traces.id')
                 ->where('glint_traces.user_id', $userId)
+                ->when($fromDt, fn ($q) => $q->where('glint_traces.started_at', '>=', $fromDt))
+                ->when($toDt, fn ($q) => $q->where('glint_traces.started_at', '<=', $toDt))
                 ->first(),
             null
         );

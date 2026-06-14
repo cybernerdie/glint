@@ -21,6 +21,8 @@ final class RecordLlmCallJob implements ShouldQueue
 
     public int $tries = 3;
 
+    public int $timeout = 30;
+
     /**
      * @var array<int, int>
      */
@@ -32,15 +34,12 @@ final class RecordLlmCallJob implements ShouldQueue
 
     public function handle(GlintRecorder $recorder): void
     {
-        if ($this->event instanceof LlmCallStarted) {
-            $recorder->handleLlmCallStarted($this->event);
-        } elseif ($this->event instanceof LlmCallFinished) {
-            $recorder->handleLlmCallFinished($this->event);
-        } elseif ($this->event instanceof LlmToolCalled) {
-            $recorder->handleLlmToolCalled($this->event);
-        } else {
-            $recorder->handleLlmCallFailed($this->event);
-        }
+        match (true) {
+            $this->event instanceof LlmCallStarted => $recorder->handleLlmCallStarted($this->event),
+            $this->event instanceof LlmCallFinished => $recorder->handleLlmCallFinished($this->event),
+            $this->event instanceof LlmToolCalled => $recorder->handleLlmToolCalled($this->event),
+            $this->event instanceof LlmCallFailed => $recorder->handleLlmCallFailed($this->event),
+        };
     }
 
     public function failed(\Throwable $e): void

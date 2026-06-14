@@ -13,14 +13,9 @@ final class PricingCommand extends Command
 
     protected $description = 'Display the Glint pricing registry';
 
-    public function __construct(private readonly PricingRegistry $registry)
+    public function handle(PricingRegistry $registry): int
     {
-        parent::__construct();
-    }
-
-    public function handle(): int
-    {
-        $all = $this->registry->all();
+        $all = $registry->all();
 
         $filterProviderRaw = $this->option('provider');
         $filterProvider = is_string($filterProviderRaw) ? $filterProviderRaw : null;

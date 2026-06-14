@@ -417,6 +417,43 @@ it('writes aggregate rows for all four periods on LlmCallFinished', function () 
     expect($periods)->toBe(['day', 'hour', 'month', 'week']);
 });
 
+it('accumulates a rolling average duration across two generations in the same bucket', function () {
+    $recorder = makeRecorder();
+
+    foreach ([['id' => 'gen-avg-1', 'dur' => 100, 'pt' => 10, 'ct' => 5], ['id' => 'gen-avg-2', 'dur' => 300, 'pt' => 20, 'ct' => 10]] as $call) {
+        $recorder->handleLlmCallStarted(new LlmCallStarted(
+            generationId: $call['id'],
+            provider: 'openai',
+            model: 'gpt-4o',
+            messages: null,
+            temperature: null,
+            maxTokens: null,
+            isStreaming: false,
+            traceId: 'trace-test-001',
+        ));
+
+        $recorder->handleLlmCallFinished(new LlmCallFinished(
+            generationId: $call['id'],
+            completion: null,
+            promptTokens: $call['pt'],
+            completionTokens: $call['ct'],
+            finishReason: 'stop',
+            durationMs: $call['dur'],
+        ));
+    }
+
+    $hour = DB::table('glint_aggregates')
+        ->where('provider', 'openai')
+        ->where('model', 'gpt-4o')
+        ->where('period', 'hour')
+        ->first();
+
+    expect((int) $hour->total_requests)->toBe(2)
+        ->and((int) $hour->successful_requests)->toBe(2)
+        ->and((int) $hour->total_tokens)->toBe(45)
+        ->and((int) $hour->avg_duration_ms)->toBe(200);
+});
+
 it('propagates DB exceptions when throw_on_exceptions is true', function () {
     config()->set('glint.throw_on_exceptions', true);
 

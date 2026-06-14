@@ -8,7 +8,7 @@ use Cybernerdie\Glint\Events\LlmCallFinished;
 use Cybernerdie\Glint\Events\LlmCallStarted;
 use Cybernerdie\Glint\Events\LlmToolCalled;
 use Cybernerdie\Glint\GlintManager;
-use Cybernerdie\Glint\Testing\RecordedGeneration;
+use Cybernerdie\Glint\Testing\CapturedGeneration;
 use Cybernerdie\Glint\Testing\RecordingStore;
 use PHPUnit\Framework\AssertionFailedError;
 
@@ -79,7 +79,7 @@ it('records a generation on LlmCallStarted', function (): void {
     expect($generations)->toHaveCount(1);
 
     $gen = $generations->first();
-    expect($gen)->toBeInstanceOf(RecordedGeneration::class)
+    expect($gen)->toBeInstanceOf(CapturedGeneration::class)
         ->and($gen->id)->toBe('gen-001')
         ->and($gen->provider)->toBe('openai')
         ->and($gen->model)->toBe('gpt-4o')

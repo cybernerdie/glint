@@ -9,7 +9,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"
+            integrity="sha256-IGtui7APx7uix+6AykHbPp4FunvgqjWr66nP1TV/XQ4="
+            crossorigin="anonymous"></script>
     <script>
         if (window.Chart) {
             Chart.defaults.font.family = "'Figtree', system-ui, sans-serif";

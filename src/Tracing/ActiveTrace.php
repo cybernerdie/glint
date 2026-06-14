@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cybernerdie\Glint\Tracing;
 
 use Carbon\Carbon;
+use Cybernerdie\Glint\Concerns\ProtectsWrites;
 use Cybernerdie\Glint\Context\TraceContext;
 use Cybernerdie\Glint\Contracts\TraceInterface;
 use Cybernerdie\Glint\Enums\RecordStatus;
@@ -18,6 +19,8 @@ use Illuminate\Support\Str;
 
 final class ActiveTrace implements TraceInterface
 {
+    use ProtectsWrites;
+
     public function __construct(
         private readonly string $traceId,
         private readonly TraceContext $context,
@@ -30,7 +33,7 @@ final class ActiveTrace implements TraceInterface
         $spanId = (string) Str::ulid();
         $spanStartedAt = now();
 
-        rescue(fn () => GlintSpan::create([
+        $this->protectedWrite(fn () => GlintSpan::create([
             'id' => $spanId,
             'trace_id' => $this->traceId,
             'name' => $name,
@@ -51,7 +54,7 @@ final class ActiveTrace implements TraceInterface
         }
 
         if ($thrown !== null) {
-            rescue(fn () => GlintSpan::where('id', $spanId)->update([
+            $this->protectedWrite(fn () => GlintSpan::where('id', $spanId)->update([
                 'status' => RecordStatus::Error,
                 'ended_at' => now(),
                 'duration_ms' => (int) $spanStartedAt->diffInMilliseconds(now()),
@@ -69,7 +72,7 @@ final class ActiveTrace implements TraceInterface
         $spanId = (string) Str::ulid();
         $genStartedAt = now();
 
-        rescue(fn () => GlintSpan::create([
+        $this->protectedWrite(fn () => GlintSpan::create([
             'id' => $spanId,
             'trace_id' => $this->traceId,
             'name' => $name,
@@ -80,7 +83,7 @@ final class ActiveTrace implements TraceInterface
 
         $generationId = (string) Str::ulid();
 
-        rescue(fn () => GlintGeneration::create([
+        $this->protectedWrite(fn () => GlintGeneration::create([
             'id' => $generationId,
             'trace_id' => $this->traceId,
             'parent_span_id' => $spanId,
@@ -106,7 +109,7 @@ final class ActiveTrace implements TraceInterface
         $durationMs = (int) $genStartedAt->diffInMilliseconds($endedAt);
         $status = $thrown === null ? RecordStatus::Success : RecordStatus::Error;
 
-        rescue(fn () => GlintSpan::where('id', $spanId)->update([
+        $this->protectedWrite(fn () => GlintSpan::where('id', $spanId)->update([
             'status' => $status,
             'ended_at' => $endedAt,
             'duration_ms' => $durationMs,
@@ -118,7 +121,7 @@ final class ActiveTrace implements TraceInterface
         // is responsible for calling $generation->finish(), so we must NOT
         // overwrite whatever status it already set.
         if ($thrown !== null) {
-            rescue(fn () => GlintGeneration::where('id', $generationId)->update([
+            $this->protectedWrite(fn () => GlintGeneration::where('id', $generationId)->update([
                 'status' => RecordStatus::Error,
                 'ended_at' => $endedAt,
                 'duration_ms' => $durationMs,
@@ -132,7 +135,7 @@ final class ActiveTrace implements TraceInterface
 
     public function tag(string $key, string $value): static
     {
-        rescue(function () use ($key, $value): void {
+        $this->protectedWrite(function () use ($key, $value): void {
             DB::transaction(function () use ($key, $value): void {
                 $trace = GlintTrace::where('id', $this->traceId)->lockForUpdate()->first();
 
@@ -163,7 +166,7 @@ final class ActiveTrace implements TraceInterface
             return $this;
         }
 
-        rescue(function () use ($tags): void {
+        $this->protectedWrite(function () use ($tags): void {
             DB::transaction(function () use ($tags): void {
                 $trace = GlintTrace::where('id', $this->traceId)->lockForUpdate()->first();
 
@@ -186,7 +189,7 @@ final class ActiveTrace implements TraceInterface
 
     public function end(): void
     {
-        rescue(function (): void {
+        $this->protectedWrite(function (): void {
             $now = now();
             GlintTrace::where('id', $this->traceId)->update([
                 'status' => RecordStatus::Success,

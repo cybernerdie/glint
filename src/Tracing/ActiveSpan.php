@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cybernerdie\Glint\Tracing;
 
 use Carbon\Carbon;
+use Cybernerdie\Glint\Concerns\ProtectsWrites;
 use Cybernerdie\Glint\Contracts\SpanInterface;
 use Cybernerdie\Glint\Enums\RecordStatus;
 use Cybernerdie\Glint\Models\GlintSpan;
@@ -12,6 +13,8 @@ use Illuminate\Support\Facades\DB;
 
 final class ActiveSpan implements SpanInterface
 {
+    use ProtectsWrites;
+
     public function __construct(
         private readonly string $spanId,
         private readonly Carbon $startedAt,
@@ -26,7 +29,7 @@ final class ActiveSpan implements SpanInterface
      */
     public function tag(string $key, string $value): static
     {
-        rescue(function () use ($key, $value): void {
+        $this->protectedWrite(function () use ($key, $value): void {
             DB::transaction(function () use ($key, $value): void {
                 $span = GlintSpan::where('id', $this->spanId)->lockForUpdate()->first();
 
@@ -60,7 +63,7 @@ final class ActiveSpan implements SpanInterface
             return $this;
         }
 
-        rescue(function () use ($tags): void {
+        $this->protectedWrite(function () use ($tags): void {
             DB::transaction(function () use ($tags): void {
                 $span = GlintSpan::where('id', $this->spanId)->lockForUpdate()->first();
 
@@ -83,7 +86,7 @@ final class ActiveSpan implements SpanInterface
 
     public function end(): void
     {
-        rescue(function (): void {
+        $this->protectedWrite(function (): void {
             $now = now();
             GlintSpan::where('id', $this->spanId)->update([
                 'status' => RecordStatus::Success,

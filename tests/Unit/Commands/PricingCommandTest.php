@@ -3,11 +3,9 @@
 declare(strict_types=1);
 
 use Cybernerdie\Glint\Console\Commands\PricingCommand;
-use Cybernerdie\Glint\Pricing\PricingRegistry;
 
 it('has the correct signature', function () {
-    $registry = new PricingRegistry(__DIR__.'/../../../pricing/providers.json');
-    expect((new PricingCommand($registry))->getName())->toBe('glint:pricing');
+    expect((new PricingCommand)->getName())->toBe('glint:pricing');
 });
 
 it('displays a table of providers and models', function () {

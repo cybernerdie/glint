@@ -43,14 +43,8 @@ final class CostsController
             collect()
         );
 
-        $totalCost = rescue(
-            fn () => (float) GlintGeneration::query()
-                ->when($provider !== '', fn ($q) => $q->where('provider', $provider))
-                ->when($fromDt, fn ($q) => $q->where('started_at', '>=', $fromDt))
-                ->when($toDt, fn ($q) => $q->where('started_at', '<=', $toDt))
-                ->sum('cost_usd'),
-            0.0
-        );
+        $totalCostRaw = $costByProviderModel->sum('total_cost');
+        $totalCost = is_numeric($totalCostRaw) ? (float) $totalCostRaw : 0.0;
 
         $costTrend = rescue(
             fn () => GlintGeneration::query()

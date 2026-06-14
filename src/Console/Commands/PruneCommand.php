@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cybernerdie\Glint\Console\Commands;
 
 use Cybernerdie\Glint\Contracts\HasPrunable;
+use Cybernerdie\Glint\Events\GlintDataPruned;
 use Cybernerdie\Glint\Models\GlintAggregate;
 use Cybernerdie\Glint\Models\GlintAlertEvent;
 use Cybernerdie\Glint\Models\GlintGeneration;
@@ -62,11 +63,15 @@ final class PruneCommand extends Command
 
         $this->components->info('Pruning Glint records...');
 
-        $this->pruneModel(new GlintTrace, 'glint_traces');
-        $this->pruneModel(new GlintSpan, 'glint_spans');
-        $this->pruneModel(new GlintGeneration, 'glint_generations');
-        $this->pruneModel(new GlintAggregate, 'glint_aggregates');
-        $this->pruneModel(new GlintAlertEvent, 'glint_alert_events');
+        $deletedByTable = [
+            'glint_traces' => $this->pruneModel(new GlintTrace, 'glint_traces'),
+            'glint_spans' => $this->pruneModel(new GlintSpan, 'glint_spans'),
+            'glint_generations' => $this->pruneModel(new GlintGeneration, 'glint_generations'),
+            'glint_aggregates' => $this->pruneModel(new GlintAggregate, 'glint_aggregates'),
+            'glint_alert_events' => $this->pruneModel(new GlintAlertEvent, 'glint_alert_events'),
+        ];
+
+        event(new GlintDataPruned($deletedByTable));
 
         $this->newLine();
         $this->components->info('Pruning complete.');
@@ -79,14 +84,30 @@ final class PruneCommand extends Command
      *
      * @param  HasPrunable<TModel>  $model
      */
-    private function pruneModel(HasPrunable $model, string $table): void
+    private function pruneModel(HasPrunable $model, string $table): int
     {
         try {
-            $deleted = $model->prunable()->delete();
-            $count = is_numeric($deleted) ? (int) $deleted : 0;
+            // Delete in ID batches rather than one large DELETE so the table is
+            // never locked for long. Avoids DELETE...LIMIT, which SQLite rejects.
+            $count = 0;
+            do {
+                $ids = $model->prunable()->limit(1000)->pluck('id');
+
+                if ($ids->isEmpty()) {
+                    break;
+                }
+
+                $deleted = $model->prunable()->whereIn('id', $ids->all())->delete();
+                $count += is_numeric($deleted) ? (int) $deleted : 0;
+            } while ($ids->count() === 1000);
+
             $this->components->twoColumnDetail($table, "<fg=green>{$count} records pruned</>");
+
+            return $count;
         } catch (\Throwable $e) {
             $this->components->twoColumnDetail($table, "<fg=yellow>skipped — {$e->getMessage()}</>");
+
+            return 0;
         }
     }
 }

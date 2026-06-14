@@ -71,7 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Glint::fake()` swaps the recorder for an in-memory store; registered filters are respected by the fake
 - `GlintFake` assertion methods: `assertNothingRecorded()`, `assertGenerationCount()`, `assertHasGeneration()`, `assertMissingGeneration()`, `assertGenerationSucceeded()`, `assertGenerationFailed()`, `assertHasToolCall()`, `assertToolCallCount()`, `assertNoGenerations()`, `assertNoToolCalls()`
 - `FakeTrace`, `FakeSpan`, `FakeGeneration` — in-memory counterparts to the real tracing objects
-- 391 tests covering all happy and unhappy paths across unit and feature suites
+- 477 tests covering all happy and unhappy paths across unit and feature suites
 
 **Laravel Pulse integration (optional)**
 - `GlintCard` Livewire card — shows today's cost, request count, error rate, and a 7-day cost sparkline

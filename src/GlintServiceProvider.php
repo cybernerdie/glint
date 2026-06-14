@@ -12,10 +12,12 @@ use Cybernerdie\Glint\Events\LlmCallStarted;
 use Cybernerdie\Glint\Events\LlmToolCalled;
 use Cybernerdie\Glint\Jobs\RecordLlmCallJob;
 use Cybernerdie\Glint\Recorders\GlintRecorder;
+use Illuminate\Auth\Middleware\Authorize;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Pulse\Livewire\Card;
 use Livewire\Livewire;
@@ -131,7 +133,12 @@ final class GlintServiceProvider extends ServiceProvider
             if (! is_string($name)) {
                 continue;
             }
-            $class = $driverMap[trim($name)] ?? null;
+            $name = trim($name);
+            $class = $driverMap[$name] ?? null;
+
+            if ($class === null && class_exists($name) && is_a($name, InstrumentationDriver::class, true)) {
+                $class = $name;
+            }
 
             if ($class === null) {
                 continue;
@@ -189,7 +196,7 @@ final class GlintServiceProvider extends ServiceProvider
             return;
         }
 
-        Livewire::component('cybernerdie.glint::glint-card', Pulse\GlintCard::class);
+        Livewire::component('glint-card', Pulse\GlintCard::class);
     }
 
     private function registerMiddleware(): void
@@ -197,12 +204,14 @@ final class GlintServiceProvider extends ServiceProvider
         $router = $this->app->make(Router::class);
         $router->aliasMiddleware('glint', Middleware\GlintMiddleware::class);
 
-        // Create an empty 'glint-auth' middleware group so routes work even if
-        // GlintApplicationServiceProvider has not been registered. When the
-        // application provider IS registered, its authorization() method appends
-        // the Authorize:viewGlint middleware to this group — exactly like Telescope.
+        // Deny-by-default so the dashboard is never exposed when the application
+        // provider is absent. GlintApplicationServiceProvider overrides this gate.
+        if (! Gate::has('viewGlint')) {
+            Gate::define('viewGlint', fn ($user = null) => false);
+        }
+
         if (! $router->hasMiddlewareGroup('glint-auth')) {
-            $router->middlewareGroup('glint-auth', []);
+            $router->middlewareGroup('glint-auth', [Authorize::class.':viewGlint']);
         }
     }
 }

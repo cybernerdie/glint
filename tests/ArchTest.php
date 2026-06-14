@@ -32,6 +32,14 @@ arch('null objects implement the trace/span/generation contracts')
     ->expect('Cybernerdie\Glint\Null\NullTrace')
     ->toImplement('Cybernerdie\Glint\Contracts\TraceInterface');
 
+arch('null span implements the span contract')
+    ->expect('Cybernerdie\Glint\Null\NullSpan')
+    ->toImplement('Cybernerdie\Glint\Contracts\SpanInterface');
+
+arch('null generation implements the generation contract')
+    ->expect('Cybernerdie\Glint\Null\NullGeneration')
+    ->toImplement('Cybernerdie\Glint\Contracts\GenerationInterface');
+
 arch('instrumentation drivers implement the driver contract')
     ->expect('Cybernerdie\Glint\Instrumentation')
     ->toImplement('Cybernerdie\Glint\Contracts\InstrumentationDriver')

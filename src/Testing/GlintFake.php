@@ -72,12 +72,14 @@ final class GlintFake implements GlintClientInterface
     /** @param array<string, mixed> $metadata */
     public function trace(string $name, array $metadata = []): TraceInterface
     {
-        return new FakeTrace;
+        return new FakeTrace($this->store);
     }
 
     /** @param array<string, mixed> $metadata */
     public function span(string $name, array $metadata = []): SpanInterface
     {
+        $this->store->recordSpan($name);
+
         return new FakeSpan;
     }
 
@@ -126,6 +128,21 @@ final class GlintFake implements GlintClientInterface
         $this->store->assertHasToolCall($toolName);
     }
 
+    public function assertSpanCount(int $expected): void
+    {
+        $this->store->assertSpanCount($expected);
+    }
+
+    public function assertHasSpan(string $name): void
+    {
+        $this->store->assertHasSpan($name);
+    }
+
+    public function assertNoSpans(): void
+    {
+        $this->store->assertNoSpans();
+    }
+
     public function assertNothingRecorded(): void
     {
         $this->store->assertNothingRecorded();
@@ -166,7 +183,7 @@ final class GlintFake implements GlintClientInterface
         GlintManager::filter($callback);
     }
 
-    /** @return Collection<int, RecordedGeneration> */
+    /** @return Collection<int, CapturedGeneration> */
     public function generations(): Collection
     {
         return $this->store->generations();

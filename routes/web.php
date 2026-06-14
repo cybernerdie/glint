@@ -10,6 +10,7 @@ use Cybernerdie\Glint\Http\Controllers\DashboardController;
 use Cybernerdie\Glint\Http\Controllers\GenerationsController;
 use Cybernerdie\Glint\Http\Controllers\TracesController;
 use Cybernerdie\Glint\Http\Controllers\UsersController;
+use Cybernerdie\Glint\Middleware\GlintSecurityHeaders;
 use Illuminate\Support\Facades\Route;
 
 $glintPath = config('glint.path', 'glint');
@@ -21,6 +22,7 @@ if (! is_string($glintPath) || ! preg_match('/^[a-zA-Z0-9\-_\/]+$/', $glintPath)
 
 Route::prefix($glintPath)
     ->middleware(config('glint.middleware', ['web']))
+    ->middleware(GlintSecurityHeaders::class)
     ->name('glint.')
     ->middleware('throttle:120,1')
     ->group(function () {
@@ -31,7 +33,7 @@ Route::prefix($glintPath)
         Route::get('/generations/{generationId}', [GenerationsController::class, 'show'])->name('generations.show');
         Route::get('/costs', [CostsController::class, 'index'])->name('costs.index');
         Route::get('/users', [UsersController::class, 'index'])->name('users.index');
-        Route::get('/users/{userId}', [UsersController::class, 'show'])->name('users.show');
+        Route::get('/users/{userId}', [UsersController::class, 'show'])->name('users.show')->where('userId', '.{1,255}');
         Route::get('/analytics/latency', [AnalyticsController::class, 'latency'])->name('analytics.latency');
         Route::get('/api/metrics', [ApiController::class, 'metrics'])->name('api.metrics')->middleware('throttle:60,1');
     });

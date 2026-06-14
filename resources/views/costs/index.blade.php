@@ -78,9 +78,9 @@
                             new Chart(ctx, {
                                 type: 'line',
                                 data: {
-                                    labels: @json($trendPoints->pluck('label')),
+                                    labels: @json($trendPoints->pluck('label'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT),
                                     datasets: [{
-                                        data: @json($trendPoints->pluck('total')),
+                                        data: @json($trendPoints->pluck('total'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT),
                                         borderColor: '#FF6F3C',
                                         backgroundColor: gradient,
                                         borderWidth: 2,

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cybernerdie\Glint\Console\Commands;
 
+use Cybernerdie\Glint\Events\GlintDataCleared;
 use Cybernerdie\Glint\Models\GlintAggregate;
 use Cybernerdie\Glint\Models\GlintAlertEvent;
 use Cybernerdie\Glint\Models\GlintAlertRule;
@@ -39,15 +40,20 @@ final class ClearCommand extends Command
             GlintAlertEvent::class => 'glint_alert_events',
         ];
 
+        $deletedByTable = [];
+
         foreach ($models as $modelClass => $table) {
             try {
                 $deleted = $modelClass::query()->delete();
                 $count = is_numeric($deleted) ? (int) $deleted : 0;
+                $deletedByTable[$table] = $count;
                 $this->components->twoColumnDetail($table, "<fg=green>{$count} records deleted</>");
             } catch (\Throwable $e) {
                 $this->components->twoColumnDetail($table, "<fg=yellow>skipped — {$e->getMessage()}</>");
             }
         }
+
+        event(new GlintDataCleared($deletedByTable));
 
         $this->newLine();
         $this->components->info('All Glint data cleared.');

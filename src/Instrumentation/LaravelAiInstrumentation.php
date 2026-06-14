@@ -50,7 +50,7 @@ final class LaravelAiInstrumentation implements InstrumentationDriver
         Event::listen(ToolInvoked::class, fn (ToolInvoked $e) => app(self::class)->onToolInvoked($e));
     }
 
-    public function onPrompting(PromptingAgent $event): void
+    public function onPrompting(PromptingAgent|StreamingAgent $event): void
     {
         $generationId = (string) Str::ulid();
         $provider = $this->resolveProvider($event->prompt->provider());
@@ -85,7 +85,7 @@ final class LaravelAiInstrumentation implements InstrumentationDriver
         ));
     }
 
-    public function onAgentPrompted(AgentPrompted $event): void
+    public function onAgentPrompted(AgentPrompted|AgentStreamed $event): void
     {
         $pending = $this->pending[$event->invocationId] ?? null;
 

@@ -58,7 +58,14 @@ final class AlertDispatcher
                 $query->where('provider', $pair['provider']);
             }
 
-            $aggregate = $query->orderByDesc('period_at')->first();
+            // Ignore stale aggregates so an idle window never trips a threshold.
+            $window = match ($pair['period']) {
+                'hour' => now()->subHours(2),
+                'day' => now()->subDays(2),
+                default => now()->subDay(),
+            };
+
+            $aggregate = $query->where('period_at', '>=', $window)->orderByDesc('period_at')->first();
 
             if ($aggregate !== null) {
                 $cacheKey = $pair['period'].'|'.($pair['provider'] ?? '');
@@ -106,34 +113,51 @@ final class AlertDispatcher
 
         if ($currentValue >= $threshold) {
             $channels = $rule->channels ?? [];
-            $channel = count($channels) > 0 ? (string) $channels[0] : 'log';
+            $channels = count($channels) > 0 ? $channels : ['log'];
 
-            DB::transaction(function () use ($rule, $threshold, $currentValue, $period, $channel): void {
-                $alertEvent = GlintAlertEvent::create([
-                    'alert_rule_id' => $rule->id,
-                    'triggered_at' => now(),
-                    'channel' => $channel,
-                    'status' => AlertEventStatus::Sent,
-                    'context' => [
-                        'type' => $rule->type->value,
-                        'threshold' => $threshold,
-                        'current_value' => $currentValue,
-                        'period' => $period,
-                    ],
-                ]);
+            /** @var array<int, array{event: GlintAlertEvent, channel: string}> $dispatched */
+            $dispatched = [];
+
+            DB::transaction(function () use ($rule, $threshold, $currentValue, $period, $channels, &$dispatched): void {
+                foreach ($channels as $channel) {
+                    $channel = (string) $channel;
+
+                    $alertEvent = GlintAlertEvent::create([
+                        'alert_rule_id' => $rule->id,
+                        'triggered_at' => now(),
+                        'channel' => $channel,
+                        'status' => AlertEventStatus::Sent,
+                        'context' => [
+                            'type' => $rule->type->value,
+                            'threshold' => $threshold,
+                            'current_value' => $currentValue,
+                            'period' => $period,
+                        ],
+                    ]);
+
+                    $dispatched[] = ['event' => $alertEvent, 'channel' => $channel];
+                }
 
                 $rule->update(['last_triggered_at' => now()]);
-
-                event(new GlintAlertTriggered(
-                    alertRuleId: (int) $rule->id,
-                    type: $rule->type,
-                    threshold: $threshold,
-                    currentValue: $currentValue,
-                    period: $period,
-                    channel: $channel,
-                    alertEventId: (int) $alertEvent->id,
-                ));
             });
+
+            // Dispatch after the row is committed so a channel that fails to
+            // deliver can be recorded as failed without rolling back the event.
+            foreach ($dispatched as $entry) {
+                try {
+                    event(new GlintAlertTriggered(
+                        alertRuleId: (int) $rule->id,
+                        type: $rule->type,
+                        threshold: $threshold,
+                        currentValue: $currentValue,
+                        period: $period,
+                        channel: $entry['channel'],
+                        alertEventId: (int) $entry['event']->id,
+                    ));
+                } catch (\Throwable) {
+                    $entry['event']->update(['status' => AlertEventStatus::Failed]);
+                }
+            }
         }
     }
 }

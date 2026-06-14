@@ -72,9 +72,9 @@
                         new Chart(ctx, {
                             type: 'bar',
                             data: {
-                                labels: @json($volumeBuckets->pluck('label')),
+                                labels: @json($volumeBuckets->pluck('label'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT),
                                 datasets: [{
-                                    data: @json($volumeBuckets->pluck('total')),
+                                    data: @json($volumeBuckets->pluck('total'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT),
                                     backgroundColor: gradient,
                                     hoverBackgroundColor: '#FF8A57',
                                     borderWidth: 0,
