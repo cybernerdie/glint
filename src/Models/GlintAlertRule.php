@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Cybernerdie\Glint\Models;
 
 use Cybernerdie\Glint\Database\Factories\GlintAlertRuleFactory;
-use Cybernerdie\Glint\Enums\AlertRuleScope;
 use Cybernerdie\Glint\Enums\AlertRuleType;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -14,9 +13,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /**
+ * @property string $name
  * @property bool $enabled
  * @property AlertRuleType $type
- * @property AlertRuleScope $scope
+ * @property string|null $webhook_url
+ * @property string|null $slack_webhook_url
+ * @property string|null $mail_to
  * @property Carbon|null $last_triggered_at
  * @property int $cooldown_minutes
  * @property array<string, mixed>|null $threshold_config
@@ -30,8 +32,8 @@ class GlintAlertRule extends Model
     protected $table = 'glint_alert_rules';
 
     protected $fillable = [
-        'name', 'type', 'scope', 'scope_id',
-        'threshold_config', 'channels', 'webhook_url', 'mail_to',
+        'name', 'type',
+        'threshold_config', 'channels', 'webhook_url', 'slack_webhook_url', 'mail_to',
         'cooldown_minutes', 'enabled', 'last_triggered_at',
     ];
 
@@ -44,7 +46,6 @@ class GlintAlertRule extends Model
     {
         return [
             'type' => AlertRuleType::class,
-            'scope' => AlertRuleScope::class,
             'threshold_config' => 'array',
             'channels' => 'array',
             'enabled' => 'boolean',

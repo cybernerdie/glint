@@ -21,16 +21,16 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
 
+/**
+ * @phpstan-type PendingGeneration array{generationId: string, startedAt: Carbon, provider: string, model: string, traceId: string|null}
+ * @phpstan-type PendingTool array{spanId: string, startedAt: Carbon, toolName: string, invocationId: string}
+ */
 final class LaravelAiInstrumentation implements InstrumentationDriver
 {
-    /**
-     * @var array<string, array{generationId: string, startedAt: Carbon, provider: string, model: string, traceId: string|null}>
-     */
+    /** @var array<string, PendingGeneration> */
     private array $pending = [];
 
-    /**
-     * @var array<string, array{spanId: string, startedAt: Carbon, toolName: string, invocationId: string}>
-     */
+    /** @var array<string, PendingTool> */
     private array $toolStartTimes = [];
 
     public function __construct(private readonly TraceContext $context) {}

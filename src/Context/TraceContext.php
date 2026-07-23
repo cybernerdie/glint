@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Cybernerdie\Glint\Context;
 
 /**
- * Per-request trace context (scoped binding — re-created each request in Octane).
+ * Per-request trace context (scoped binding).
  */
 final class TraceContext
 {

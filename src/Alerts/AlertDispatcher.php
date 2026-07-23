@@ -13,21 +13,20 @@ use Cybernerdie\Glint\Models\GlintAlertRule;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * @phpstan-type DispatchEntry array{event: GlintAlertEvent, channel: string}
+ */
 final class AlertDispatcher
 {
     public function evaluate(): void
     {
-        $rules = GlintAlertRule::query()->where('enabled', true)->get();
+        GlintAlertRule::query()->where('enabled', true)->chunk(100, function (Collection $rules): void {
+            $aggregateCache = $this->buildAggregateCache($rules);
 
-        if ($rules->isEmpty()) {
-            return;
-        }
-
-        $aggregateCache = $this->buildAggregateCache($rules);
-
-        foreach ($rules as $rule) {
-            rescue(fn () => $this->evaluateRule($rule, $aggregateCache));
-        }
+            foreach ($rules as $rule) {
+                rescue(fn () => $this->evaluateRule($rule, $aggregateCache));
+            }
+        });
     }
 
     /**
@@ -115,7 +114,7 @@ final class AlertDispatcher
             $channels = $rule->channels ?? [];
             $channels = count($channels) > 0 ? $channels : ['log'];
 
-            /** @var array<int, array{event: GlintAlertEvent, channel: string}> $dispatched */
+            /** @var array<int, DispatchEntry> $dispatched */
             $dispatched = [];
 
             DB::transaction(function () use ($rule, $threshold, $currentValue, $period, $channels, &$dispatched): void {
@@ -141,8 +140,6 @@ final class AlertDispatcher
                 $rule->update(['last_triggered_at' => now()]);
             });
 
-            // Dispatch after the row is committed so a channel that fails to
-            // deliver can be recorded as failed without rolling back the event.
             foreach ($dispatched as $entry) {
                 try {
                     event(new GlintAlertTriggered(
@@ -154,8 +151,11 @@ final class AlertDispatcher
                         channel: $entry['channel'],
                         alertEventId: (int) $entry['event']->id,
                     ));
-                } catch (\Throwable) {
-                    $entry['event']->update(['status' => AlertEventStatus::Failed]);
+                } catch (\Throwable $e) {
+                    $entry['event']->update([
+                        'status' => AlertEventStatus::Failed,
+                        'error' => $e->getMessage(),
+                    ]);
                 }
             }
         }

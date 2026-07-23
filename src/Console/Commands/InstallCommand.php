@@ -137,9 +137,7 @@ final class InstallCommand extends Command
             return;
         }
 
-        // Find the last `];` in the file and insert before it.
-        // Using strrpos() is more robust than a regex: it handles trailing
-        // comments, CRLF line endings, and any whitespace after the bracket.
+        // strrpos() handles trailing comments, CRLF, and whitespace more robustly than a regex.
         $insertAt = strrpos($contents, '];');
 
         if ($insertAt === false) {

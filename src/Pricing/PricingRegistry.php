@@ -105,7 +105,6 @@ final class PricingRegistry
             return;
         }
 
-        // Strip the _comment key if present
         unset($decoded['_comment']);
 
         /** @var array<string, array<string, array{input: float, output: float}>> $decoded */

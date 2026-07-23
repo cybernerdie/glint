@@ -1,12 +1,4 @@
-{{--
-    Segmented period control (rolling windows).
-    Must be placed inside a <form> element — submits the form on change.
 
-    Variables expected from the including view:
-      $activePeriod  — current period slug ('' | '24h' | '7d' | '30d' | '90d' | 'custom')
-      $activeFrom    — current custom "from" date string (Y-m-d)
-      $activeTo      — current custom "to" date string (Y-m-d)
---}}
 @php $glintPeriod = $activePeriod ?: '24h'; @endphp
 
 <div class="seg-anchor" x-data="{ customOpen: false, period: @js($glintPeriod) }">
@@ -34,8 +26,6 @@
             @endif
         </button>
     </div>
-
-    {{-- Custom range popover — inputs only submit when a custom range is in play --}}
     <div class="seg-pop" x-show="customOpen" style="display:none" @click.outside="customOpen = false">
         <label class="sr-only" for="glint-date-from">From</label>
         <input

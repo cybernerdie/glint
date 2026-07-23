@@ -19,23 +19,25 @@ use NeuronAI\Observability\Events\ToolCalled;
 use NeuronAI\Observability\Events\ToolCalling;
 use NeuronAI\Observability\ObserverInterface;
 
+/**
+ * @phpstan-type PendingGeneration array{generationId: string, startedAt: Carbon, provider: string, model: string}
+ * @phpstan-type PendingTool array{spanId: string, startedAt: Carbon}
+ */
 final class GlintNeuronAiObserver implements ObserverInterface
 {
     /**
-     * Active inference keyed by spl_object_id of the emitting source node.
-     * Since nodes are typically reused per agent, this key is stable for the
-     * duration of a single inference cycle.
+     * Keyed by spl_object_id of the emitting source node — stable for the
+     * duration of a single inference cycle since nodes are typically reused.
      *
-     * @var array<int, array{generationId: string, startedAt: Carbon, provider: string, model: string}>
+     * @var array<int, PendingGeneration>
      */
     private array $pending = [];
 
     /**
-     * Tool call start times keyed by tool name.
-     * NeuronAI emits tool-calling/tool-called synchronously, so a single
-     * tool name is sufficient as the key within one inference cycle.
+     * Keyed by tool name. NeuronAI emits tool-calling/tool-called
+     * synchronously, so one name per inference cycle is sufficient.
      *
-     * @var array<string, array{spanId: string, startedAt: Carbon}>
+     * @var array<string, PendingTool>
      */
     private array $toolStartTimes = [];
 

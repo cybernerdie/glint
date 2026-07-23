@@ -7,6 +7,9 @@ namespace Cybernerdie\Glint\Http\Queries;
 use Cybernerdie\Glint\Models\GlintTrace;
 use Illuminate\Support\Carbon;
 
+/**
+ * @phpstan-type PercentileRow array{name: string, count: int, p50: int, p90: int, p95: int, p99: int}
+ */
 final readonly class TracePercentilesQuery
 {
     public function __construct(
@@ -14,7 +17,7 @@ final readonly class TracePercentilesQuery
         private ?Carbon $toDt,
     ) {}
 
-    /** @return array<int, array{name: string, count: int, p50: int, p90: int, p95: int, p99: int}> */
+    /** @return list<PercentileRow> */
     public function get(): array
     {
         $rows = GlintTrace::query()
@@ -34,7 +37,7 @@ final readonly class TracePercentilesQuery
             $grouped[trim((string) $row->name) !== '' ? (string) $row->name : 'unnamed'][] = $row->duration_ms;
         }
 
-        /** @var array<int, array{name: string, count: int, p50: int, p90: int, p95: int, p99: int}> $result */
+        /** @var list<PercentileRow> $result */
         $result = [];
         foreach ($grouped as $name => $durations) {
             sort($durations);

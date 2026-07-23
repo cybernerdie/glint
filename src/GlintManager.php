@@ -48,9 +48,6 @@ final class GlintManager implements GlintClientInterface
      * Register a callback that decides whether an LLM call should be recorded.
      * Return false from the callback to skip recording.
      *
-     * Filters live in a GlintFilterRegistry singleton so they persist across
-     * Octane requests even though GlintManager itself is scoped.
-     *
      * @param  callable(FilterEntry): bool  $callback
      */
     public static function filter(callable $callback): void

@@ -7,44 +7,46 @@
         </x-slot:icon>
     </x-pulse::card-header>
 
-    <x-pulse::scroll :expand="$expand">
-        <div class="grid grid-cols-3 gap-px bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden mb-3">
-            <div class="bg-white dark:bg-gray-800 p-4">
-                <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Cost Today</p>
-                <p class="mt-1 text-2xl font-semibold text-gray-900 dark:text-gray-100">
-                    ${{ number_format($totalCost, $totalCost > 0 && $totalCost < 0.01 ? 6 : 4) }}
-                </p>
-            </div>
-            <div class="bg-white dark:bg-gray-800 p-4">
-                <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Requests</p>
-                <p class="mt-1 text-2xl font-semibold text-gray-900 dark:text-gray-100">
-                    {{ number_format($totalRequests) }}
-                </p>
-            </div>
-            <div class="bg-white dark:bg-gray-800 p-4">
-                <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Error Rate</p>
-                <p class="mt-1 text-2xl font-semibold {{ $errorRate > 5 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100' }}">
-                    {{ $errorRate }}%
-                </p>
-            </div>
-        </div>
-
-        @if (count($sparkline) > 0)
-            <div>
-                <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Cost — Last 7 Days</p>
-                <div class="flex items-end gap-0.5 h-10">
-                    @php $maxCost = max($sparkline) ?: 1; @endphp
-                    @foreach ($sparkline as $day => $cost)
-                        <div
-                            class="flex-1 bg-purple-500 dark:bg-purple-400 rounded-sm min-h-[3px]"
-                            style="height: {{ max(3, (int) round($cost / $maxCost * 100)) }}%"
-                            title="{{ $day }}: ${{ number_format($cost, 4) }}"
-                        ></div>
-                    @endforeach
+    <x-pulse::scroll :expand="$expand || count($sparkline) === 0" wire:poll.5s="">
+        @if ($totalRequests === 0)
+            <x-pulse::no-results />
+        @else
+            <div class="grid grid-cols-3 gap-px bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden mb-3">
+                <div class="bg-white dark:bg-gray-800 p-4">
+                    <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Cost</p>
+                    <p class="mt-1 text-2xl font-semibold text-gray-900 dark:text-gray-100">
+                        ${{ number_format($totalCost, $totalCost > 0 && $totalCost < 0.01 ? 6 : 4) }}
+                    </p>
+                </div>
+                <div class="bg-white dark:bg-gray-800 p-4">
+                    <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Requests</p>
+                    <p class="mt-1 text-2xl font-semibold text-gray-900 dark:text-gray-100">
+                        {{ number_format($totalRequests) }}
+                    </p>
+                </div>
+                <div class="bg-white dark:bg-gray-800 p-4">
+                    <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Error Rate</p>
+                    <p class="mt-1 text-2xl font-semibold {{ $errorRate > 5 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100' }}">
+                        {{ $errorRate }}%
+                    </p>
                 </div>
             </div>
-        @else
-            <p class="text-xs text-gray-400 dark:text-gray-500">No LLM activity today.</p>
+
+            @if (count($sparkline) > 0)
+                <div>
+                    <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Cost trend</p>
+                    <div class="flex items-end gap-0.5 h-10">
+                        @php $maxCost = max($sparkline) ?: 1; @endphp
+                        @foreach ($sparkline as $bucket => $cost)
+                            <div
+                                class="flex-1 bg-purple-500 dark:bg-purple-400 rounded-sm min-h-[3px]"
+                                style="height: {{ max(3, (int) round($cost / $maxCost * 100)) }}%"
+                                title="{{ $bucket }}: ${{ number_format($cost, 4) }}"
+                            ></div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
         @endif
     </x-pulse::scroll>
 </x-pulse::card>

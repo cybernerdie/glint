@@ -22,12 +22,12 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
-final class GlintRecorder
+final readonly class GlintRecorder
 {
     public function __construct(
-        private readonly TraceContext $context,
-        private readonly PricingRegistry $pricing,
-        private readonly GlintFilterRegistry $filters,
+        private TraceContext $context,
+        private PricingRegistry $pricing,
+        private GlintFilterRegistry $filters,
     ) {}
 
     public function handleLlmCallStarted(LlmCallStarted $event): void
@@ -45,8 +45,6 @@ final class GlintRecorder
             }
 
             if ($traceId === null) {
-                // No active trace context (e.g. background job, Artisan command).
-                // Auto-create a headless trace so the generation is still recorded.
                 $traceId = (string) Str::ulid();
 
                 GlintTrace::create([
@@ -185,8 +183,6 @@ final class GlintRecorder
             $totalTokens = (int) $generation->total_tokens;
             $promptTokens = (int) $generation->prompt_tokens;
             $completionTokens = (int) $generation->completion_tokens;
-            // number_format ensures a locale-independent decimal point and prevents
-            // float-to-string issues (e.g. "1,5" on non-English locales) in DB::raw().
             $costUsd = number_format((float) $generation->cost_usd, 8, '.', '');
 
             $periodAts = [
@@ -197,9 +193,6 @@ final class GlintRecorder
             ];
 
             foreach ($periodAts as $period => $periodAt) {
-                // A UNIQUE index treats NULLs as distinct, so insertOrIgnore would
-                // never dedupe the global (user_id/team_id NULL) rows. Check for an
-                // existing row explicitly so the running totals accumulate correctly.
                 $exists = DB::table('glint_aggregates')
                     ->where('period', $period)
                     ->where('period_at', $periodAt)

@@ -11,6 +11,9 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
+/**
+ * @phpstan-type AggregateRow array{provider: string, model: string, periodAt: string, total: int, successful: int, failed: int, totalTokens: int, promptTokens: int, completionTokens: int, totalCost: float, durationSum: int}
+ */
 final class RecalcAggregatesCommand extends Command
 {
     protected $signature = 'glint:recalc-aggregates
@@ -53,9 +56,6 @@ final class RecalcAggregatesCommand extends Command
 
         $period = self::PERIOD_MAP[$periodOption];
 
-        // Do NOT apply orderBy('started_at') here — chunkById() enforces ORDER BY `id` ASC
-        // internally and a conflicting explicit orderBy causes incorrect chunking behaviour.
-        // Temporal bucketing is handled per-record inside the chunk callback.
         $query = GlintGeneration::query();
 
         $fromRaw = $this->option('from');
@@ -106,10 +106,7 @@ final class RecalcAggregatesCommand extends Command
 
         $this->components->info("Recalculating {$periodOption} aggregates...");
 
-        // Accumulate across ALL chunks before writing: a single period bucket can
-        // span multiple id-ordered chunks, so writing per chunk would overwrite
-        // earlier counts. Memory is bounded by the number of buckets, not rows.
-        /** @var array<string, array{provider: string, model: string, periodAt: string, total: int, successful: int, failed: int, totalTokens: int, promptTokens: int, completionTokens: int, totalCost: float, durationSum: int}> */
+        /** @var array<string, AggregateRow> $buckets */
         $buckets = [];
 
         $query->select(['id', 'provider', 'model', 'status', 'prompt_tokens', 'completion_tokens', 'cost_usd', 'duration_ms', 'started_at'])

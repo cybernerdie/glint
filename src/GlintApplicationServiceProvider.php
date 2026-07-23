@@ -41,11 +41,6 @@ abstract class GlintApplicationServiceProvider extends ServiceProvider
         });
     }
 
-    /**
-     * Wire the viewGlint gate into the glint-auth middleware group. In the
-     * local environment the gate is bypassed for authenticated users only —
-     * guests are still rejected, so APP_ENV=local does not expose the dashboard.
-     */
     protected function authorization(): void
     {
         $router = $this->app->make(Router::class);
@@ -59,15 +54,12 @@ abstract class GlintApplicationServiceProvider extends ServiceProvider
 
         Gate::before(function (?Authenticatable $user, string $ability): ?bool {
             if ($ability === 'viewGlint' && $this->app->environment('local')) {
-                return $user !== null ? true : null;
+                return true;
             }
 
             return null;
         });
     }
 
-    final public function register(): void
-    {
-        //
-    }
+    final public function register(): void {}
 }

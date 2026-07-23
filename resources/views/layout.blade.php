@@ -1758,6 +1758,110 @@
             .seg-btn { padding: 0 8px; }
             .metric-value { font-size: 21px; }
         }
+
+        /* Form utilities */
+        .form-section { margin-bottom: 28px; }
+        .form-section-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-3);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 16px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 180px 1fr;
+            gap: 12px 24px;
+            align-items: start;
+            margin-bottom: 16px;
+        }
+        @media (max-width: 640px) {
+            .form-row { grid-template-columns: 1fr; gap: 6px; }
+        }
+        .form-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-2);
+            padding-top: 9px;
+            line-height: 1.4;
+        }
+        .form-hint {
+            font-size: 11.5px;
+            color: var(--text-3);
+            margin-top: 5px;
+            line-height: 1.5;
+        }
+        .form-error {
+            font-size: 11.5px;
+            color: var(--error-text);
+            margin-top: 5px;
+        }
+        .form-field { display: flex; flex-direction: column; }
+        .input-group { display: flex; align-items: center; gap: 8px; }
+        .input-suffix {
+            font-size: 12.5px;
+            color: var(--text-3);
+            font-family: var(--font-mono);
+            white-space: nowrap;
+        }
+        .check-group { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; }
+        .check-item { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+        .check-item input[type="checkbox"] {
+            width: 16px; height: 16px;
+            accent-color: var(--accent);
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .check-label { font-size: 13px; color: var(--text-1); font-weight: 500; }
+        .check-sub { font-size: 11.5px; color: var(--text-3); }
+        .toggle-row { display: flex; align-items: center; gap: 12px; padding-top: 6px; }
+        .toggle-switch {
+            position: relative; width: 40px; height: 22px;
+            background: var(--border-strong); border-radius: 9999px;
+            cursor: pointer; transition: background 0.15s; flex-shrink: 0;
+        }
+        .toggle-switch.is-on { background: var(--accent); }
+        .toggle-knob {
+            position: absolute; top: 3px; left: 3px;
+            width: 16px; height: 16px; background: #fff;
+            border-radius: 50%; transition: transform 0.15s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        .toggle-switch.is-on .toggle-knob { transform: translateX(18px); }
+        .toggle-label { font-size: 13px; color: var(--text-2); }
+        .rule-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 24px;
+            margin-bottom: 28px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        .rule-name-wrap { flex: 1; }
+        .rule-name-wrap label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-3);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 6px;
+        }
+        .rule-status-wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding-top: 2px;
+        }
+        .rule-status-wrap > span {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-3);
+            letter-spacing: 0.03em;
+        }
     </style>
 </head>
 <body>

@@ -14,6 +14,9 @@ use Illuminate\Support\Facades\View;
 use Laravel\Pulse\Livewire\Card;
 use Livewire\Attributes\Lazy;
 
+/**
+ * @phpstan-type CardData array{totalCost: float, totalRequests: int, errorRate: float, sparkline: array<string, float>}
+ */
 #[Lazy]
 final class GlintCard extends Card
 {
@@ -21,7 +24,7 @@ final class GlintCard extends Card
     {
         $since = Carbon::now()->sub($this->periodAsInterval());
 
-        /** @var array{totalCost: float, totalRequests: int, errorRate: float, sparkline: array<string, float>} $data */
+        /** @var CardData $data */
         $data = rescue(function () use ($since): array {
             $row = GlintGeneration::query()
                 ->where('started_at', '>=', $since)

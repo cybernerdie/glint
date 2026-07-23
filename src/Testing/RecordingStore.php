@@ -15,14 +15,18 @@ use Cybernerdie\Glint\Pricing\PricingRegistry;
 use Illuminate\Support\Collection;
 use PHPUnit\Framework\Assert;
 
+/**
+ * @phpstan-type GenerationEntry array{id: string, provider: string, model: string, name: string, status: RecordStatus, completion: null|string, promptTokens: int, completionTokens: int, costUsd: float, finishReason: null|string, errorMessage: null|string, metadata: array<string, mixed>}
+ * @phpstan-type ToolCallEntry array{spanId: string, traceId: string, toolName: string, arguments: array<string, mixed>, result: mixed, durationMs: int}
+ */
 final class RecordingStore
 {
     private ?PricingRegistry $pricing = null;
 
-    /** @var array<string, array{id: string, provider: string, model: string, name: string, status: RecordStatus, completion: null|string, promptTokens: int, completionTokens: int, costUsd: float, finishReason: null|string, errorMessage: null|string, metadata: array<string, mixed>}> */
+    /** @var array<string, GenerationEntry> */
     private array $generations = [];
 
-    /** @var array<int, array{spanId: string, traceId: string, toolName: string, arguments: array<string, mixed>, result: mixed, durationMs: int}> */
+    /** @var array<int, ToolCallEntry> */
     private array $toolCalls = [];
 
     /** @var array<int, array{name: string}> */
@@ -62,8 +66,6 @@ final class RecordingStore
 
     public function handleLlmCallStarted(LlmCallStarted $event): void
     {
-        // Respect registered filters — same logic as GlintRecorder so that
-        // Glint::filter() callbacks work correctly during tests.
         $registry = app(GlintFilterRegistry::class);
 
         if (! $registry->shouldRecord(new FilterEntry(
@@ -158,7 +160,7 @@ final class RecordingStore
             ->map(fn ($g) => new CapturedGeneration(...$g));
     }
 
-    /** @return Collection<int, array{spanId: string, traceId: string, toolName: string, arguments: array<string, mixed>, result: mixed, durationMs: int}> */
+    /** @return Collection<int, ToolCallEntry> */
     public function toolCalls(): Collection
     {
         return collect($this->toolCalls);

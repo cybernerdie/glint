@@ -87,8 +87,6 @@ final class PruneCommand extends Command
     private function pruneModel(HasPrunable $model, string $table): int
     {
         try {
-            // Delete in ID batches rather than one large DELETE so the table is
-            // never locked for long. Avoids DELETE...LIMIT, which SQLite rejects.
             $count = 0;
             do {
                 $ids = $model->prunable()->limit(1000)->pluck('id');

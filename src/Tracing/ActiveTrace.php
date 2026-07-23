@@ -115,11 +115,7 @@ final class ActiveTrace implements TraceInterface
             'duration_ms' => $durationMs,
         ]));
 
-        // Only update the generation if the callback threw — in that case the
-        // generation was never finished/failed by the callback itself, so we
-        // need to mark it as an error here. On the success path the callback
-        // is responsible for calling $generation->finish(), so we must NOT
-        // overwrite whatever status it already set.
+        // Only mark error on throw — on success the callback calls $generation->finish() itself.
         if ($thrown !== null) {
             $this->protectedWrite(fn () => GlintGeneration::where('id', $generationId)->update([
                 'status' => RecordStatus::Error,

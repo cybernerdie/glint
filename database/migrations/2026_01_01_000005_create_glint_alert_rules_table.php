@@ -14,11 +14,10 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('type', 20);
-            $table->string('scope', 20)->default('global');
-            $table->string('scope_id', 255)->nullable();
             $table->json('threshold_config');
             $table->json('channels');
             $table->string('webhook_url', 500)->nullable();
+            $table->string('slack_webhook_url', 500)->nullable();
             $table->string('mail_to', 255)->nullable();
             $table->unsignedInteger('cooldown_minutes')->default(60);
             $table->boolean('enabled')->default(true);
@@ -27,7 +26,6 @@ return new class extends Migration
 
             $table->index('enabled');
             $table->index('type');
-            $table->index(['scope', 'scope_id']);
         });
     }
 

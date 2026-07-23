@@ -8,7 +8,7 @@ use Cybernerdie\Glint\Http\Concerns\ResolvesDateRange;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Carbon;
 
-abstract class BaseFilterRequest extends FormRequest
+class BaseFilterRequest extends FormRequest
 {
     use ResolvesDateRange;
 

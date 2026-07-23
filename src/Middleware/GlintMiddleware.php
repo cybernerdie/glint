@@ -13,10 +13,10 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
-final class GlintMiddleware
+final readonly class GlintMiddleware
 {
     public function __construct(
-        private readonly TraceContext $context,
+        private TraceContext $context,
     ) {}
 
     /**

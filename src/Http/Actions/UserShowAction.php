@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace Cybernerdie\Glint\Http\Actions;
 
 use Cybernerdie\Glint\Http\Queries\UserStatsQuery;
-use Cybernerdie\Glint\Http\Requests\UserShowRequest;
+use Cybernerdie\Glint\Http\Requests\BaseFilterRequest;
 use Cybernerdie\Glint\Models\GlintTrace;
 
 final class UserShowAction
 {
     /** @return array<string, mixed> */
-    public function handle(UserShowRequest $request, string $userId): array
+    public function handle(BaseFilterRequest $request, string $userId): array
     {
         [$fromDt, $toDt] = $request->dateRange();
 

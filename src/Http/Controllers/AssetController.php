@@ -8,10 +8,6 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 final class AssetController
 {
-    /**
-     * Serve the Apple touch icon from the package so consumers never
-     * need a vendor:publish step for Glint assets.
-     */
     public function touchIcon(): BinaryFileResponse
     {
         return response()->file(__DIR__.'/../../../resources/img/apple-touch-icon.png', [

@@ -51,14 +51,16 @@ final class VerifyCommand extends Command
         }
 
         $providersPath = base_path('bootstrap/providers.php');
-        $registered = file_exists($providersPath)
-            && str_contains((string) file_get_contents($providersPath), 'GlintServiceProvider');
+        $providersContent = file_exists($providersPath) ? (string) file_get_contents($providersPath) : '';
+
+        $registered = str_contains($providersContent, 'App\\Providers\\GlintServiceProvider');
 
         if ($registered) {
-            $this->components->twoColumnDetail('GlintServiceProvider', '<fg=green;options=bold>REGISTERED</>');
+            $this->components->twoColumnDetail('App service provider', '<fg=green;options=bold>REGISTERED</>');
         } else {
-            $this->components->twoColumnDetail('GlintServiceProvider', '<fg=yellow;options=bold>NOT FOUND</>');
+            $this->components->twoColumnDetail('App service provider', '<fg=yellow;options=bold>NOT FOUND</>');
             $this->line('  <fg=yellow>→</> Run: <fg=cyan>php artisan glint:install</>');
+            $this->line('  <fg=yellow>  </> Without it the dashboard is publicly accessible.');
             $issues++;
         }
 

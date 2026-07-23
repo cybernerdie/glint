@@ -6,12 +6,7 @@ namespace Cybernerdie\Glint\Filtering;
 
 /**
  * Singleton registry for recording-filter callbacks.
- *
- * Filters are typically registered in a ServiceProvider::boot() callback via
- * GlintManager::filter(). Because GlintManager is scoped (re-created per
- * request in Octane), filter state cannot live on the manager instance.
- * Storing it here — in a singleton — ensures filters registered at boot
- * survive across every request without leaking per-request state.
+ * Filter state lives here so it survives across requests without leaking per-request state.
  */
 final class GlintFilterRegistry
 {

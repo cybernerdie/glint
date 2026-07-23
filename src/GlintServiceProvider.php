@@ -6,11 +6,13 @@ namespace Cybernerdie\Glint;
 
 use Cybernerdie\Glint\Alerts\AlertDispatcher;
 use Cybernerdie\Glint\Contracts\InstrumentationDriver;
+use Cybernerdie\Glint\Events\GlintAlertTriggered;
 use Cybernerdie\Glint\Events\LlmCallFailed;
 use Cybernerdie\Glint\Events\LlmCallFinished;
 use Cybernerdie\Glint\Events\LlmCallStarted;
 use Cybernerdie\Glint\Events\LlmToolCalled;
 use Cybernerdie\Glint\Jobs\RecordLlmCallJob;
+use Cybernerdie\Glint\Listeners\SendAlertNotification;
 use Cybernerdie\Glint\Recorders\GlintRecorder;
 use Illuminate\Auth\Middleware\Authorize;
 use Illuminate\Console\Scheduling\Schedule;
@@ -19,6 +21,8 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\ViewErrorBag;
+use Illuminate\View\View;
 use Laravel\Pulse\Livewire\Card;
 use Livewire\Livewire;
 
@@ -95,6 +99,7 @@ final class GlintServiceProvider extends ServiceProvider
         Event::listen(LlmCallFinished::class, [GlintRecorder::class, 'handleLlmCallFinished']);
         Event::listen(LlmToolCalled::class, [GlintRecorder::class, 'handleLlmToolCalled']);
         Event::listen(LlmCallFailed::class, [GlintRecorder::class, 'handleLlmCallFailed']);
+        Event::listen(GlintAlertTriggered::class, SendAlertNotification::class);
     }
 
     private function registerQueueListeners(): void
@@ -110,6 +115,8 @@ final class GlintServiceProvider extends ServiceProvider
         foreach ([LlmCallStarted::class, LlmCallFinished::class, LlmToolCalled::class, LlmCallFailed::class] as $event) {
             Event::listen($event, $dispatch);
         }
+
+        Event::listen(GlintAlertTriggered::class, SendAlertNotification::class);
     }
 
     private function registerDrivers(): void
@@ -124,7 +131,6 @@ final class GlintServiceProvider extends ServiceProvider
             'neuron-ai' => Instrumentation\NeuronAiInstrumentation::class,
         ];
 
-        // Scoped so Octane re-creates them per request, preventing mutable state leakage.
         $this->app->scoped(Instrumentation\HttpClientInstrumentation::class);
         $this->app->scoped(Instrumentation\LaravelAiInstrumentation::class);
         $this->app->scoped(Instrumentation\NeuronAi\GlintNeuronAiObserver::class);
@@ -161,6 +167,25 @@ final class GlintServiceProvider extends ServiceProvider
     private function loadViews(): void
     {
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'glint');
+
+        \Illuminate\Support\Facades\View::composer('glint::*', function (View $view): void {
+            if (array_key_exists('errors', $view->getData()) ||
+                array_key_exists('errors', $view->getFactory()->getShared())) {
+                return;
+            }
+            $errors = new ViewErrorBag;
+            try {
+                $request = request();
+                if ($request->hasSession()) {
+                    $bag = $request->session()->get('errors');
+                    if ($bag instanceof ViewErrorBag) {
+                        $errors = $bag;
+                    }
+                }
+            } catch (\Throwable) {
+            }
+            $view->with('errors', $errors);
+        });
     }
 
     private function registerCommands(): void
@@ -172,6 +197,7 @@ final class GlintServiceProvider extends ServiceProvider
             Console\Commands\ClearCommand::class,
             Console\Commands\PricingCommand::class,
             Console\Commands\RecalcAggregatesCommand::class,
+            Console\Commands\DispatchAlertsCommand::class,
             Console\Commands\VerifyCommand::class,
         ]);
     }
@@ -204,8 +230,6 @@ final class GlintServiceProvider extends ServiceProvider
         $router = $this->app->make(Router::class);
         $router->aliasMiddleware('glint', Middleware\GlintMiddleware::class);
 
-        // Deny-by-default so the dashboard is never exposed when the application
-        // provider is absent. GlintApplicationServiceProvider overrides this gate.
         if (! Gate::has('viewGlint')) {
             Gate::define('viewGlint', fn ($user = null) => false);
         }

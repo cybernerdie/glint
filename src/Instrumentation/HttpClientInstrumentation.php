@@ -18,9 +18,12 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
 
+/**
+ * @phpstan-type PendingEntry array{generationId: string, startedAt: Carbon, provider: string}
+ */
 final class HttpClientInstrumentation implements InstrumentationDriver
 {
-    /** @var array<string, array{generationId: string, startedAt: Carbon, provider: string}> */
+    /** @var array<string, PendingEntry> */
     private array $pending = [];
 
     /** @var array<string, string> */
@@ -35,7 +38,6 @@ final class HttpClientInstrumentation implements InstrumentationDriver
 
     public function register(): void
     {
-        // Resolve via app() at event time so Octane's per-request scoped instance is used.
         Event::listen(RequestSending::class, fn (RequestSending $e) => app(self::class)->onRequestSending($e));
         Event::listen(ResponseReceived::class, fn (ResponseReceived $e) => app(self::class)->onResponseReceived($e));
         Event::listen(ConnectionFailed::class, fn (ConnectionFailed $e) => app(self::class)->onConnectionFailed($e));
@@ -54,7 +56,7 @@ final class HttpClientInstrumentation implements InstrumentationDriver
         }
 
         $generationId = (string) Str::ulid();
-        $correlationId = (string) Str::uuid();
+        $correlationId = Str::uuid()->toString();
         $startedAt = now();
 
         $this->pending[$correlationId] = [
@@ -63,13 +65,7 @@ final class HttpClientInstrumentation implements InstrumentationDriver
             'provider' => $provider,
         ];
 
-        // spl_object_id() returns the internal object handle, which PHP MAY reuse
-        // after the original object is garbage-collected. In practice this is safe
-        // within a single request lifecycle, but is a known PHP limitation.
         $hashKey = 'hash_'.spl_object_id($event->request);
-
-        // If RequestSending fires twice for the same request object (e.g. on retry),
-        // the old pending entry would be orphaned. Clean it up first so we don't leak.
         $staleCorrelationId = $this->hashMap[$hashKey] ?? null;
 
         if ($staleCorrelationId !== null && isset($this->pending[$staleCorrelationId])) {

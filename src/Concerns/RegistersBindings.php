@@ -16,11 +16,8 @@ trait RegistersBindings
 {
     private function registerBindings(): void
     {
-        // Scoped so Octane re-creates it per request, preventing cross-request state leakage.
         $this->app->scoped(TraceContext::class, fn () => new TraceContext);
 
-        // Path resolved lazily so test environments can override glint.pricing_path
-        // in getEnvironmentSetUp() (which runs after register() in Testbench).
         $this->app->singleton(
             PricingRegistry::class,
             fn ($app) => new PricingRegistry(
@@ -30,7 +27,6 @@ trait RegistersBindings
 
         $this->app->singleton(GlintFilterRegistry::class, fn () => new GlintFilterRegistry);
 
-        // Scoped so it always holds the current request's TraceContext in Octane.
         $this->app->scoped(
             GlintManager::class,
             fn (Application $app) => new GlintManager(

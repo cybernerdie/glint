@@ -17,8 +17,6 @@
             </a>
         </div>
     </div>
-
-    {{-- Alert Rules --}}
     <div class="panel">
         <div class="panel-header">
             <span class="panel-title">Alert Rules</span>
@@ -46,7 +44,6 @@
                         <th>Name</th>
                         <th>Type</th>
                         <th>Threshold</th>
-                        <th>Scope</th>
                         <th>Channels</th>
                         <th>Status</th>
                         <th class="num">Last Triggered</th>
@@ -85,12 +82,6 @@
                                 {{ $thresholdLabel }}
                                 <span class="t-dim" style="font-size:11px">/ {{ $period }}</span>
                             </td>
-                            <td class="t-muted" style="font-size:12.5px">
-                                {{ ucfirst($rule->scope->value) }}
-                                @if($rule->scope_id)
-                                    <span class="t-dim t-mono" style="font-size:11px">{{ $rule->scope_id }}</span>
-                                @endif
-                            </td>
                             <td>
                                 <div style="display:flex;gap:4px;flex-wrap:wrap">
                                     @foreach((array) ($rule->channels ?? []) as $channel)
@@ -110,7 +101,12 @@
                             </td>
                             <td>
                                 <div style="display:flex;gap:6px;justify-content:flex-end">
-                                    {{-- Toggle --}}
+                                    <a href="{{ route('glint.alerts.edit', $rule->id) }}" class="btn btn-ghost btn-sm">
+                                        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" style="width:13px;height:13px">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125"/>
+                                        </svg>
+                                        Edit
+                                    </a>
                                     <form method="POST" action="{{ route('glint.alerts.toggle', $rule->id) }}">
                                         @csrf
                                         <button type="submit" class="btn btn-ghost btn-sm" title="{{ $rule->enabled ? 'Disable' : 'Enable' }}">
@@ -127,7 +123,6 @@
                                             @endif
                                         </button>
                                     </form>
-                                    {{-- Delete --}}
                                     <form method="POST" action="{{ route('glint.alerts.destroy', $rule->id) }}"
                                           onsubmit="return confirm('Delete alert rule &quot;{{ addslashes($rule->name) }}&quot;? This cannot be undone.')">
                                         @csrf
@@ -153,8 +148,6 @@
             @endif
         @endif
     </div>
-
-    {{-- Recent Alert Events --}}
     <div class="panel" style="margin-top:24px">
         <div class="panel-header">
             <span class="panel-title">Recent Events</span>
@@ -218,6 +211,15 @@
                             <td>
                                 @if($event->status->value === 'sent')
                                     <span class="badge badge-success">sent</span>
+                                @elseif($event->error)
+                                    <span x-data="{ show: false, mx: 0, my: 0 }"
+                                          @mouseenter="show = true"
+                                          @mousemove="mx = $event.clientX; my = $event.clientY"
+                                          @mouseleave="show = false">
+                                        <span class="badge badge-error">failed</span>
+                                        <span x-show="show" x-cloak x-transition.opacity
+                                              :style="`position:fixed;left:${mx}px;top:${my - 44}px;transform:translateX(-50%);background:#1E1E24;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:6px 10px;font-size:11px;color:#D4D4D8;white-space:normal;max-width:260px;line-height:1.4;z-index:9999;pointer-events:none;font-family:var(--font-mono)`">{{ $event->error }}</span>
+                                    </span>
                                 @else
                                     <span class="badge badge-error">failed</span>
                                 @endif

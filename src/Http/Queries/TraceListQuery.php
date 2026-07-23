@@ -27,7 +27,7 @@ final readonly class TraceListQuery
             $query->where('name', 'like', '%'.$this->search.'%');
         }
 
-        if ($this->status !== '' && in_array($this->status, ['success', 'error', 'pending'], true)) {
+        if (in_array($this->status, ['success', 'error', 'pending'], true)) {
             $query->where('status', $this->status);
         }
 

@@ -7,6 +7,9 @@ namespace Cybernerdie\Glint\Http\Queries;
 use Cybernerdie\Glint\Models\GlintGeneration;
 use Illuminate\Support\Carbon;
 
+/**
+ * @phpstan-type PercentileRow array{model: string, provider: string, count: int, p50: int, p90: int, p95: int, p99: int}
+ */
 final readonly class GenerationPercentilesQuery
 {
     public function __construct(
@@ -14,7 +17,7 @@ final readonly class GenerationPercentilesQuery
         private ?Carbon $toDt,
     ) {}
 
-    /** @return array<int, array{model: string, provider: string, count: int, p50: int, p90: int, p95: int, p99: int}> */
+    /** @return list<PercentileRow> */
     public function get(): array
     {
         $rows = GlintGeneration::query()
@@ -37,7 +40,7 @@ final readonly class GenerationPercentilesQuery
             $providers[$row->model] ??= $row->provider;
         }
 
-        /** @var array<int, array{model: string, provider: string, count: int, p50: int, p90: int, p95: int, p99: int}> $result */
+        /** @var list<PercentileRow> $result */
         $result = [];
         foreach ($grouped as $model => $durations) {
             sort($durations);

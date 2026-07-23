@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Config;
 /**
  * @property AlertEventStatus $status
  * @property string $channel
+ * @property string|null $error
  * @property array<string, mixed> $context
  *
  * @implements HasPrunable<GlintAlertEvent>
@@ -29,8 +30,7 @@ class GlintAlertEvent extends Model implements HasPrunable
         'alert_rule_id', 'triggered_at', 'context', 'channel', 'status', 'error',
     ];
 
-    // Alert events are immutable once created — no UPDATE ever runs against this table.
-    // Disabling updated_at saves one column write per insert.
+    // Alert events are immutable — disabling updated_at saves a column write per insert.
     public const UPDATED_AT = null;
 
     protected function casts(): array

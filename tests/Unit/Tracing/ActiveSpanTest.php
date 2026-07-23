@@ -10,7 +10,7 @@ use Illuminate\Support\Str;
 
 function makeActiveSpan(?string $spanId = null): array
 {
-    $spanId ??= (string) Str::uuid();
+    $spanId ??= Str::uuid()->toString();
     GlintSpan::factory()->pending()->create(['id' => $spanId, 'name' => 'test-span']);
     $span = new ActiveSpan($spanId, Carbon::now());
 
@@ -45,7 +45,7 @@ it('tag appends to existing tags', function (): void {
 });
 
 it('tag returns self when span row does not exist', function (): void {
-    $fakeId = (string) Str::uuid();
+    $fakeId = Str::uuid()->toString();
     $span = new ActiveSpan($fakeId, Carbon::now());
 
     $result = $span->tag('key', 'value');

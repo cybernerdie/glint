@@ -10,12 +10,12 @@ use Cybernerdie\Glint\Http\Queries\TopModelCostsQuery;
 use Cybernerdie\Glint\Http\Queries\TopTraceNamesQuery;
 use Cybernerdie\Glint\Http\Queries\TopUserCostsQuery;
 use Cybernerdie\Glint\Http\Queries\VolumeBucketsQuery;
-use Cybernerdie\Glint\Http\Requests\DashboardRequest;
+use Cybernerdie\Glint\Http\Requests\BaseFilterRequest;
 
 final class DashboardIndexAction
 {
     /** @return array<string, mixed> */
-    public function handle(DashboardRequest $request): array
+    public function handle(BaseFilterRequest $request): array
     {
         [$fromDt, $toDt] = $request->dateRange();
         $period = $request->period();

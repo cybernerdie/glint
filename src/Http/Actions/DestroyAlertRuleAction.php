@@ -8,10 +8,8 @@ use Cybernerdie\Glint\Models\GlintAlertRule;
 
 final class DestroyAlertRuleAction
 {
-    public function handle(string $alertRuleId): void
+    public function handle(GlintAlertRule $rule): void
     {
-        $rule = rescue(fn () => GlintAlertRule::query()->find($alertRuleId), null);
-
-        rescue(fn () => $rule?->delete());
+        rescue(fn () => $rule->delete());
     }
 }

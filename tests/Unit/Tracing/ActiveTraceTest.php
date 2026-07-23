@@ -16,7 +16,7 @@ use Illuminate\Support\Str;
 
 function makeActiveTrace(?string $traceId = null): array
 {
-    $traceId ??= (string) Str::uuid();
+    $traceId ??= Str::uuid()->toString();
     GlintTrace::factory()->pending()->create(['id' => $traceId, 'name' => 'test-trace']);
     $context = app(TraceContext::class);
     $context->openTrace($traceId);
@@ -54,7 +54,7 @@ it('tag appends to existing tags', function (): void {
 });
 
 it('tag returns self when trace row does not exist', function (): void {
-    $fakeId = (string) Str::uuid();
+    $fakeId = Str::uuid()->toString();
     $context = app(TraceContext::class);
     $context->openTrace($fakeId);
     $pricing = app(PricingRegistry::class);
@@ -213,7 +213,7 @@ it('generation sets parent_span_id on the generation row', function (): void {
 });
 
 it('tags() returns self when trace row does not exist', function (): void {
-    $fakeId = (string) Str::uuid();
+    $fakeId = Str::uuid()->toString();
     $context = app(TraceContext::class);
     $context->openTrace($fakeId);
     $pricing = app(PricingRegistry::class);
@@ -225,7 +225,7 @@ it('tags() returns self when trace row does not exist', function (): void {
 });
 
 it('ActiveSpan tags() returns self when span row does not exist', function (): void {
-    $fakeSpanId = (string) Str::uuid();
+    $fakeSpanId = Str::uuid()->toString();
     $span = new ActiveSpan($fakeSpanId, Carbon::now());
 
     $result = $span->tags(['env' => 'testing']);
@@ -234,7 +234,7 @@ it('ActiveSpan tags() returns self when span row does not exist', function (): v
 });
 
 it('ActiveGeneration tags() returns self when generation row does not exist', function (): void {
-    $fakeGenId = (string) Str::uuid();
+    $fakeGenId = Str::uuid()->toString();
     $pricing = app(PricingRegistry::class);
     $gen = new ActiveGeneration($fakeGenId, $pricing, 'openai', 'gpt-4o', Carbon::now());
 

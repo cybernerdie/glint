@@ -1,10 +1,4 @@
-{{--
-    The Glint spark — single source of truth for the brand mark.
 
-    Variables expected from the including view:
-      $variant — 'mark' (default): currentColor spark for inline UI use
-                 'icon': standalone gradient tile (favicon / app icon)
---}}
 @php
     $variant = $variant ?? 'mark';
     $spark = 'M8 0.5 Q8.9 5.2 14.5 8 Q8.9 10.8 8 15.5 Q7.1 10.8 1.5 8 Q7.1 5.2 8 0.5Z';

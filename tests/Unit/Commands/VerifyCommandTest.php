@@ -72,3 +72,12 @@ it('shows active drivers list', function () {
     $this->artisan('glint:verify')
         ->expectsOutputToContain('http');
 });
+
+it('shows app service provider status in output', function () {
+    config()->set('glint.enabled', true);
+
+    // The verify command always outputs the app service provider check —
+    // the label is present regardless of registered/not-found state.
+    $this->artisan('glint:verify')
+        ->expectsOutputToContain('App service provider');
+});

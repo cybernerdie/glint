@@ -8,12 +8,12 @@ use Cybernerdie\Glint\Http\Queries\GenerationPercentilesQuery;
 use Cybernerdie\Glint\Http\Queries\TokenThroughputQuery;
 use Cybernerdie\Glint\Http\Queries\TracePercentilesQuery;
 use Cybernerdie\Glint\Http\Queries\UserLatencyQuery;
-use Cybernerdie\Glint\Http\Requests\AnalyticsLatencyRequest;
+use Cybernerdie\Glint\Http\Requests\BaseFilterRequest;
 
 final class AnalyticsLatencyAction
 {
     /** @return array<string, mixed> */
-    public function handle(AnalyticsLatencyRequest $request): array
+    public function handle(BaseFilterRequest $request): array
     {
         [$fromDt, $toDt] = $request->dateRange();
 

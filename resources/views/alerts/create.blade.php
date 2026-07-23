@@ -11,91 +11,15 @@
 
 @section('content')
 
-<style>
-    .form-section { margin-bottom: 32px; }
-    .form-section-title {
-        font-size: 11px;
-        font-weight: 600;
-        color: var(--text-3);
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        margin-bottom: 16px;
-        padding-bottom: 10px;
-        border-bottom: 1px solid var(--border);
-    }
-    .form-row {
-        display: grid;
-        grid-template-columns: 200px 1fr;
-        gap: 12px 24px;
-        align-items: start;
-        margin-bottom: 18px;
-    }
-    @media (max-width: 640px) {
-        .form-row { grid-template-columns: 1fr; gap: 6px; }
-    }
-    .form-label {
-        font-size: 13px;
-        font-weight: 500;
-        color: var(--text-2);
-        padding-top: 9px;
-        line-height: 1.4;
-    }
-    .form-hint {
-        font-size: 11.5px;
-        color: var(--text-3);
-        margin-top: 5px;
-        line-height: 1.5;
-    }
-    .form-error {
-        font-size: 11.5px;
-        color: var(--error-text);
-        margin-top: 5px;
-    }
-    .form-field { display: flex; flex-direction: column; }
-    .input-group { display: flex; align-items: center; gap: 8px; }
-    .input-suffix {
-        font-size: 12.5px;
-        color: var(--text-3);
-        font-family: var(--font-mono);
-        white-space: nowrap;
-    }
-    .check-group { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; }
-    .check-item { display: flex; align-items: center; gap: 10px; cursor: pointer; }
-    .check-item input[type="checkbox"] {
-        width: 16px; height: 16px;
-        accent-color: var(--accent);
-        cursor: pointer;
-        flex-shrink: 0;
-    }
-    .check-label { font-size: 13px; color: var(--text-1); font-weight: 500; }
-    .check-sub { font-size: 11.5px; color: var(--text-3); }
-    .toggle-row { display: flex; align-items: center; gap: 12px; padding-top: 6px; }
-    .toggle-switch {
-        position: relative; width: 40px; height: 22px;
-        background: var(--border-strong); border-radius: 9999px;
-        cursor: pointer; transition: background 0.15s; flex-shrink: 0;
-    }
-    .toggle-switch.is-on { background: var(--accent); }
-    .toggle-knob {
-        position: absolute; top: 3px; left: 3px;
-        width: 16px; height: 16px; background: #fff;
-        border-radius: 50%; transition: transform 0.15s;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-    }
-    .toggle-switch.is-on .toggle-knob { transform: translateX(18px); }
-    .toggle-label { font-size: 13px; color: var(--text-2); }
-</style>
-
-<div class="page-head">
+<div class="page-head" style="max-width:720px;margin-left:auto;margin-right:auto">
     <div>
         <div class="page-title">New Alert Rule</div>
     </div>
 </div>
 
-<div class="panel"
+<div class="panel" style="max-width:720px;margin-left:auto;margin-right:auto"
      x-data="{
          type: '{{ old('type', 'cost_threshold') }}',
-         scope: '{{ old('scope', 'global') }}',
          channels: {{ json_encode(old('channels', [])) }},
          enabled: {{ old('enabled', '1') === '1' ? 'true' : 'false' }},
          thresholdHint() {
@@ -114,52 +38,37 @@
              } else {
                  this.channels.push(ch);
              }
-         },
-         scopeNeedsId() { return ['user', 'team', 'provider', 'model'].includes(this.scope); },
-         scopeIdLabel() {
-             const map = { user: 'User ID', team: 'Team ID', provider: 'Provider name', model: 'Model name' };
-             return map[this.scope] ?? 'Scope ID';
          }
      }">
 
+    <div class="panel-body">
     <form method="POST" action="{{ route('glint.alerts.store') }}">
         @csrf
-
-        {{-- Basic --}}
-        <div class="form-section">
-            <div class="form-section-title">Basic</div>
-
-            <div class="form-row">
-                <label class="form-label" for="name">Rule Name</label>
-                <div class="form-field">
-                    <input id="name" type="text" name="name" value="{{ old('name') }}"
-                           class="input" placeholder="e.g. High daily cost" style="max-width:480px" autocomplete="off">
-                    @error('name')<div class="form-error">{{ $message }}</div>@enderror
-                </div>
+        <div class="rule-header">
+            <div class="rule-name-wrap">
+                <label for="name">Rule Name</label>
+                <input id="name" type="text" name="name" value="{{ old('name') }}"
+                       class="input" placeholder="e.g. High daily cost" style="width:100%" autocomplete="off">
+                @error('name')<div class="form-error">{{ $message }}</div>@enderror
             </div>
-
-            <div class="form-row">
-                <div class="form-label">Status</div>
-                <div class="form-field">
-                    <input type="hidden" name="enabled" :value="enabled ? '1' : '0'">
-                    <div class="toggle-row">
-                        <div class="toggle-switch" :class="{ 'is-on': enabled }" @click="enabled = !enabled">
-                            <div class="toggle-knob"></div>
-                        </div>
-                        <span class="toggle-label" x-text="enabled ? 'Enabled' : 'Disabled'"></span>
+            <div class="rule-status-wrap">
+                <span>Status</span>
+                <input type="hidden" name="enabled" :value="enabled ? '1' : '0'">
+                <div class="toggle-row" style="padding-top:0">
+                    <div class="toggle-switch" :class="{ 'is-on': enabled }" @click="enabled = !enabled">
+                        <div class="toggle-knob"></div>
                     </div>
+                    <span class="toggle-label" x-text="enabled ? 'Enabled' : 'Disabled'"></span>
                 </div>
             </div>
         </div>
-
-        {{-- Threshold --}}
         <div class="form-section">
-            <div class="form-section-title">Threshold</div>
+            <div class="form-section-title">Condition</div>
 
             <div class="form-row">
                 <label class="form-label" for="type">Alert Type</label>
                 <div class="form-field">
-                    <select id="type" name="type" class="input" x-model="type" style="max-width:280px">
+                    <select id="type" name="type" class="input" x-model="type" style="max-width:260px">
                         @foreach($types as $t)
                             <option value="{{ $t->value }}">
                                 {{ match($t->value) {
@@ -177,13 +86,11 @@
             </div>
 
             <div class="form-row">
-                <label class="form-label" for="threshold">Threshold Value</label>
+                <label class="form-label" for="threshold">Threshold</label>
                 <div class="form-field">
-                    <div class="input-group">
-                        <input id="threshold" type="number" name="threshold" value="{{ old('threshold') }}"
-                               class="input" placeholder="0" min="0" step="any" style="max-width:200px">
-                        <span class="input-suffix" x-text="thresholdHint()"></span>
-                    </div>
+                    <input id="threshold" type="number" name="threshold" value="{{ old('threshold') }}"
+                           class="input" placeholder="e.g. 10" min="0" step="any" style="max-width:160px">
+                    <div class="form-hint" x-text="thresholdHint()"></div>
                     @error('threshold')<div class="form-error">{{ $message }}</div>@enderror
                 </div>
             </div>
@@ -191,7 +98,7 @@
             <div class="form-row">
                 <label class="form-label" for="period">Evaluation Period</label>
                 <div class="form-field">
-                    <select id="period" name="period" class="input" style="max-width:180px">
+                    <select id="period" name="period" class="input" style="max-width:160px">
                         @foreach($periods as $p)
                             <option value="{{ $p->value }}" @selected(old('period', 'day') === $p->value)>
                                 {{ ucfirst($p->value) }}
@@ -203,53 +110,30 @@
                 </div>
             </div>
         </div>
-
-        {{-- Scope --}}
         <div class="form-section">
-            <div class="form-section-title">Scope</div>
+            <div class="form-section-title">Target</div>
 
             <div class="form-row">
-                <label class="form-label" for="scope">Scope</label>
+                <label class="form-label" for="provider_filter">Provider</label>
                 <div class="form-field">
-                    <select id="scope" name="scope" class="input" x-model="scope" style="max-width:220px">
-                        @foreach($scopes as $s)
-                            <option value="{{ $s->value }}">{{ ucfirst($s->value) }}</option>
+                    <select id="provider_filter" name="provider" class="input" style="max-width:200px">
+                        <option value="">All providers</option>
+                        @foreach($providers as $p)
+                            <option value="{{ $p }}" @selected(old('provider') === $p)>{{ ucfirst($p) }}</option>
                         @endforeach
                     </select>
-                    <div class="form-hint">Global watches all traffic. Narrow by user, team, provider, or model.</div>
-                    @error('scope')<div class="form-error">{{ $message }}</div>@enderror
-                </div>
-            </div>
-
-            <div class="form-row" x-show="scopeNeedsId()" x-cloak>
-                <label class="form-label" for="scope_id" x-text="scopeIdLabel()"></label>
-                <div class="form-field">
-                    <input id="scope_id" type="text" name="scope_id" value="{{ old('scope_id') }}"
-                           class="input" :placeholder="scopeIdLabel()" style="max-width:320px" autocomplete="off">
-                    @error('scope_id')<div class="form-error">{{ $message }}</div>@enderror
-                </div>
-            </div>
-
-            <div class="form-row">
-                <label class="form-label" for="provider_filter">Provider Filter</label>
-                <div class="form-field">
-                    <input id="provider_filter" type="text" name="provider" value="{{ old('provider') }}"
-                           class="input" placeholder="e.g. openai (optional)" style="max-width:220px" autocomplete="off">
-                    <div class="form-hint">Leave blank to match all providers in the selected scope.</div>
                     @error('provider')<div class="form-error">{{ $message }}</div>@enderror
                 </div>
             </div>
         </div>
-
-        {{-- Channels --}}
         <div class="form-section">
-            <div class="form-section-title">Notification Channels</div>
+            <div class="form-section-title">Notify</div>
 
             <div class="form-row">
                 <div class="form-label">Channels</div>
                 <div class="form-field">
                     <div class="check-group">
-                        <label class="check-item" @click.prevent="toggleChannel('log')">
+                        <label class="check-item">
                             <input type="checkbox" name="channels[]" value="log"
                                    :checked="hasChannel('log')" @change="toggleChannel('log')">
                             <div>
@@ -257,7 +141,7 @@
                                 <div class="check-sub">Written to your application log. Always available.</div>
                             </div>
                         </label>
-                        <label class="check-item" @click.prevent="toggleChannel('mail')">
+                        <label class="check-item">
                             <input type="checkbox" name="channels[]" value="mail"
                                    :checked="hasChannel('mail')" @change="toggleChannel('mail')">
                             <div>
@@ -265,7 +149,7 @@
                                 <div class="check-sub">Sends an email via Laravel's mail driver. Requires <code style="font-family:var(--font-mono);font-size:11px">illuminate/mail</code>.</div>
                             </div>
                         </label>
-                        <label class="check-item" @click.prevent="toggleChannel('slack')">
+                        <label class="check-item">
                             <input type="checkbox" name="channels[]" value="slack"
                                    :checked="hasChannel('slack')" @change="toggleChannel('slack')">
                             <div>
@@ -273,7 +157,7 @@
                                 <div class="check-sub">Posts to a Slack channel. Requires <code style="font-family:var(--font-mono);font-size:11px">laravel/slack-notification-channel</code>.</div>
                             </div>
                         </label>
-                        <label class="check-item" @click.prevent="toggleChannel('webhook')">
+                        <label class="check-item">
                             <input type="checkbox" name="channels[]" value="webhook"
                                    :checked="hasChannel('webhook')" @change="toggleChannel('webhook')">
                             <div>
@@ -290,8 +174,18 @@
                 <label class="form-label" for="mail_to">Mail To</label>
                 <div class="form-field">
                     <input id="mail_to" type="email" name="mail_to" value="{{ old('mail_to') }}"
-                           class="input" placeholder="alerts@example.com" style="max-width:360px">
+                           class="input" placeholder="alerts@example.com" style="max-width:320px">
                     @error('mail_to')<div class="form-error">{{ $message }}</div>@enderror
+                </div>
+            </div>
+
+            <div class="form-row" x-show="hasChannel('slack')" x-cloak>
+                <label class="form-label" for="slack_webhook_url">Slack Webhook URL</label>
+                <div class="form-field">
+                    <input id="slack_webhook_url" type="url" name="slack_webhook_url" value="{{ old('slack_webhook_url') }}"
+                           class="input" placeholder="https://hooks.slack.com/services/..." style="max-width:440px">
+                    <div class="form-hint">Create an Incoming Webhook in your Slack app settings.</div>
+                    @error('slack_webhook_url')<div class="form-error">{{ $message }}</div>@enderror
                 </div>
             </div>
 
@@ -299,15 +193,10 @@
                 <label class="form-label" for="webhook_url">Webhook URL</label>
                 <div class="form-field">
                     <input id="webhook_url" type="url" name="webhook_url" value="{{ old('webhook_url') }}"
-                           class="input" placeholder="https://hooks.example.com/..." style="max-width:480px">
+                           class="input" placeholder="https://hooks.example.com/..." style="max-width:440px">
                     @error('webhook_url')<div class="form-error">{{ $message }}</div>@enderror
                 </div>
             </div>
-        </div>
-
-        {{-- Settings --}}
-        <div class="form-section">
-            <div class="form-section-title">Settings</div>
 
             <div class="form-row">
                 <label class="form-label" for="cooldown_minutes">Cooldown</label>
@@ -330,6 +219,7 @@
         </div>
 
     </form>
+    </div>
 </div>
 
 @endsection

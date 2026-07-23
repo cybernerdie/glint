@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Cybernerdie\Glint\Http\Actions;
 
 use Cybernerdie\Glint\Enums\AggregatePeriod;
-use Cybernerdie\Glint\Enums\AlertRuleScope;
 use Cybernerdie\Glint\Enums\AlertRuleType;
+use Illuminate\Support\Facades\Config;
 
 final class AlertsCreateAction
 {
@@ -15,8 +15,8 @@ final class AlertsCreateAction
     {
         return [
             'types' => AlertRuleType::cases(),
-            'scopes' => AlertRuleScope::cases(),
             'periods' => AggregatePeriod::cases(),
+            'providers' => array_values(array_unique(array_filter(array_map(fn (mixed $v): string => is_string($v) ? $v : '', Config::array('glint.llm_hosts'))))),
         ];
     }
 }

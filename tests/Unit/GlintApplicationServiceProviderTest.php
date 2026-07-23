@@ -93,6 +93,22 @@ it('Gate::before returns true for viewGlint in local environment', function () {
     expect(Gate::forUser($user)->allows('viewGlint'))->toBeTrue();
 });
 
+it('Gate::before allows guests for viewGlint in local environment', function () {
+    $this->app->detectEnvironment(fn () => 'local');
+
+    $provider = new class($this->app) extends GlintApplicationServiceProvider
+    {
+        protected function gate(): void
+        {
+            Gate::define('viewGlint', fn ($user) => false);
+        }
+    };
+
+    $provider->boot();
+
+    expect(Gate::allows('viewGlint'))->toBeTrue();
+});
+
 it('Gate::before returns null for non-viewGlint abilities', function () {
     $provider = new class($this->app) extends GlintApplicationServiceProvider
     {

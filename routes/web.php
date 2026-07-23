@@ -13,18 +13,16 @@ use Cybernerdie\Glint\Http\Controllers\UsersController;
 use Cybernerdie\Glint\Middleware\GlintSecurityHeaders;
 use Illuminate\Support\Facades\Route;
 
-$glintPath = config('glint.path', 'glint');
+$glintPath = is_string($path = config('glint.path', 'glint')) && $path !== '' ? $path : 'glint';
 
-// Sanitize the path: strip everything except alphanumeric, hyphens, underscores, and forward slashes.
-if (! is_string($glintPath) || ! preg_match('/^[a-zA-Z0-9\-_\/]+$/', $glintPath)) {
-    $glintPath = 'glint';
-}
+$middleware = array_merge(
+    (array) config('glint.middleware', ['web']),
+    [GlintSecurityHeaders::class, 'throttle:120,1']
+);
 
 Route::prefix($glintPath)
-    ->middleware(config('glint.middleware', ['web']))
-    ->middleware(GlintSecurityHeaders::class)
+    ->middleware($middleware)
     ->name('glint.')
-    ->middleware('throttle:120,1')
     ->group(function () {
         Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
         Route::get('/traces', [TracesController::class, 'index'])->name('traces.index');
@@ -38,12 +36,12 @@ Route::prefix($glintPath)
         Route::get('/alerts', [AlertsController::class, 'index'])->name('alerts.index');
         Route::get('/alerts/create', [AlertsController::class, 'create'])->name('alerts.create');
         Route::post('/alerts', [AlertsController::class, 'store'])->name('alerts.store');
-        Route::post('/alerts/{alertRuleId}/toggle', [AlertsController::class, 'toggle'])->name('alerts.toggle');
-        Route::delete('/alerts/{alertRuleId}', [AlertsController::class, 'destroy'])->name('alerts.destroy');
+        Route::get('/alerts/{alertRule}/edit', [AlertsController::class, 'edit'])->name('alerts.edit');
+        Route::put('/alerts/{alertRule}', [AlertsController::class, 'update'])->name('alerts.update');
+        Route::post('/alerts/{alertRule}/toggle', [AlertsController::class, 'toggle'])->name('alerts.toggle');
+        Route::delete('/alerts/{alertRule}', [AlertsController::class, 'destroy'])->name('alerts.destroy');
     });
 
-// The touch icon sits outside the auth middleware: it is a public logo and
-// iOS may request it without the session cookies the dashboard requires.
 Route::prefix($glintPath)
     ->name('glint.')
     ->middleware('throttle:120,1')

@@ -8,14 +8,8 @@ use Cybernerdie\Glint\Models\GlintAlertRule;
 
 final class ToggleAlertRuleAction
 {
-    public function handle(string $alertRuleId): void
+    public function handle(GlintAlertRule $rule): void
     {
-        $rule = rescue(fn () => GlintAlertRule::query()->find($alertRuleId), null);
-
-        if ($rule === null) {
-            abort(404);
-        }
-
         rescue(fn () => $rule->update(['enabled' => ! $rule->enabled]));
     }
 }

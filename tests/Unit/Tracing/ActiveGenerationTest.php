@@ -11,7 +11,7 @@ use Illuminate\Support\Str;
 
 function makeActiveGeneration(?string $genId = null, string $provider = 'openai', string $model = 'gpt-4o'): array
 {
-    $genId ??= (string) Str::uuid();
+    $genId ??= Str::uuid()->toString();
     GlintGeneration::factory()->pending()->create([
         'id' => $genId,
         'name' => 'test-generation',
@@ -52,7 +52,7 @@ it('tag appends to existing tags', function (): void {
 });
 
 it('tag returns self when generation row does not exist', function (): void {
-    $fakeId = (string) Str::uuid();
+    $fakeId = Str::uuid()->toString();
     $pricing = app(PricingRegistry::class);
     $generation = new ActiveGeneration($fakeId, $pricing, 'openai', 'gpt-4o', Carbon::now());
 
