@@ -6,7 +6,6 @@ namespace Cybernerdie\Glint\Http\Controllers;
 
 use Cybernerdie\Glint\Enums\RecordStatus;
 use Cybernerdie\Glint\Http\Concerns\ResolvesDateRange;
-use Cybernerdie\Glint\Models\GlintAggregate;
 use Cybernerdie\Glint\Models\GlintGeneration;
 use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Http\Request;
@@ -48,7 +47,7 @@ final class GenerationsController
         }, collect());
 
         $filters = rescue(function () {
-            $rows = GlintAggregate::query()
+            $rows = GlintGeneration::query()
                 ->select(['provider', 'model'])
                 ->distinct()
                 ->orderBy('provider')

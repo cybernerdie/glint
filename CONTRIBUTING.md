@@ -28,7 +28,7 @@ Please include a link to the official pricing page in your PR description so the
 
 ## Coding Standards
 
-- PHP 8.2+, `declare(strict_types=1)` on every file.
+- PHP 8.3+, `declare(strict_types=1)` on every file.
 - Follow PSR-12 and the project's existing conventions.
 - All concrete classes must be `final`.
 - No docblocks when full type hints exist.

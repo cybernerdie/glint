@@ -32,10 +32,6 @@ final class GlintRecorder
 
     public function handleLlmCallStarted(LlmCallStarted $event): void
     {
-        if (! $this->context->isSampled()) {
-            return;
-        }
-
         $this->safeWrite('LlmCallStarted', function () use ($event) {
             $traceId = $event->traceId ?? $this->context->traceId();
 
@@ -87,10 +83,6 @@ final class GlintRecorder
 
     public function handleLlmCallFinished(LlmCallFinished $event): void
     {
-        // Note: isSampled() is intentionally NOT checked here. The Finished/Failed
-        // events carry a generationId that was already written by handleLlmCallStarted.
-        // If sampling rejected the call at Start time, no DB row exists and the
-        // GlintGeneration::where() lookup simply returns null — safe and correct.
         $this->safeWrite('LlmCallFinished', function () use ($event) {
             $generation = GlintGeneration::where('id', $event->generationId)->first();
 
@@ -106,7 +98,7 @@ final class GlintRecorder
             );
 
             $generation->update([
-                'completion' => $event->completion,
+                'completion' => $this->truncate($event->completion),
                 'prompt_tokens' => $event->promptTokens,
                 'completion_tokens' => $event->completionTokens,
                 'total_tokens' => $event->promptTokens + $event->completionTokens,
@@ -124,11 +116,10 @@ final class GlintRecorder
 
     public function handleLlmCallFailed(LlmCallFailed $event): void
     {
-        // Note: isSampled() is intentionally NOT checked here — see handleLlmCallFinished.
         $this->safeWrite('LlmCallFailed', function () use ($event) {
             GlintGeneration::where('id', $event->generationId)->update([
                 'status' => RecordStatus::Error,
-                'error_message' => $event->errorMessage,
+                'error_message' => $this->truncate($event->errorMessage),
                 'duration_ms' => $event->durationMs,
                 'ended_at' => now(),
             ]);
@@ -167,7 +158,7 @@ final class GlintRecorder
             return;
         }
 
-        $trace = GlintTrace::find($traceId);
+        $trace = GlintTrace::select(['id', 'started_at'])->find($traceId);
 
         if ($trace === null) {
             $this->context->clearAutoTrace($generationId);
@@ -206,26 +197,38 @@ final class GlintRecorder
             ];
 
             foreach ($periodAts as $period => $periodAt) {
-                $inserted = DB::table('glint_aggregates')->insertOrIgnore([
-                    'period' => $period,
-                    'period_at' => $periodAt,
-                    'provider' => $generation->provider,
-                    'model' => $generation->model,
-                    'user_id' => null,
-                    'team_id' => null,
-                    'total_requests' => 1,
-                    'successful_requests' => 1,
-                    'failed_requests' => 0,
-                    'total_tokens' => $totalTokens,
-                    'prompt_tokens' => $promptTokens,
-                    'completion_tokens' => $completionTokens,
-                    'total_cost_usd' => (float) $costUsd,
-                    'avg_duration_ms' => $durationMs,
-                    'created_at' => now()->toDateTimeString(),
-                    'updated_at' => now()->toDateTimeString(),
-                ]);
+                // A UNIQUE index treats NULLs as distinct, so insertOrIgnore would
+                // never dedupe the global (user_id/team_id NULL) rows. Check for an
+                // existing row explicitly so the running totals accumulate correctly.
+                $exists = DB::table('glint_aggregates')
+                    ->where('period', $period)
+                    ->where('period_at', $periodAt)
+                    ->where('provider', $generation->provider)
+                    ->where('model', $generation->model)
+                    ->whereNull('user_id')
+                    ->whereNull('team_id')
+                    ->exists();
 
-                if ($inserted === 0) {
+                if (! $exists) {
+                    DB::table('glint_aggregates')->insert([
+                        'period' => $period,
+                        'period_at' => $periodAt,
+                        'provider' => $generation->provider,
+                        'model' => $generation->model,
+                        'user_id' => null,
+                        'team_id' => null,
+                        'total_requests' => 1,
+                        'successful_requests' => 1,
+                        'failed_requests' => 0,
+                        'total_tokens' => $totalTokens,
+                        'prompt_tokens' => $promptTokens,
+                        'completion_tokens' => $completionTokens,
+                        'total_cost_usd' => (float) $costUsd,
+                        'avg_duration_ms' => $durationMs,
+                        'created_at' => now()->toDateTimeString(),
+                        'updated_at' => now()->toDateTimeString(),
+                    ]);
+                } else {
                     DB::update(
                         <<<'SQL'
                         UPDATE glint_aggregates
@@ -256,6 +259,21 @@ final class GlintRecorder
                 }
             }
         });
+    }
+
+    private function truncate(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $limit = Config::integer('glint.recording.max_completion_chars', 65535);
+
+        if ($limit <= 0 || mb_strlen($value) <= $limit) {
+            return $value;
+        }
+
+        return mb_substr($value, 0, $limit);
     }
 
     private function safeWrite(string $context, callable $callback): void

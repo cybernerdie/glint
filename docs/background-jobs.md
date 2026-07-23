@@ -2,11 +2,9 @@
 
 ## Always recorded
 
-LLM calls made inside queued jobs, scheduled commands, and Artisan commands are **always recorded**, regardless of `sampling_rate`.
+LLM calls made inside queued jobs, scheduled commands, and Artisan commands are **always recorded**.
 
-`sampling_rate` only applies to HTTP requests processed by `GlintMiddleware`. Outside of an HTTP request context there is no sampling decision to inherit, so Glint defaults to recording everything.
-
-This is intentional — background jobs are typically where the most important LLM work happens.
+Outside of an HTTP request context there is no `GlintMiddleware` to decide otherwise, so Glint defaults to recording everything. This is intentional — background jobs are typically where the most important LLM work happens.
 
 ## Suppressing recording in jobs
 
@@ -53,4 +51,11 @@ class GenerateSummaryJob implements ShouldQueue
 
 ## Queue mode inside a job
 
-Glint uses `queue` mode by default. When an LLM call is recorded inside a job, Glint dispatches another small `RecordLlmCallJob`. If you want to avoid nested queue dispatches in jobs, set `GLINT_MODE=sync` for the queue worker environment via a dedicated `.env` or environment variable override.
+When `GLINT_MODE=queue` (the default), every LLM call causes Glint to dispatch a small `RecordLlmCallJob` to write the record asynchronously. Inside a queued job this means your worker picks up one job, which dispatches another job. That is perfectly fine in most setups, but if you'd rather have Glint write the record inline — without the extra job hop — you can override the mode for your worker processes only:
+
+```env
+# .env (or an environment variable set on the worker process)
+GLINT_MODE=sync
+```
+
+Your web processes keep the non-blocking `queue` mode; the workers write synchronously and no additional jobs are dispatched.

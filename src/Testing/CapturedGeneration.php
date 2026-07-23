@@ -6,7 +6,7 @@ namespace Cybernerdie\Glint\Testing;
 
 use Cybernerdie\Glint\Enums\RecordStatus;
 
-final class RecordedGeneration
+final class CapturedGeneration
 {
     /** @param array<string, mixed> $metadata */
     public function __construct(

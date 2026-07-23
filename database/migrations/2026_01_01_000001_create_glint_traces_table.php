@@ -25,11 +25,12 @@ return new class extends Migration
             $table->timestamp('ended_at')->nullable();
             $table->timestamps();
 
-            $table->index('user_id');
+            $table->index(['user_id', 'started_at']);
             $table->index('team_id');
             $table->index('status');
             $table->index('started_at');
             $table->index(['started_at', 'status']);
+            $table->index(['started_at', 'name']);
         });
     }
 

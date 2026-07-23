@@ -10,6 +10,7 @@ use Cybernerdie\Glint\Models\GlintAggregate;
 use Cybernerdie\Glint\Models\GlintAlertEvent;
 use Cybernerdie\Glint\Models\GlintAlertRule;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Schema;
 
 beforeEach(function () {
     $this->dispatcher = new AlertDispatcher;
@@ -226,4 +227,48 @@ it('dispatches GlintAlertTriggered event when threshold is crossed', function ()
             && $event->channel === 'email'
             && $event->period === 'day';
     });
+});
+
+it('swallows per-rule evaluation errors so one bad rule cannot break the run', function () {
+    GlintAlertRule::factory()->create([
+        'threshold_config' => ['threshold' => 1.0, 'period' => 'day'],
+        'channels' => ['log'],
+    ]);
+
+    GlintAggregate::factory()->create(['total_cost_usd' => 15.00]);
+
+    Schema::drop('glint_alert_events');
+
+    expect(fn () => $this->dispatcher->evaluate())->not->toThrow(Throwable::class);
+});
+
+it('marks an alert event as failed when channel dispatch throws', function () {
+    Event::listen(GlintAlertTriggered::class, function () {
+        throw new RuntimeException('channel unavailable');
+    });
+
+    GlintAlertRule::factory()->create([
+        'threshold_config' => ['threshold' => 1.0, 'period' => 'day'],
+        'channels' => ['slack'],
+    ]);
+
+    GlintAggregate::factory()->create(['total_cost_usd' => 15.00]);
+
+    $this->dispatcher->evaluate();
+
+    expect(GlintAlertEvent::first()->status)->toBe(AlertEventStatus::Failed);
+});
+
+it('records one alert event per configured channel', function () {
+    GlintAlertRule::factory()->create([
+        'threshold_config' => ['threshold' => 10.0, 'period' => 'day'],
+        'channels' => ['email', 'slack'],
+    ]);
+
+    GlintAggregate::factory()->create(['total_cost_usd' => 15.00]);
+
+    $this->dispatcher->evaluate();
+
+    expect(GlintAlertEvent::count())->toBe(2)
+        ->and(GlintAlertEvent::pluck('channel')->sort()->values()->toArray())->toBe(['email', 'slack']);
 });

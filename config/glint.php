@@ -6,47 +6,64 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Glint Master Switch
+    | Enabled
     |--------------------------------------------------------------------------
-    | Disable entirely in environments where you don't want any recording.
-    | When disabled, all Glint calls return null objects silently.
+    |
+    | Master switch for Glint. When set to false, all tracing calls return
+    | null objects silently and nothing is written to the database.
+    |
     */
     'enabled' => env('GLINT_ENABLED', false),
 
     /*
     |--------------------------------------------------------------------------
-    | Dashboard Path & Middleware
+    | Dashboard Path
     |--------------------------------------------------------------------------
-    | The path where the Glint dashboard will be accessible.
     |
-    | SECURITY: The 'glint-auth' middleware group is automatically added by
-    | GlintApplicationServiceProvider and enforces the 'viewGlint' gate on
-    | every dashboard route. You MUST publish and register the
-    | GlintApplicationServiceProvider (via `php artisan glint:install`) or add
-    | your own auth middleware here for production use.
+    | The URI path where the Glint dashboard will be accessible. You may
+    | change this to any value that suits your application.
     |
-    | The path value must only contain alphanumeric characters, hyphens,
-    | underscores, and forward slashes. Any other value falls back to 'glint'.
     */
     'path' => env('GLINT_PATH', 'glint'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Dashboard Middleware
+    |--------------------------------------------------------------------------
+    |
+    | The middleware applied to every Glint dashboard route. The 'glint-auth'
+    | group enforces the viewGlint gate. Run `php artisan glint:install` to
+    | publish GlintApplicationServiceProvider and configure production access.
+    |
+    */
     'middleware' => ['web', 'glint-auth'],
 
     /*
     |--------------------------------------------------------------------------
-    | Auto-Instrumentation Drivers
+    | Admin Emails
     |--------------------------------------------------------------------------
-    | Enable the drivers that match the LLM packages in your application.
-    | Multiple drivers can be active simultaneously.
     |
-    | Available: "prism", "laravel-ai", "http", "neuron-ai"
+    | A comma-separated list of email addresses that are granted access to
+    | the dashboard by the default viewGlint gate. Override the gate() method
+    | in GlintApplicationServiceProvider for custom authorization logic.
     |
-    | The "http" driver is the universal fallback and works with any LLM SDK
-    | that uses Laravel's HTTP client internally.
     */
-    // env() returns null when the var is present-but-blank; the ?: 'http' fallback
-    // ensures explode() always receives a non-empty string, and array_filter removes
-    // any blank tokens that result from double-commas or a trailing comma.
+    'admin_emails' => array_values(array_filter(
+        array_map('trim', explode(',', (string) env('GLINT_ADMIN_EMAILS', ''))),
+        static fn (string $e) => $e !== ''
+    )),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Instrumentation Drivers
+    |--------------------------------------------------------------------------
+    |
+    | The active auto-instrumentation drivers. Supported values: "prism",
+    | "laravel-ai", "neuron-ai", "http", or the fully-qualified class name of
+    | a custom driver. The "http" driver is a universal fallback that captures
+    | outgoing HTTP requests to any host listed in llm_hosts below.
+    |
+    */
     'drivers' => array_values(array_filter(
         explode(',', (string) (env('GLINT_DRIVERS') ?: 'http')),
         static fn (string $d) => trim($d) !== ''
@@ -54,35 +71,29 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Recording Settings
+    | Recording
     |--------------------------------------------------------------------------
+    |
+    | Controls how and what Glint records. Use "queue" mode (recommended) to
+    | dispatch a background job for each LLM call, or "sync" to write inline.
+    | Store bodies only when needed, and redact sensitive data via the privacy
+    | settings below.
+    |
     */
     'recording' => [
-        // 'queue' dispatches a job to your queue — recommended (zero latency impact).
-        // 'sync'  writes to the database immediately, inline with the request.
         'mode' => env('GLINT_MODE', 'queue'),
-
-        // 1.0 = record every request. 0.1 = record 10% of requests.
-        // Values > 1.0 behave identically to 1.0 (always sample).
-        // Values < 0.0 behave identically to 0.0 (never sample).
-        // The shouldSample() method clamps the value, but setting it outside
-        // [0.0, 1.0] is almost certainly a misconfiguration.
-        'sampling_rate' => max(0.0, min(1.0, (float) env('GLINT_SAMPLING_RATE', 1.0))),
-
-        // When true, stores the raw prompt messages and completion text.
-        // Disable for privacy or to reduce database storage usage.
         'store_bodies' => env('GLINT_STORE_BODIES', false),
+        'max_completion_chars' => (int) env('GLINT_MAX_COMPLETION_CHARS', 65535),
     ],
 
     /*
     |--------------------------------------------------------------------------
-    | Queue Settings (queue mode only)
+    | Queue
     |--------------------------------------------------------------------------
-    | connection — which queue connection to use. Defaults to your app's
-    |              QUEUE_CONNECTION so it works out of the box.
-    | queue      — which named queue to push jobs onto. Defaults to null
-    |              (the connection's default queue). Set GLINT_QUEUE=glint
-    |              to isolate Glint jobs from your application jobs.
+    |
+    | The connection and queue name used when recording mode is set to "queue".
+    | Defaults to your application's default queue connection and queue.
+    |
     */
     'queue' => [
         'connection' => env('GLINT_QUEUE_CONNECTION', env('QUEUE_CONNECTION')),
@@ -91,10 +102,12 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Data Retention
+    | Retention
     |--------------------------------------------------------------------------
-    | Days to retain raw traces, spans, and generations before pruning.
-    | Aggregates are retained longer for trend analysis.
+    |
+    | The number of days Glint retains data before it is pruned. Run the
+    | `glint:prune` command (or schedule it daily) to enforce these limits.
+    |
     */
     'retention' => [
         'traces_days' => (int) env('GLINT_RETENTION_TRACES', 30),
@@ -104,39 +117,40 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Pricing Registry
+    | Pricing Path
     |--------------------------------------------------------------------------
-    | Path to the JSON pricing file. Published to config/ on glint:install.
-    | Prices are in USD per 1 million tokens.
-    | Submit PRs to pricing/providers.json to add or update model prices.
+    |
+    | The path to the JSON file that maps model names to per-token costs.
+    | This file is published to your config directory during `glint:install`.
+    |
     */
     'pricing_path' => env('GLINT_PRICING_PATH', config_path('glint_pricing.json')),
 
     /*
     |--------------------------------------------------------------------------
-    | Exception Handling
+    | Throw on Exceptions
     |--------------------------------------------------------------------------
-    | By default Glint silently swallows all internal exceptions so it can
-    | never crash the host application. Set this to true (e.g. in local/testing
-    | environments) to let exceptions propagate — useful for debugging Glint
-    | itself or writing integration tests.
+    |
+    | By default Glint swallows internal errors so it never disrupts your
+    | application. Set this to true to let exceptions propagate, which is
+    | useful when debugging a Glint integration.
+    |
     */
     'throw_on_exceptions' => env('GLINT_THROW_ON_EXCEPTIONS', false),
 
     /*
     |--------------------------------------------------------------------------
-    | Privacy & Redaction
+    | Privacy
     |--------------------------------------------------------------------------
-    | Regex patterns applied to stored metadata and bodies before writing to
-    | the database. Matching values are replaced with [REDACTED].
     |
-    | store_ip — set to false to omit the requester's IP address from trace
-    | metadata. Useful in GDPR/privacy-conscious environments where IP
-    | addresses are considered personal data.
+    | Controls what personally identifiable information Glint stores. IP
+    | storage is disabled by default for GDPR compliance. Any value in
+    | metadata or stored bodies matching a redact pattern will be replaced
+    | with [REDACTED] before it is written to the database.
+    |
     */
     'privacy' => [
         'store_ip' => env('GLINT_STORE_IP', false),
-
         'redact_patterns' => [
             '/api[_-]?key["\s:=]+([a-zA-Z0-9_\-]+)/i',
             '/bearer\s+([a-zA-Z0-9_\-\.]+)/i',
@@ -146,10 +160,13 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | HTTP Client Instrumentation — Known LLM Hosts
+    | LLM Hosts
     |--------------------------------------------------------------------------
-    | The "http" driver watches outgoing requests to these base URLs and
-    | automatically records them as LLM generations.
+    |
+    | Outgoing HTTP requests to these hostnames are captured by the "http"
+    | driver and recorded as LLM generations. Add any custom or self-hosted
+    | provider endpoints here, mapping hostname to provider name.
+    |
     */
     'llm_hosts' => [
         'api.openai.com' => 'openai',
@@ -164,16 +181,13 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Laravel Pulse Integration
+    | Pulse Integration
     |--------------------------------------------------------------------------
-    | When enabled, registers the Glint Pulse card so it can be added to your
-    | Pulse dashboard. Requires laravel/pulse to be installed.
     |
-    | Usage — add to your Pulse dashboard view:
-    |   <livewire:cybernerdie.glint::glint-card cols="2" />
+    | When enabled, Glint provides a Laravel Pulse card that surfaces LLM
+    | usage at a glance. Add the card to your Pulse dashboard with:
+    | <livewire:glint-card cols="2" />. Requires laravel/pulse.
     |
-    | The card reads from glint_aggregates, so Glint recording must have been
-    | active for data to appear.
     */
     'pulse' => [
         'enabled' => env('GLINT_PULSE_ENABLED', false),

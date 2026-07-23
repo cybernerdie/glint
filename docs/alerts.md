@@ -6,64 +6,92 @@ Glint evaluates alert rules every five minutes and fires a `GlintAlertTriggered`
 
 | Type | What it watches |
 |------|----------------|
-| `cost_threshold` | Total cost (USD) in a period exceeds a limit |
-| `error_rate` | Percentage of failed generations exceeds a threshold |
-| `latency_spike` | Average generation duration (ms) exceeds a threshold |
-| `token_spike` | Total tokens consumed in a period exceeds a limit |
+| Cost Threshold | Total cost (USD) in a period exceeds a limit |
+| Error Rate | Percentage of failed generations exceeds a threshold |
+| Latency Spike | Average generation duration (ms) exceeds a threshold |
+| Token Spike | Total tokens consumed in a period exceeds a limit |
 
 ## Creating alert rules
 
-Alert rules are stored in the `glint_alert_rules` table. Create them programmatically in a seeder or migration:
+Open the Glint dashboard and click **Alerts** in the sidebar, then **New Rule**.
+
+### Fields
+
+**Name** — A label for the rule. Shown in the rules list and in notifications.
+
+**Alert Type** — What metric to watch. The threshold unit changes to match:
+
+| Type | Threshold unit |
+|------|---------------|
+| Cost Threshold | USD (e.g. `10.00` = alert when cost exceeds $10) |
+| Error Rate | Percentage (e.g. `5` = alert when error rate exceeds 5%) |
+| Latency Spike | Milliseconds (e.g. `2000` = alert when avg latency exceeds 2,000 ms) |
+| Token Spike | Token count (e.g. `500000` = alert when usage exceeds 500K tokens) |
+
+**Threshold Value** — The numeric limit. The rule fires when the current value meets or exceeds this number.
+
+**Evaluation Period** — Which aggregate window to check: Hour, Day, Week, or Month. Glint compares the threshold against the most recent aggregate for that window.
+
+**Scope** — How broadly the rule watches:
+
+| Scope | What it covers |
+|-------|---------------|
+| Global | All traffic |
+| User | Calls attributed to a specific user ID |
+| Team | Calls attributed to a specific team ID |
+| Provider | Calls to a specific provider (e.g. `openai`) |
+| Model | Calls using a specific model (e.g. `gpt-4o`) |
+
+Selecting any scope other than Global reveals a **Scope ID** field where you enter the matching value.
+
+**Provider Filter** — Optionally narrow the rule to a single provider regardless of scope. Leave blank to watch all providers.
+
+**Notification Channels** — Where to send the alert. Select one or more:
+
+| Channel | Requires |
+|---------|---------|
+| Log | Nothing — always available |
+| Mail | `illuminate/mail` configured; enter a recipient email |
+| Slack | `laravel/slack-notification-channel` installed |
+| Webhook | Any reachable URL; Glint POSTs a JSON payload |
+
+**Cooldown** — Minimum minutes between repeated firings of the same rule. Prevents alert storms during a sustained spike. Default: 60 minutes.
+
+**Status** — Enable or disable the rule. Disabled rules are stored but never evaluated.
+
+## Managing rules
+
+The Alerts index lists all rules with their type, threshold, scope, channels, and enabled status. From there you can:
+
+- **Enable / Disable** — Toggle a rule without deleting it.
+- **Delete** — Remove the rule and its event history permanently.
+
+## Alert events log
+
+Every time a rule fires, Glint creates a `GlintAlertEvent` record. The bottom panel of the Alerts index shows the last 50 events with the measured value, threshold, channel used, and whether delivery succeeded or failed.
+
+Retention is controlled by `GLINT_RETENTION_ALERTS` (default: 90 days).
+
+## Receiving alerts in code
+
+You can also react to alerts programmatically by listening to `GlintAlertTriggered`:
 
 ```php
-use Cybernerdie\Glint\Models\GlintAlertRule;
-use Cybernerdie\Glint\Enums\AlertRuleType;
-
-GlintAlertRule::create([
-    'name'             => 'Daily cost over $50',
-    'type'             => AlertRuleType::CostThreshold,
-    'enabled'          => true,
-    'threshold_config' => [
-        'threshold' => 50.0,
-        'period'    => 'day',       // hour | day | week | month
-        'provider'  => 'openai',   // optional — omit to watch all providers
-    ],
-    'channels'         => ['email'],
-    'cooldown_minutes' => 60,
-]);
-```
-
-## Receiving alerts
-
-Listen to `GlintAlertTriggered` in your `AppServiceProvider` or a dedicated event listener:
-
-```php
+// AppServiceProvider::boot()
 use Cybernerdie\Glint\Events\GlintAlertTriggered;
 use Illuminate\Support\Facades\Event;
-use Illuminate\Support\Facades\Notification;
 
 Event::listen(GlintAlertTriggered::class, function (GlintAlertTriggered $event) {
-    Notification::route('mail', 'ops@example.com')
-        ->notify(new LlmCostAlertNotification($event));
+    // $event->type          AlertRuleType enum
+    // $event->threshold     float — the configured limit
+    // $event->currentValue  float — the measured value that triggered the rule
+    // $event->period        'hour' | 'day' | 'week' | 'month'
+    // $event->channel       string — the channel Glint attempted to deliver to
+    // $event->alertRuleId   int
+    // $event->alertEventId  int
 });
-```
-
-The event carries:
-
-```php
-$event->type;          // AlertRuleType enum
-$event->threshold;     // float — the configured limit
-$event->currentValue;  // float — the current measured value
-$event->period;        // 'day' | 'hour' | 'week' | 'month'
-$event->channel;       // string — first channel from the rule's channels array
-$event->alertRuleId;   // int
-$event->alertEventId;  // int — the GlintAlertEvent that was created
 ```
 
 ## Cooldown
 
-`cooldown_minutes` prevents the same rule from firing repeatedly. Once an alert fires, the rule will not fire again until the cooldown period has elapsed.
-
-## Alert history
-
-All fired alerts are stored in `glint_alert_events` and visible in the dashboard. Retention is controlled by `GLINT_RETENTION_ALERTS` (default: 90 days).
+Once an alert fires, the same rule will not fire again until the cooldown window has elapsed — even if the metric stays above the threshold. This prevents repeated notifications during a sustained spike.

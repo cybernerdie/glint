@@ -134,7 +134,7 @@ final class HttpClientInstrumentation implements InstrumentationDriver
             event(LlmCallFailed::fromThrowable(
                 generationId: $pending['generationId'],
                 exception: new \RuntimeException('LLM API returned HTTP '.$event->response->status()),
-                durationMs: intval($pending['startedAt']->diffInMilliseconds(now())),
+                durationMs: (int) $pending['startedAt']->diffInMilliseconds(now()),
             ));
 
             return;

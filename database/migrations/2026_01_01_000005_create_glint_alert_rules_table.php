@@ -25,9 +25,9 @@ return new class extends Migration
             $table->timestamp('last_triggered_at')->nullable();
             $table->timestamps();
 
-            $table->index('enabled');           // used in AlertDispatcher::evaluate() WHERE enabled=true
-            $table->index('type');              // used in evaluateRule() match()
-            $table->index(['scope', 'scope_id']); // used for scoped alert lookups
+            $table->index('enabled');
+            $table->index('type');
+            $table->index(['scope', 'scope_id']);
         });
     }
 

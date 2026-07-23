@@ -18,7 +18,7 @@ function makeActiveTrace(?string $traceId = null): array
     $traceId ??= (string) Str::uuid();
     GlintTrace::factory()->pending()->create(['id' => $traceId, 'name' => 'test-trace']);
     $context = app(TraceContext::class);
-    $context->openTrace($traceId, true);
+    $context->openTrace($traceId);
     $pricing = app(PricingRegistry::class);
     $trace = new ActiveTrace($traceId, $context, Carbon::now(), $pricing);
 
@@ -55,7 +55,7 @@ it('tag appends to existing tags', function (): void {
 it('tag returns self when trace row does not exist', function (): void {
     $fakeId = (string) Str::uuid();
     $context = app(TraceContext::class);
-    $context->openTrace($fakeId, true);
+    $context->openTrace($fakeId);
     $pricing = app(PricingRegistry::class);
     $trace = new ActiveTrace($fakeId, $context, Carbon::now(), $pricing);
 

@@ -41,7 +41,7 @@ it('TracingProvider fires LlmCallStarted before delegating text() call', functio
     $inner = new Anthropic;
 
     $context = new TraceContext;
-    $context->openTrace('trace-123', true);
+    $context->openTrace('trace-123');
 
     $provider = new TracingProvider($inner, $context);
 

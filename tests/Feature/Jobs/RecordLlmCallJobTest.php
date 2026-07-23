@@ -14,7 +14,7 @@ use Cybernerdie\Glint\Recorders\GlintRecorder;
 
 beforeEach(function () {
     $context = app(TraceContext::class);
-    $context->openTrace('trace-job-test', true);
+    $context->openTrace('trace-job-test');
 });
 
 it('handles LlmCallStarted event by calling the recorder and creating a generation row', function () {

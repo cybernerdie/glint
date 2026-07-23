@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Cybernerdie\Glint;
 
 use Illuminate\Auth\Middleware\Authorize;
+use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
@@ -20,35 +22,44 @@ abstract class GlintApplicationServiceProvider extends ServiceProvider
     /**
      * Define the Glint dashboard authorization gate.
      *
-     * Implement this method to define who can access the Glint dashboard.
-     * The gate closure receives the authenticated user (never null — guests
-     * are rejected before the gate is evaluated).
-     *
-     * Example:
-     *   Gate::define('viewGlint', fn ($user) => in_array($user->email, [
-     *       'admin@example.com',
-     *   ]));
+     * Override this in App\Providers\GlintServiceProvider to grant access.
+     * The default restricts the dashboard to the emails listed in
+     * config('glint.admin_emails').
      */
-    abstract protected function gate(): void;
+    protected function gate(): void
+    {
+        Gate::define('viewGlint', function (Authenticatable $user): bool {
+            $emails = config('glint.admin_emails', []);
+
+            if (! is_array($emails) || $emails === [] || ! $user instanceof Model) {
+                return false;
+            }
+
+            $email = $user->getAttribute('email');
+
+            return is_string($email) && in_array($email, $emails, true);
+        });
+    }
 
     /**
-     * Register the Glint dashboard authorization middleware.
-     *
-     * This method wires the `viewGlint` gate into the `glint` middleware
-     * group so that every dashboard route is protected. The check is skipped
-     * in the local environment to ease development — exactly like Telescope.
-     *
-     * SECURITY: The local environment bypass grants unrestricted dashboard
-     * access to all users (including unauthenticated guests) whenever
-     * APP_ENV=local. Never set APP_ENV=local on staging or production servers.
+     * Wire the viewGlint gate into the glint-auth middleware group. In the
+     * local environment the gate is bypassed for authenticated users only —
+     * guests are still rejected, so APP_ENV=local does not expose the dashboard.
      */
     protected function authorization(): void
     {
-        $this->app->make(Router::class)->pushMiddlewareToGroup('glint-auth', Authorize::class.':viewGlint');
+        $router = $this->app->make(Router::class);
+        $groups = $router->getMiddlewareGroups();
+        $authMiddleware = Authorize::class.':viewGlint';
+        $existing = is_array($groups['glint-auth'] ?? null) ? $groups['glint-auth'] : [];
 
-        Gate::before(function ($user, $ability) {
+        if (! in_array($authMiddleware, $existing, true)) {
+            $router->pushMiddlewareToGroup('glint-auth', $authMiddleware);
+        }
+
+        Gate::before(function (?Authenticatable $user, string $ability): ?bool {
             if ($ability === 'viewGlint' && $this->app->environment('local')) {
-                return true;
+                return $user !== null ? true : null;
             }
 
             return null;

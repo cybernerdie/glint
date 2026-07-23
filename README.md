@@ -38,9 +38,15 @@ Or let auto-instrumentation handle it — zero code required for [Prism](https:/
 - **Octane-compatible** — `TraceContext` is a scoped binding, safe for long-running processes
 - **Laravel Pulse card** — optional cost and request summary card for your Pulse dashboard
 
+## Why Glint?
+
+- **Data sovereignty** — prompts, completions, and costs stay in your own database. Nothing is sent to a third-party SaaS, so there are no per-request fees and no compliance review for shipping customer data off-site.
+- **Zero per-call pricing** — unlike hosted LLM-observability services, Glint costs nothing per request; it scales with your database, which you already run.
+- **Familiar operation** — installs, authorizes, and prunes the same way as Telescope and Horizon, so it fits an existing Laravel operational playbook with no new concepts.
+
 ## Installation
 
-Requires PHP 8.2+, Laravel 11/12/13, and a queue driver for the default async mode.
+Requires PHP 8.3+, Laravel 11/12/13, and a queue driver for the default async mode.
 
 ```bash
 composer require cybernerdie/laravel-glint

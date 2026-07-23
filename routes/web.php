@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Cybernerdie\Glint\Http\Controllers\AlertsController;
 use Cybernerdie\Glint\Http\Controllers\AnalyticsController;
 use Cybernerdie\Glint\Http\Controllers\ApiController;
 use Cybernerdie\Glint\Http\Controllers\AssetController;
@@ -10,6 +11,7 @@ use Cybernerdie\Glint\Http\Controllers\DashboardController;
 use Cybernerdie\Glint\Http\Controllers\GenerationsController;
 use Cybernerdie\Glint\Http\Controllers\TracesController;
 use Cybernerdie\Glint\Http\Controllers\UsersController;
+use Cybernerdie\Glint\Middleware\GlintSecurityHeaders;
 use Illuminate\Support\Facades\Route;
 
 $glintPath = config('glint.path', 'glint');
@@ -21,6 +23,7 @@ if (! is_string($glintPath) || ! preg_match('/^[a-zA-Z0-9\-_\/]+$/', $glintPath)
 
 Route::prefix($glintPath)
     ->middleware(config('glint.middleware', ['web']))
+    ->middleware(GlintSecurityHeaders::class)
     ->name('glint.')
     ->middleware('throttle:120,1')
     ->group(function () {
@@ -31,8 +34,13 @@ Route::prefix($glintPath)
         Route::get('/generations/{generationId}', [GenerationsController::class, 'show'])->name('generations.show');
         Route::get('/costs', [CostsController::class, 'index'])->name('costs.index');
         Route::get('/users', [UsersController::class, 'index'])->name('users.index');
-        Route::get('/users/{userId}', [UsersController::class, 'show'])->name('users.show');
+        Route::get('/users/{userId}', [UsersController::class, 'show'])->name('users.show')->where('userId', '.{1,255}');
         Route::get('/analytics/latency', [AnalyticsController::class, 'latency'])->name('analytics.latency');
+        Route::get('/alerts', [AlertsController::class, 'index'])->name('alerts.index');
+        Route::get('/alerts/create', [AlertsController::class, 'create'])->name('alerts.create');
+        Route::post('/alerts', [AlertsController::class, 'store'])->name('alerts.store');
+        Route::post('/alerts/{alertRuleId}/toggle', [AlertsController::class, 'toggle'])->name('alerts.toggle');
+        Route::delete('/alerts/{alertRuleId}', [AlertsController::class, 'destroy'])->name('alerts.destroy');
         Route::get('/api/metrics', [ApiController::class, 'metrics'])->name('api.metrics')->middleware('throttle:60,1');
     });
 

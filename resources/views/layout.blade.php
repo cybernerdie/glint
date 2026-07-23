@@ -9,7 +9,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"
+            integrity="sha256-IGtui7APx7uix+6AykHbPp4FunvgqjWr66nP1TV/XQ4="
+            crossorigin="anonymous"></script>
     <script>
         if (window.Chart) {
             Chart.defaults.font.family = "'Figtree', system-ui, sans-serif";
@@ -1843,6 +1845,15 @@
                     </svg>
                     Latency
                 </a>
+
+                <a href="{{ route('glint.alerts.index') }}"
+                   class="nav-link {{ request()->routeIs('glint.alerts*') ? 'is-active' : '' }}">
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/>
+                    </svg>
+                    Alerts
+                </a>
             </div>
         </nav>
 
@@ -1893,7 +1904,7 @@
                     <span class="live-indicator" :class="paused ? '' : 'is-pulsing'"></span>
                     <span x-text="paused ? 'Paused' : 'Live'"></span>
                 </button>
-                <span class="topbar-clock">Updated <span x-text="ago"></span> ago</span>
+                <span class="topbar-clock" x-show="live">Updated <span x-text="ago"></span> ago</span>
             </div>
         </header>
 

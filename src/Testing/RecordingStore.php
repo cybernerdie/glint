@@ -25,6 +25,41 @@ final class RecordingStore
     /** @var array<int, array{spanId: string, traceId: string, toolName: string, arguments: array<string, mixed>, result: mixed, durationMs: int}> */
     private array $toolCalls = [];
 
+    /** @var array<int, array{name: string}> */
+    private array $spans = [];
+
+    public function recordSpan(string $name): void
+    {
+        $this->spans[] = ['name' => $name];
+    }
+
+    /** @return Collection<int, array{name: string}> */
+    public function spans(): Collection
+    {
+        return collect($this->spans);
+    }
+
+    public function hasSpan(string $name): bool
+    {
+        return $this->spans()->contains(fn ($s) => $s['name'] === $name);
+    }
+
+    public function assertSpanCount(int $expected): void
+    {
+        $actual = count($this->spans);
+        Assert::assertSame($expected, $actual, "Expected {$expected} span(s) but found {$actual}.");
+    }
+
+    public function assertHasSpan(string $name): void
+    {
+        Assert::assertTrue($this->hasSpan($name), "No span found with name [{$name}].");
+    }
+
+    public function assertNoSpans(): void
+    {
+        $this->assertSpanCount(0);
+    }
+
     public function handleLlmCallStarted(LlmCallStarted $event): void
     {
         // Respect registered filters — same logic as GlintRecorder so that
@@ -116,11 +151,11 @@ final class RecordingStore
         ];
     }
 
-    /** @return Collection<int, RecordedGeneration> */
+    /** @return Collection<int, CapturedGeneration> */
     public function generations(): Collection
     {
         return collect(array_values($this->generations))
-            ->map(fn ($g) => new RecordedGeneration(...$g));
+            ->map(fn ($g) => new CapturedGeneration(...$g));
     }
 
     /** @return Collection<int, array{spanId: string, traceId: string, toolName: string, arguments: array<string, mixed>, result: mixed, durationMs: int}> */
@@ -254,5 +289,6 @@ final class RecordingStore
     {
         $this->generations = [];
         $this->toolCalls = [];
+        $this->spans = [];
     }
 }

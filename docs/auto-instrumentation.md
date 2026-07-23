@@ -4,12 +4,7 @@ Auto-instrumentation means Glint captures LLM calls **without any changes to you
 
 ## How it works
 
-Each driver registers listeners on framework-level hooks:
-
-- The `http` driver listens to `RequestSending` and `ResponseReceived` events from Laravel's HTTP client
-- The `prism` driver wraps Prism's provider manager with a tracing decorator
-
-When an outgoing request to a known LLM host is detected, the driver fires these internal events:
+Each driver hooks into framework-level events or wraps the SDK's entry point. When an LLM call is detected, the driver fires these internal Glint events:
 
 | Event | When |
 |-------|------|
@@ -19,6 +14,25 @@ When an outgoing request to a known LLM host is detected, the driver fires these
 | `LlmToolCalled` | Tool/function call returned a result |
 
 `GlintRecorder` listens to these events and writes to the database (or `RecordLlmCallJob` does it asynchronously in `queue` mode).
+
+## Available drivers
+
+| Driver | Package | When to use |
+|--------|---------|-------------|
+| `http` | *(built-in)* | Universal fallback — works with any SDK that uses Laravel's HTTP client |
+| `prism` | `echolabsdev/prism` | You're using the Prism SDK |
+| `laravel-ai` | `illuminate/ai` (Laravel 12+) | You're using Laravel's built-in AI layer |
+| `neuron-ai` | `useiconic/neuron-ai` | You're using the NeuronAI agent framework |
+
+Set one or more drivers via `GLINT_DRIVERS` (comma-separated):
+
+```env
+GLINT_DRIVERS=http
+GLINT_DRIVERS=prism
+GLINT_DRIVERS=http,prism
+```
+
+See [Drivers](drivers.md) for the full reference on each driver and how to add a custom one.
 
 ## HTTP request context (optional)
 
@@ -31,13 +45,13 @@ Register `GlintMiddleware` globally if you want LLM calls grouped by the HTTP re
 })
 ```
 
-Without it, generations are still recorded — they just won't have a parent trace showing which route/user triggered them.
+Without it, generations are still recorded — they just won't have a parent trace showing which route or user triggered them.
 
 ## Background jobs and console commands
 
-LLM calls made inside queued jobs and Artisan commands are always captured, regardless of `sampling_rate`. The middleware sampling decision only applies to HTTP requests.
+LLM calls made inside queued jobs and Artisan commands are always captured. Without `GlintMiddleware` there is no HTTP request context, so Glint defaults to recording everything.
 
-See [Background Jobs](background-jobs.md) for details.
+See [Background Jobs](background-jobs.md) for details on adding trace context inside jobs.
 
 ## Filtering
 

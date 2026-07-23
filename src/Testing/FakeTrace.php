@@ -12,13 +12,15 @@ final class FakeTrace implements TraceInterface
 {
     private readonly string $traceId;
 
-    public function __construct()
+    public function __construct(private readonly ?RecordingStore $store = null)
     {
         $this->traceId = (string) Str::ulid();
     }
 
     public function span(string $name, callable $callback): mixed
     {
+        $this->store?->recordSpan($name);
+
         return $callback(new FakeSpan);
     }
 

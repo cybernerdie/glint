@@ -8,7 +8,6 @@ use Illuminate\Support\Facades\Route;
 
 beforeEach(function () {
     config()->set('glint.enabled', true);
-    config()->set('glint.recording.sampling_rate', 1.0);
     config()->set('glint.recording.store_bodies', true);
 });
 
@@ -56,16 +55,6 @@ it('stores request metadata on the trace (method, path, ip)', function () {
         ->and(array_key_exists('ip', $metadata))->toBeTrue()
         ->and(array_key_exists('user_agent', $metadata))->toBeTrue()
         ->and(array_key_exists('env', $metadata))->toBeTrue();
-});
-
-it('does NOT record a trace when sampling_rate = 0.0', function () {
-    config()->set('glint.recording.sampling_rate', 0.0);
-
-    Route::get('/glint-no-sample', fn () => response('no sample'))->middleware('glint');
-
-    $this->get('/glint-no-sample');
-
-    expect(GlintTrace::count())->toBe(0);
 });
 
 it('stores the response body when store_bodies = true', function () {
@@ -183,38 +172,6 @@ it('logs debug message and continues when redact_pattern is invalid regex', func
     $trace = GlintTrace::first();
 
     expect($trace->metadata['user_agent'])->toContain('safe-ua');
-});
-
-it('records a trace when sampling_rate is fractional', function () {
-    config()->set('glint.recording.sampling_rate', 0.999);
-
-    Route::get('/glint-fractional-sample', fn () => response('ok'))->middleware('glint');
-
-    foreach (range(1, 10) as $i) {
-        $this->get('/glint-fractional-sample');
-    }
-
-    expect(GlintTrace::count())->toBeGreaterThan(0);
-});
-
-it('always records when sampling_rate is greater than 1.0', function () {
-    config()->set('glint.recording.sampling_rate', 2.5);
-
-    Route::get('/glint-oversample', fn () => response('ok'))->middleware('glint');
-
-    $this->get('/glint-oversample');
-
-    expect(GlintTrace::count())->toBe(1);
-});
-
-it('never records when sampling_rate is less than 0.0', function () {
-    config()->set('glint.recording.sampling_rate', -0.5);
-
-    Route::get('/glint-undersample', fn () => response('ok'))->middleware('glint');
-
-    $this->get('/glint-undersample');
-
-    expect(GlintTrace::count())->toBe(0);
 });
 
 it('marks trace status as success when response is 4xx', function () {

@@ -47,13 +47,28 @@ trait ResolvesDateRange
         }
 
         if ($period === 'custom') {
-            $from = $fromDate !== '' ? Carbon::parse($fromDate)->startOfDay() : null;
-            $to = $toDate !== '' ? Carbon::parse($toDate)->endOfDay() : null;
+            $from = $this->parseDate($fromDate)?->startOfDay();
+            $to = $this->parseDate($toDate)?->endOfDay();
 
             return [$from, $to];
         }
 
         return [null, null];
+    }
+
+    /**
+     * Strictly parse a user-supplied Y-m-d date, rejecting relative expressions
+     * and malformed input so they can never widen the window or throw.
+     */
+    private function parseDate(string $value): ?Carbon
+    {
+        if ($value === '' || preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) !== 1) {
+            return null;
+        }
+
+        $parsed = rescue(fn () => Carbon::createFromFormat('Y-m-d', $value), null, false);
+
+        return $parsed instanceof Carbon ? $parsed : null;
     }
 
     /**

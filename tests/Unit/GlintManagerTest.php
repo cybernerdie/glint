@@ -71,7 +71,7 @@ it('trace returns ActiveTrace when enabled', function (): void {
     expect($trace->traceId())->toBeString()->not->toBeNull();
 });
 
-it('span returns ActiveSpan when enabled and context is sampled', function (): void {
+it('span returns ActiveSpan when enabled', function (): void {
     $manager = makeManager(true);
 
     $manager->trace('parent');
@@ -82,7 +82,7 @@ it('span returns ActiveSpan when enabled and context is sampled', function (): v
     expect($span->spanId())->toBeString()->not->toBeNull();
 });
 
-it('generation returns ActiveGeneration when enabled and context is sampled', function (): void {
+it('generation returns ActiveGeneration when enabled', function (): void {
     $manager = makeManager(true);
 
     $manager->trace('parent');
@@ -101,7 +101,7 @@ it('trace creates a GlintTrace row in the database', function (): void {
     expect(GlintTrace::where('id', $trace->traceId())->exists())->toBeTrue();
 });
 
-it('span creates a GlintSpan row in the database when context is sampled', function (): void {
+it('span creates a GlintSpan row in the database', function (): void {
     $manager = makeManager(true);
     $manager->trace('parent');
 
@@ -110,7 +110,7 @@ it('span creates a GlintSpan row in the database when context is sampled', funct
     expect(GlintSpan::where('id', $span->spanId())->exists())->toBeTrue();
 });
 
-it('generation creates a GlintGeneration row in the database when context is sampled', function (): void {
+it('generation creates a GlintGeneration row in the database', function (): void {
     $manager = makeManager(true);
     $manager->trace('parent');
 
@@ -135,16 +135,3 @@ it('shouldRecord returns false when a filter rejects the entry', function (): vo
     expect(GlintManager::shouldRecord($entry))->toBeFalse();
 });
 
-it('span returns NullSpan when context is not sampled', function (): void {
-    $manager = makeManager(true);
-    app(TraceContext::class)->openTrace('trace-unsampled', false);
-
-    expect($manager->span('unsampled-span'))->toBeInstanceOf(NullSpan::class);
-});
-
-it('generation returns NullGeneration when context is not sampled', function (): void {
-    $manager = makeManager(true);
-    app(TraceContext::class)->openTrace('trace-unsampled', false);
-
-    expect($manager->generation('unsampled-gen', 'openai', 'gpt-4o'))->toBeInstanceOf(NullGeneration::class);
-});

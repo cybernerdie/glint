@@ -38,7 +38,6 @@ class TestCase extends Orchestra
         config()->set('glint.middleware', []);
         config()->set('glint.recording.mode', 'sync');
         config()->set('glint.recording.store_bodies', true);
-        config()->set('glint.recording.sampling_rate', 1.0);
         config()->set('glint.pricing_path', __DIR__.'/../pricing/providers.json');
     }
 

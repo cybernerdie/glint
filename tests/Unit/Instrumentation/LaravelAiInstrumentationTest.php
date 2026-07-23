@@ -35,7 +35,7 @@ it('onPrompting fires LlmCallStarted with resolved provider and model', function
     Event::fake();
 
     $context = new TraceContext;
-    $context->openTrace('trace-xyz', true);
+    $context->openTrace('trace-xyz');
 
     $instrumentation = new LaravelAiInstrumentation($context);
 
@@ -208,7 +208,7 @@ it('onToolInvoked fires LlmToolCalled with correct tool name and duration', func
     Event::fake();
 
     $context = new TraceContext;
-    $context->openTrace('trace-tool', true);
+    $context->openTrace('trace-tool');
     $instrumentation = new LaravelAiInstrumentation($context);
 
     $prompt = new AgentPrompt(prompt: 'Use the tool', model: 'gpt-4o');

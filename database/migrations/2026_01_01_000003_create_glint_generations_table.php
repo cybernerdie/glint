@@ -36,8 +36,8 @@ return new class extends Migration
             $table->timestamp('ended_at')->nullable();
             $table->timestamps();
 
-            $table->index('trace_id');
-            $table->index(['provider', 'model']);
+            $table->index(['trace_id', 'started_at']);
+            $table->index(['provider', 'model', 'started_at']);
             $table->index('status');
             $table->index('started_at');
             $table->index(['started_at', 'status']);

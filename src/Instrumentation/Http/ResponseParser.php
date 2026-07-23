@@ -131,6 +131,6 @@ final class ResponseParser
 
     private function toInt(mixed $value): int
     {
-        return is_numeric($value) ? intval($value) : 0;
+        return is_numeric($value) ? (int) $value : 0;
     }
 }

@@ -70,5 +70,11 @@
         "source": "https://github.com/cybernerdie/laravel-glint"
     },
     "minimum-stability": "stable",
-    "prefer-stable": true
+    "prefer-stable": true,
+    "scripts": {
+        "test": "vendor/bin/pest",
+        "test:coverage": "vendor/bin/pest --coverage",
+        "stan": "vendor/bin/phpstan analyse --memory-limit=512M",
+        "pint": "vendor/bin/pint"
+    }
 }

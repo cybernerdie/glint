@@ -65,12 +65,3 @@ Schedule `glint:prune` to run daily to enforce these limits:
 Schedule::command('glint:prune')->daily();
 ```
 
-## Sampling
-
-Reduce the volume of data collected by recording only a fraction of requests:
-
-```env
-GLINT_SAMPLING_RATE=0.1   # record 10% of HTTP requests
-```
-
-Values from `0.0` (never) to `1.0` (always, the default).

@@ -486,3 +486,20 @@ it('FakeTrace traceId returns a non-empty string', function (): void {
 
     expect($trace->traceId())->toBeString()->not->toBeEmpty();
 });
+
+it('records spans created via the fake', function (): void {
+    $fake = GlintFake::swap();
+
+    $fake->span('outer-span');
+    $fake->trace('t')->span('inner-span', fn () => null);
+
+    $fake->assertSpanCount(2);
+    $fake->assertHasSpan('outer-span');
+    $fake->assertHasSpan('inner-span');
+});
+
+it('asserts no spans were recorded', function (): void {
+    $fake = GlintFake::swap();
+
+    $fake->assertNoSpans();
+});

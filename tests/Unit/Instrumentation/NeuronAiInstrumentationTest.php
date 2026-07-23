@@ -89,7 +89,7 @@ it('onEvent inference-start fires LlmCallStarted', function () {
     Event::fake();
 
     $context = new TraceContext;
-    $context->openTrace('trace-neuron', true);
+    $context->openTrace('trace-neuron');
     $observer = new GlintNeuronAiObserver($context);
 
     $source = makeSourceNode();
@@ -174,7 +174,7 @@ it('onEvent tool-calling and tool-called fires LlmToolCalled', function () {
     Event::fake();
 
     $context = new TraceContext;
-    $context->openTrace('trace-tool', true);
+    $context->openTrace('trace-tool');
     $observer = new GlintNeuronAiObserver($context);
 
     $source = makeSourceNode();
@@ -210,7 +210,7 @@ it('onEvent tool-called handles getResult exception gracefully', function () {
     Event::fake();
 
     $context = new TraceContext;
-    $context->openTrace('trace-err', true);
+    $context->openTrace('trace-err');
     $observer = new GlintNeuronAiObserver($context);
 
     $source = makeSourceNode();

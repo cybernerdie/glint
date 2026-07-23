@@ -33,47 +33,42 @@ final class GlintMiddleware
             return $next($request);
         }
 
-        $sampled = $this->shouldSample();
         $traceId = (string) Str::ulid();
         $startedAt = now();
 
-        $this->context->openTrace($traceId, $sampled);
+        $this->context->openTrace($traceId);
 
-        if ($sampled) {
-            rescue(fn () => GlintTrace::create([
-                'id' => $traceId,
-                'name' => substr($request->route()?->getName() ?? $request->path(), 0, 255),
-                'user_id' => is_scalar($key = $request->user()?->getKey()) ? substr((string) $key, 0, 255) : null,
-                'session_id' => $request->hasSession() ? substr($request->session()->getId(), 0, 255) : null,
-                'metadata' => [
-                    'method' => $request->method(),
-                    'path' => substr($request->path(), 0, 2048),
-                    'ip' => Config::boolean('glint.privacy.store_ip', true) ? $request->ip() : null,
-                    'user_agent' => $this->sanitizeUserAgent($request->userAgent()),
-                    'env' => app()->environment(),
-                ],
-                'status' => RecordStatus::Pending,
-                'started_at' => $startedAt,
-            ]));
-        }
+        rescue(fn () => GlintTrace::create([
+            'id' => $traceId,
+            'name' => substr($request->route()?->getName() ?? $request->path(), 0, 255),
+            'user_id' => is_scalar($key = $request->user()?->getKey()) ? substr((string) $key, 0, 255) : null,
+            'session_id' => $request->hasSession() ? substr($request->session()->getId(), 0, 255) : null,
+            'metadata' => [
+                'method' => $request->method(),
+                'path' => substr($request->path(), 0, 2048),
+                'ip' => Config::boolean('glint.privacy.store_ip', true) ? $request->ip() : null,
+                'user_agent' => $this->sanitizeUserAgent($request->userAgent()),
+                'env' => app()->environment(),
+            ],
+            'status' => RecordStatus::Pending,
+            'started_at' => $startedAt,
+        ]));
 
         try {
             $response = $next($request);
 
-            if ($sampled) {
-                $status = $response->getStatusCode() >= 500
-                    ? RecordStatus::Error
-                    : RecordStatus::Success;
+            $status = $response->getStatusCode() >= 500
+                ? RecordStatus::Error
+                : RecordStatus::Success;
 
-                rescue(fn () => GlintTrace::where('id', $traceId)->update([
-                    'status' => $status,
-                    'ended_at' => now(),
-                    'duration_ms' => (int) $startedAt->diffInMilliseconds(now()),
-                    'output' => Config::boolean('glint.recording.store_bodies', false)
-                        ? substr($response->getContent() ?: '', 0, 10000)
-                        : null,
-                ]));
-            }
+            rescue(fn () => GlintTrace::where('id', $traceId)->update([
+                'status' => $status,
+                'ended_at' => now(),
+                'duration_ms' => (int) $startedAt->diffInMilliseconds(now()),
+                'output' => Config::boolean('glint.recording.store_bodies', false)
+                    ? substr($response->getContent() ?: '', 0, 10000)
+                    : null,
+            ]));
 
             return $response;
         } finally {
@@ -116,18 +111,4 @@ final class GlintMiddleware
         return $value;
     }
 
-    private function shouldSample(): bool
-    {
-        $rate = Config::float('glint.recording.sampling_rate', 1.0);
-
-        if ($rate <= 0.0) {
-            return false;
-        }
-
-        if ($rate >= 1.0) {
-            return true;
-        }
-
-        return (random_int(0, PHP_INT_MAX) / PHP_INT_MAX) < $rate;
-    }
 }

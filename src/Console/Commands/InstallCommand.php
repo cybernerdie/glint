@@ -40,6 +40,12 @@ final class InstallCommand extends Command
             ]);
         });
 
+        $this->components->task('Publishing pricing registry', function () {
+            $this->callSilently('vendor:publish', [
+                '--tag' => 'glint-pricing',
+            ]);
+        });
+
         $migrationFailed = false;
 
         $this->components->task('Running migrations', function () use (&$migrationFailed): bool {
@@ -146,7 +152,7 @@ final class InstallCommand extends Command
             ."    App\\Providers\\GlintServiceProvider::class,\n"
             .substr($contents, $insertAt);
 
-        $result = @file_put_contents($providersPath, $updated);
+        $result = file_put_contents($providersPath, $updated);
 
         if ($result === false) {
             $this->components->warn('Could not write to bootstrap/providers.php — add App\Providers\GlintServiceProvider::class manually.');

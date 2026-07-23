@@ -77,15 +77,17 @@ final class DashboardController
             }, $emptyStats);
         }), $emptyStats);
 
-        $volumeBuckets = rescue(fn () => $this->volumeBuckets($period, $fromDt, $toDt), collect());
+        $key = '__glint__:dashboard.panels.'.$period.'.'.$fromDate.'.'.$toDate;
+
+        $volumeBuckets = rescue(fn () => Cache::remember($key.'.volume', 60, fn () => $this->volumeBuckets($period, $fromDt, $toDt)), collect());
 
         $recentTraces = rescue(
-            fn () => GlintTrace::query()->latest('started_at')->limit(10)->get(),
+            fn () => Cache::remember($key.'.recent', 60, fn () => GlintTrace::query()->latest('started_at')->limit(10)->get()),
             collect()
         );
 
         $topTraceNames = rescue(
-            fn () => GlintTrace::query()
+            fn () => Cache::remember($key.'.traceNames', 60, fn () => GlintTrace::query()
                 ->select(['name', DB::raw('COUNT(*) as trace_count')])
                 ->whereNotNull('name')
                 ->when($fromDt, fn ($q) => $q->where('started_at', '>=', $fromDt))
@@ -93,12 +95,12 @@ final class DashboardController
                 ->groupBy('name')
                 ->orderByDesc('trace_count')
                 ->limit(8)
-                ->get(),
+                ->get()),
             collect()
         );
 
         $topModelCosts = rescue(
-            fn () => GlintGeneration::query()
+            fn () => Cache::remember($key.'.modelCosts', 60, fn () => GlintGeneration::query()
                 ->select([
                     'model',
                     'provider',
@@ -112,12 +114,12 @@ final class DashboardController
                 ->groupBy('model', 'provider')
                 ->orderByDesc('total_cost')
                 ->limit(6)
-                ->get(),
+                ->get()),
             collect()
         );
 
         $topUserCosts = rescue(
-            fn () => GlintTrace::query()
+            fn () => Cache::remember($key.'.userCosts', 60, fn () => GlintTrace::query()
                 ->select([
                     'glint_traces.user_id',
                     DB::raw('SUM(glint_generations.cost_usd) as total_cost'),
@@ -130,7 +132,7 @@ final class DashboardController
                 ->groupBy('glint_traces.user_id')
                 ->orderByDesc('total_cost')
                 ->limit(8)
-                ->get(),
+                ->get()),
             collect()
         );
 
@@ -152,16 +154,20 @@ final class DashboardController
     private function volumeBuckets(string $period, ?Carbon $fromDt, ?Carbon $toDt): Collection
     {
         if ($period === '24h') {
+            $rows = GlintGeneration::query()
+                ->selectRaw($this->hourBucketExpression().' as hour_key, COUNT(*) as total')
+                ->where('started_at', '>=', now()->subHours(24))
+                ->groupByRaw($this->hourBucketExpression())
+                ->get();
+
             /** @var array<string, int> $hourlyTotals */
             $hourlyTotals = [];
-
-            $recentGenerations = GlintGeneration::query()
-                ->where('started_at', '>=', now()->subHours(24))
-                ->get(['started_at']);
-
-            foreach ($recentGenerations as $generation) {
-                $key = $generation->started_at->format('Y-m-d H');
-                $hourlyTotals[$key] = ($hourlyTotals[$key] ?? 0) + 1;
+            foreach ($rows as $row) {
+                $key = $row->getAttribute('hour_key');
+                $total = $row->getAttribute('total');
+                if (is_string($key) && $key !== '') {
+                    $hourlyTotals[$key] = is_numeric($total) ? (int) $total : 0;
+                }
             }
 
             $buckets = [];
@@ -222,5 +228,18 @@ final class DashboardController
         }
 
         return collect($buckets);
+    }
+
+    /**
+     * A driver-portable SQL expression producing an "Y-m-d H" hour key that
+     * matches the PHP-side bucket keys.
+     */
+    private function hourBucketExpression(): string
+    {
+        return match (DB::connection()->getDriverName()) {
+            'mysql', 'mariadb' => "DATE_FORMAT(started_at, '%Y-%m-%d %H')",
+            'pgsql' => "to_char(started_at, 'YYYY-MM-DD HH24')",
+            default => "strftime('%Y-%m-%d %H', started_at)",
+        };
     }
 }

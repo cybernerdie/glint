@@ -29,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fluent `ActiveTrace`, `ActiveSpan`, `ActiveGeneration` with `tag()`, `tags()`, `end()`, `fail()`, `finish()`
 - `tags(array $tags)` on all three types — writes multiple tags in a single SELECT + UPDATE instead of N round-trips
 - `$trace->generation(name, callback, provider, model)` — provider and model can now be supplied at the trace level so cost tracking works correctly in callback-based flows
-- Null object pattern (`NullTrace`, `NullSpan`, `NullGeneration`) — no-ops when Glint is disabled or the request is not sampled
+- Null object pattern (`NullTrace`, `NullSpan`, `NullGeneration`) — no-ops when Glint is disabled
 
 **Pricing**
 - JSON-driven `PricingRegistry` — lazy-loaded, covers OpenAI, Anthropic, Gemini, Groq, Mistral, Ollama
@@ -71,7 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Glint::fake()` swaps the recorder for an in-memory store; registered filters are respected by the fake
 - `GlintFake` assertion methods: `assertNothingRecorded()`, `assertGenerationCount()`, `assertHasGeneration()`, `assertMissingGeneration()`, `assertGenerationSucceeded()`, `assertGenerationFailed()`, `assertHasToolCall()`, `assertToolCallCount()`, `assertNoGenerations()`, `assertNoToolCalls()`
 - `FakeTrace`, `FakeSpan`, `FakeGeneration` — in-memory counterparts to the real tracing objects
-- 391 tests covering all happy and unhappy paths across unit and feature suites
+- 469 tests covering all happy and unhappy paths across unit and feature suites
 
 **Laravel Pulse integration (optional)**
 - `GlintCard` Livewire card — shows today's cost, request count, error rate, and a 7-day cost sparkline
@@ -81,7 +81,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 **Configuration**
 - Master switch (`GLINT_ENABLED`) — safe to leave `false` in non-production environments
-- Sampling rate (`GLINT_SAMPLING_RATE`) — record a fraction of requests to reduce storage overhead
 - Async/sync recording mode (`GLINT_MODE`)
 - Body storage (`GLINT_STORE_BODIES`) — opt-in to persist raw prompt and completion text
 - Configurable data retention per record type

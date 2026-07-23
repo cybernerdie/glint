@@ -95,7 +95,7 @@ $response = Http::post('https://api.openai.com/v1/chat/completions', [...]);
 
 ## Null safety
 
-When Glint is disabled (`GLINT_ENABLED=false`) or the request is not sampled, `Glint::trace()`, `Glint::span()`, and `Glint::generation()` return null objects (`NullTrace`, `NullSpan`, `NullGeneration`). These implement the same interfaces and are completely safe to call — they just do nothing.
+When Glint is disabled (`GLINT_ENABLED=false`), `Glint::trace()`, `Glint::span()`, and `Glint::generation()` return null objects (`NullTrace`, `NullSpan`, `NullGeneration`). These implement the same interfaces and are completely safe to call — they just do nothing.
 
 ```php
 // This is always safe regardless of whether Glint is enabled

@@ -9,7 +9,7 @@ namespace Cybernerdie\Glint\Context;
  */
 final class TraceContext
 {
-    /** @var array<int, array{traceId: string, sampled: bool}> */
+    /** @var array<int, array{traceId: string}> */
     private array $stack = [];
 
     /** @var array<string, string> generationId => traceId */
@@ -20,9 +20,9 @@ final class TraceContext
 
     private ?string $activeSpanId = null;
 
-    public function openTrace(string $traceId, bool $sampled): void
+    public function openTrace(string $traceId): void
     {
-        $this->stack[] = ['traceId' => $traceId, 'sampled' => $sampled];
+        $this->stack[] = ['traceId' => $traceId];
     }
 
     public function traceId(): ?string
@@ -30,13 +30,6 @@ final class TraceContext
         $top = end($this->stack);
 
         return $top !== false ? $top['traceId'] : null;
-    }
-
-    public function isSampled(): bool
-    {
-        $top = end($this->stack);
-
-        return $top !== false ? $top['sampled'] : true;
     }
 
     public function registerGeneration(string $generationId, string $traceId): void

@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\DB;
 
 function makeRecorder(?TraceContext $context = null, ?PricingRegistry $pricing = null): GlintRecorder
 {
-    $context ??= tap(new TraceContext, fn ($ctx) => $ctx->openTrace('trace-test-001', true));
+    $context ??= tap(new TraceContext, fn ($ctx) => $ctx->openTrace('trace-test-001'));
     $pricing ??= new PricingRegistry(__DIR__.'/../../../pricing/providers.json');
 
     return new GlintRecorder($context, $pricing, app(GlintFilterRegistry::class));
@@ -51,28 +51,6 @@ it('creates a glint_generations row with status=pending on LlmCallStarted', func
         ->and($row->model)->toBe('gpt-4o')
         ->and($row->trace_id)->toBe('trace-test-001')
         ->and($row->is_streaming)->toBeFalse();
-});
-
-it('does nothing when isSampled() is false', function () {
-    $context = new TraceContext;
-    $context->openTrace('trace-unsampled', false);
-
-    $recorder = makeRecorder($context);
-
-    $event = new LlmCallStarted(
-        generationId: 'gen-unsampled',
-        provider: 'openai',
-        model: 'gpt-4o',
-        messages: null,
-        temperature: null,
-        maxTokens: null,
-        isStreaming: false,
-        traceId: 'trace-unsampled',
-    );
-
-    $recorder->handleLlmCallStarted($event);
-
-    expect(GlintGeneration::where('id', 'gen-unsampled')->exists())->toBeFalse();
 });
 
 it('auto-creates a headless trace when traceId is null and no trace is open', function () {
@@ -290,7 +268,7 @@ it('creates a glint_spans row with type=tool_call on LlmToolCalled', function ()
 });
 
 it('is silent when a duplicate generation_id causes a DB error on handleLlmCallStarted', function () {
-    $context = tap(new TraceContext, fn ($ctx) => $ctx->openTrace('trace-silent', true));
+    $context = tap(new TraceContext, fn ($ctx) => $ctx->openTrace('trace-silent'));
     $pricing = new PricingRegistry(__DIR__.'/../../../pricing/providers.json');
     $recorder = new GlintRecorder($context, $pricing, app(GlintFilterRegistry::class));
 
@@ -415,6 +393,43 @@ it('writes aggregate rows for all four periods on LlmCallFinished', function () 
         ->toArray();
 
     expect($periods)->toBe(['day', 'hour', 'month', 'week']);
+});
+
+it('accumulates a rolling average duration across two generations in the same bucket', function () {
+    $recorder = makeRecorder();
+
+    foreach ([['id' => 'gen-avg-1', 'dur' => 100, 'pt' => 10, 'ct' => 5], ['id' => 'gen-avg-2', 'dur' => 300, 'pt' => 20, 'ct' => 10]] as $call) {
+        $recorder->handleLlmCallStarted(new LlmCallStarted(
+            generationId: $call['id'],
+            provider: 'openai',
+            model: 'gpt-4o',
+            messages: null,
+            temperature: null,
+            maxTokens: null,
+            isStreaming: false,
+            traceId: 'trace-test-001',
+        ));
+
+        $recorder->handleLlmCallFinished(new LlmCallFinished(
+            generationId: $call['id'],
+            completion: null,
+            promptTokens: $call['pt'],
+            completionTokens: $call['ct'],
+            finishReason: 'stop',
+            durationMs: $call['dur'],
+        ));
+    }
+
+    $hour = DB::table('glint_aggregates')
+        ->where('provider', 'openai')
+        ->where('model', 'gpt-4o')
+        ->where('period', 'hour')
+        ->first();
+
+    expect((int) $hour->total_requests)->toBe(2)
+        ->and((int) $hour->successful_requests)->toBe(2)
+        ->and((int) $hour->total_tokens)->toBe(45)
+        ->and((int) $hour->avg_duration_ms)->toBe(200);
 });
 
 it('propagates DB exceptions when throw_on_exceptions is true', function () {

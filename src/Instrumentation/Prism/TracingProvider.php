@@ -55,9 +55,9 @@ final class TracingProvider
             if (is_object($result)) {
                 if (property_exists($result, 'usage') && is_object($result->usage)) {
                     $promptTokensRaw = property_exists($result->usage, 'promptTokens') ? $result->usage->promptTokens : 0;
-                    $promptTokens = is_numeric($promptTokensRaw) ? intval($promptTokensRaw) : 0;
+                    $promptTokens = is_numeric($promptTokensRaw) ? (int) $promptTokensRaw : 0;
                     $completionTokensRaw = property_exists($result->usage, 'completionTokens') ? $result->usage->completionTokens : 0;
-                    $completionTokens = is_numeric($completionTokensRaw) ? intval($completionTokensRaw) : 0;
+                    $completionTokens = is_numeric($completionTokensRaw) ? (int) $completionTokensRaw : 0;
                 }
 
                 if (property_exists($result, 'finishReason')) {
@@ -83,7 +83,7 @@ final class TracingProvider
                 promptTokens: $promptTokens,
                 completionTokens: $completionTokens,
                 finishReason: $finishReason,
-                durationMs: intval($startedAt->diffInMilliseconds(now())),
+                durationMs: (int) $startedAt->diffInMilliseconds(now()),
             ));
 
             return $result;
@@ -91,7 +91,7 @@ final class TracingProvider
             event(LlmCallFailed::fromThrowable(
                 generationId: $generationId,
                 exception: $e,
-                durationMs: intval($startedAt->diffInMilliseconds(now())),
+                durationMs: (int) $startedAt->diffInMilliseconds(now()),
             ));
             throw $e;
         }

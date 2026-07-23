@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cybernerdie\Glint\Tracing;
 
 use Carbon\Carbon;
+use Cybernerdie\Glint\Concerns\ProtectsWrites;
 use Cybernerdie\Glint\Contracts\GenerationInterface;
 use Cybernerdie\Glint\Enums\RecordStatus;
 use Cybernerdie\Glint\Models\GlintGeneration;
@@ -13,6 +14,8 @@ use Illuminate\Support\Facades\DB;
 
 final class ActiveGeneration implements GenerationInterface
 {
+    use ProtectsWrites;
+
     public function __construct(
         private readonly string $generationId,
         private readonly PricingRegistry $pricing,
@@ -30,7 +33,7 @@ final class ActiveGeneration implements GenerationInterface
      */
     public function tag(string $key, string $value): static
     {
-        rescue(function () use ($key, $value): void {
+        $this->protectedWrite(function () use ($key, $value): void {
             DB::transaction(function () use ($key, $value): void {
                 $generation = GlintGeneration::where('id', $this->generationId)->lockForUpdate()->first();
 
@@ -64,7 +67,7 @@ final class ActiveGeneration implements GenerationInterface
             return $this;
         }
 
-        rescue(function () use ($tags): void {
+        $this->protectedWrite(function () use ($tags): void {
             DB::transaction(function () use ($tags): void {
                 $generation = GlintGeneration::where('id', $this->generationId)->lockForUpdate()->first();
 
@@ -87,7 +90,7 @@ final class ActiveGeneration implements GenerationInterface
 
     public function finish(string $completion, int $promptTokens, int $completionTokens, string $finishReason = 'stop'): void
     {
-        rescue(function () use ($completion, $promptTokens, $completionTokens, $finishReason): void {
+        $this->protectedWrite(function () use ($completion, $promptTokens, $completionTokens, $finishReason): void {
             $now = now();
             GlintGeneration::where('id', $this->generationId)->update([
                 'completion' => $completion,
@@ -105,7 +108,7 @@ final class ActiveGeneration implements GenerationInterface
 
     public function fail(\Throwable $e): void
     {
-        rescue(function () use ($e): void {
+        $this->protectedWrite(function () use ($e): void {
             $now = now();
             GlintGeneration::where('id', $this->generationId)->update([
                 'status' => RecordStatus::Error,

@@ -26,6 +26,10 @@ final class RecalcAggregatesCommand extends Command
         'daily' => 'day',
         'weekly' => 'week',
         'monthly' => 'month',
+        'hour' => 'hour',
+        'day' => 'day',
+        'week' => 'week',
+        'month' => 'month',
     ];
 
     /** @var array<string, string|null> */
@@ -42,7 +46,7 @@ final class RecalcAggregatesCommand extends Command
         $periodOption = is_string($periodRaw) ? $periodRaw : 'hourly';
 
         if (! isset(self::PERIOD_MAP[$periodOption])) {
-            $this->components->error("Invalid period \"{$periodOption}\". Valid options: hourly, daily, weekly, monthly.");
+            $this->components->error("Invalid period \"{$periodOption}\". Valid options: hour, day, week, month.");
 
             return self::FAILURE;
         }
@@ -102,51 +106,69 @@ final class RecalcAggregatesCommand extends Command
 
         $this->components->info("Recalculating {$periodOption} aggregates...");
 
-        $count = 0;
+        // Accumulate across ALL chunks before writing: a single period bucket can
+        // span multiple id-ordered chunks, so writing per chunk would overwrite
+        // earlier counts. Memory is bounded by the number of buckets, not rows.
+        /** @var array<string, array{provider: string, model: string, periodAt: string, total: int, successful: int, failed: int, totalTokens: int, promptTokens: int, completionTokens: int, totalCost: float, durationSum: int}> */
+        $buckets = [];
 
-        $query->select(['id', 'provider', 'model', 'status', 'prompt_tokens', 'completion_tokens', 'cost_usd', 'started_at'])
-            ->chunkById(500, function ($generations) use ($period, &$count) {
+        $query->select(['id', 'provider', 'model', 'status', 'prompt_tokens', 'completion_tokens', 'cost_usd', 'duration_ms', 'started_at'])
+            ->chunkById(500, function ($generations) use ($period, &$buckets) {
                 /** @var Collection<int, GlintGeneration> $generations */
-                $grouped = $generations->groupBy(function ($gen) use ($period) {
-                    return $gen->provider.'|'.$gen->model.'|'.$this->bucketFor($period, $gen->started_at);
-                });
+                foreach ($generations as $gen) {
+                    $key = $gen->provider.'|'.$gen->model.'|'.$this->bucketFor($period, $gen->started_at);
 
-                foreach ($grouped as $key => $group) {
-                    $parts = explode('|', (string) $key, 3);
-                    $provider = $parts[0];
-                    $model = $parts[1];
-                    $periodAt = $parts[2];
+                    $bucket = $buckets[$key] ??= [
+                        'provider' => (string) $gen->provider,
+                        'model' => (string) $gen->model,
+                        'periodAt' => $this->bucketFor($period, $gen->started_at),
+                        'total' => 0,
+                        'successful' => 0,
+                        'failed' => 0,
+                        'totalTokens' => 0,
+                        'promptTokens' => 0,
+                        'completionTokens' => 0,
+                        'totalCost' => 0.0,
+                        'durationSum' => 0,
+                    ];
 
-                    $total = $group->count();
-                    $errors = $group->where('status', RecordStatus::Error)->count();
-                    $successful = $group->where('status', RecordStatus::Success)->count();
-                    $failed = $errors;
+                    $bucket['total']++;
+                    $bucket['successful'] += $gen->status === RecordStatus::Success ? 1 : 0;
+                    $bucket['failed'] += $gen->status === RecordStatus::Error ? 1 : 0;
+                    $bucket['promptTokens'] += (int) $gen->prompt_tokens;
+                    $bucket['completionTokens'] += (int) $gen->completion_tokens;
+                    $bucket['totalTokens'] += ((int) $gen->prompt_tokens) + ((int) $gen->completion_tokens);
+                    $bucket['totalCost'] += (float) $gen->cost_usd;
+                    $bucket['durationSum'] += (int) $gen->duration_ms;
 
-                    GlintAggregate::updateOrCreate(
-                        [
-                            'period' => $period,
-                            'period_at' => $periodAt,
-                            'provider' => $provider,
-                            'model' => $model,
-                            'user_id' => null,
-                            'team_id' => null,
-                        ],
-                        [
-                            'total_requests' => $total,
-                            'successful_requests' => $successful,
-                            'failed_requests' => $failed,
-                            'total_tokens' => $group->sum(fn ($g) => ((int) $g->prompt_tokens) + ((int) $g->completion_tokens)),
-                            'prompt_tokens' => $group->sum(fn ($g) => (int) $g->prompt_tokens),
-                            'completion_tokens' => $group->sum(fn ($g) => (int) $g->completion_tokens),
-                            'total_cost_usd' => $group->sum(fn ($g) => (float) $g->cost_usd),
-                        ]
-                    );
-
-                    $count++;
+                    $buckets[$key] = $bucket;
                 }
             });
 
-        $this->components->info("Recalculated {$count} aggregate bucket(s).");
+        foreach ($buckets as $bucket) {
+            GlintAggregate::updateOrCreate(
+                [
+                    'period' => $period,
+                    'period_at' => $bucket['periodAt'],
+                    'provider' => $bucket['provider'],
+                    'model' => $bucket['model'],
+                    'user_id' => null,
+                    'team_id' => null,
+                ],
+                [
+                    'total_requests' => $bucket['total'],
+                    'successful_requests' => $bucket['successful'],
+                    'failed_requests' => $bucket['failed'],
+                    'total_tokens' => $bucket['totalTokens'],
+                    'prompt_tokens' => $bucket['promptTokens'],
+                    'completion_tokens' => $bucket['completionTokens'],
+                    'total_cost_usd' => $bucket['totalCost'],
+                    'avg_duration_ms' => $bucket['total'] > 0 ? intdiv($bucket['durationSum'], $bucket['total']) : null,
+                ]
+            );
+        }
+
+        $this->components->info('Recalculated '.count($buckets).' aggregate bucket(s).');
 
         return self::SUCCESS;
     }

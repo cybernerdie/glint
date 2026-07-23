@@ -62,7 +62,7 @@ it('onRequestSending fires LlmCallStarted for api.openai.com', function () {
     config()->set('glint.recording.store_bodies', true);
 
     $context = new TraceContext;
-    $context->openTrace('trace-abc', true);
+    $context->openTrace('trace-abc');
     $instrumentation = new HttpClientInstrumentation($context);
 
     $body = json_encode([
