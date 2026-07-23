@@ -14,6 +14,7 @@ arch('all concrete classes are final')
         'Cybernerdie\Glint\GlintApplicationServiceProvider',
         'Cybernerdie\Glint\GlintServiceProvider',
         'Cybernerdie\Glint\Models',
+        'Cybernerdie\Glint\Http\Requests\BaseFilterRequest',
     ]);
 
 arch('no debug calls')
