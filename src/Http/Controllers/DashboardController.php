@@ -4,24 +4,56 @@ declare(strict_types=1);
 
 namespace Cybernerdie\Glint\Http\Controllers;
 
-use Cybernerdie\Glint\Models\GlintAggregate;
+use Cybernerdie\Glint\Enums\RecordStatus;
+use Cybernerdie\Glint\Http\Concerns\ResolvesDateRange;
+use Cybernerdie\Glint\Models\GlintGeneration;
 use Cybernerdie\Glint\Models\GlintTrace;
 use Illuminate\Contracts\View\View as ViewContract;
+use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\View;
 
 final class DashboardController
 {
-    public function index(): ViewContract
+    use ResolvesDateRange;
+
+    /**
+     * All figures on this page are derived from the raw glint_traces and
+     * glint_generations tables (single source of truth) so every panel
+     * agrees with every other panel for any selected period.
+     */
+    public function index(Request $request): ViewContract
     {
-        // Cache dashboard stats for 60 seconds — these aggregate queries can be
-        // expensive on large tables and the dashboard is not a real-time view.
-        // rescue() wraps the entire Cache::remember so a missing cache store
-        // (e.g. Redis down) degrades gracefully rather than throwing.
-        $stats = rescue(fn () => Cache::remember('__glint__:dashboard.stats', 60, function () {
-            return rescue(function () {
-                $row = GlintAggregate::query()
-                    ->selectRaw('SUM(total_requests) as total, SUM(failed_requests) as errors, SUM(total_cost_usd) as total_cost, SUM(avg_duration_ms * total_requests) / NULLIF(SUM(total_requests), 0) as avg_duration')
+        $period = $this->normalizePeriod($request->string('period')->toString());
+        $fromDate = $request->string('from')->toString();
+        $toDate = $request->string('to')->toString();
+
+        [$fromDt, $toDt] = $this->resolveDateRange($period, $fromDate, $toDate);
+
+        $cacheKey = '__glint__:dashboard.stats.'.$period.'.'.$fromDate.'.'.$toDate;
+
+        $emptyStats = [
+            'total_traces' => 0,
+            'total_generations' => 0,
+            'total_cost_usd' => 0.0,
+            'avg_duration_ms' => 0,
+            'error_rate' => 0.0,
+        ];
+
+        $stats = rescue(fn () => Cache::remember($cacheKey, 60, function () use ($fromDt, $toDt, $emptyStats) {
+            return rescue(function () use ($fromDt, $toDt) {
+                $genQuery = GlintGeneration::query()
+                    ->when($fromDt, fn ($q) => $q->where('started_at', '>=', $fromDt))
+                    ->when($toDt, fn ($q) => $q->where('started_at', '<=', $toDt));
+
+                $row = (clone $genQuery)
+                    ->selectRaw(
+                        'COUNT(*) as total, SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as errors, SUM(cost_usd) as total_cost, AVG(duration_ms) as avg_duration',
+                        [RecordStatus::Error->value]
+                    )
                     ->first();
 
                 $attrs = $row ? $row->getAttributes() : [];
@@ -31,43 +63,164 @@ final class DashboardController
                 $avgDuration = isset($attrs['avg_duration']) && is_numeric($attrs['avg_duration']) ? (int) $attrs['avg_duration'] : 0;
                 $errorRate = $total > 0 ? round(($errors / $total) * 100, 1) : 0.0;
 
+                $traceQuery = GlintTrace::query()
+                    ->when($fromDt, fn ($q) => $q->where('started_at', '>=', $fromDt))
+                    ->when($toDt, fn ($q) => $q->where('started_at', '<=', $toDt));
+
                 return [
-                    'total_traces' => GlintTrace::query()->count(),
+                    'total_traces' => $traceQuery->count(),
                     'total_generations' => $total,
                     'total_cost_usd' => $totalCost,
                     'avg_duration_ms' => $avgDuration,
                     'error_rate' => $errorRate,
                 ];
-            }, [
-                'total_traces' => 0,
-                'total_generations' => 0,
-                'total_cost_usd' => 0.0,
-                'avg_duration_ms' => 0,
-                'error_rate' => 0.0,
-            ]);
-        }), [
-            'total_traces' => 0,
-            'total_generations' => 0,
-            'total_cost_usd' => 0.0,
-            'avg_duration_ms' => 0,
-            'error_rate' => 0.0,
-        ]);
+            }, $emptyStats);
+        }), $emptyStats);
+
+        $volumeBuckets = rescue(fn () => $this->volumeBuckets($period, $fromDt, $toDt), collect());
 
         $recentTraces = rescue(
             fn () => GlintTrace::query()->latest('started_at')->limit(10)->get(),
             collect()
         );
 
-        $costByProvider = rescue(
-            fn () => GlintAggregate::query()
-                ->selectRaw('provider, SUM(total_cost_usd) as total_cost, SUM(total_requests) as count')
-                ->groupBy('provider')
-                ->orderByDesc('total_cost')
-                ->limit(10)
+        $topTraceNames = rescue(
+            fn () => GlintTrace::query()
+                ->select(['name', DB::raw('COUNT(*) as trace_count')])
+                ->whereNotNull('name')
+                ->when($fromDt, fn ($q) => $q->where('started_at', '>=', $fromDt))
+                ->when($toDt, fn ($q) => $q->where('started_at', '<=', $toDt))
+                ->groupBy('name')
+                ->orderByDesc('trace_count')
+                ->limit(8)
                 ->get(),
             collect()
         );
 
-        return View::make('glint::dashboard', compact('stats', 'recentTraces', 'costByProvider'));
+        $topModelCosts = rescue(
+            fn () => GlintGeneration::query()
+                ->select([
+                    'model',
+                    'provider',
+                    DB::raw('SUM(cost_usd) as total_cost'),
+                    DB::raw('SUM(total_tokens) as total_tokens'),
+                    DB::raw('COUNT(*) as total_requests'),
+                ])
+                ->whereNotNull('cost_usd')
+                ->when($fromDt, fn ($q) => $q->where('started_at', '>=', $fromDt))
+                ->when($toDt, fn ($q) => $q->where('started_at', '<=', $toDt))
+                ->groupBy('model', 'provider')
+                ->orderByDesc('total_cost')
+                ->limit(6)
+                ->get(),
+            collect()
+        );
+
+        $topUserCosts = rescue(
+            fn () => GlintTrace::query()
+                ->select([
+                    'glint_traces.user_id',
+                    DB::raw('SUM(glint_generations.cost_usd) as total_cost'),
+                    DB::raw('COUNT(DISTINCT glint_traces.id) as trace_count'),
+                ])
+                ->leftJoin('glint_generations', 'glint_generations.trace_id', '=', 'glint_traces.id')
+                ->whereNotNull('glint_traces.user_id')
+                ->when($fromDt, fn ($q) => $q->where('glint_traces.started_at', '>=', $fromDt))
+                ->when($toDt, fn ($q) => $q->where('glint_traces.started_at', '<=', $toDt))
+                ->groupBy('glint_traces.user_id')
+                ->orderByDesc('total_cost')
+                ->limit(8)
+                ->get(),
+            collect()
+        );
+
+        return View::make('glint::dashboard', compact(
+            'stats', 'recentTraces', 'volumeBuckets',
+            'topTraceNames', 'topModelCosts', 'topUserCosts',
+            'period', 'fromDate', 'toDate'
+        ));
+    }
+
+    /**
+     * Build chart buckets for the request-volume chart from raw generations.
+     *
+     * Last 24 hours => hourly buckets (grouped in PHP for DB portability),
+     * otherwise => one bucket per day across the selected range.
+     *
+     * @return Collection<int, array{label: string, total: int}>
+     */
+    private function volumeBuckets(string $period, ?Carbon $fromDt, ?Carbon $toDt): Collection
+    {
+        if ($period === '24h') {
+            /** @var array<string, int> $hourlyTotals */
+            $hourlyTotals = [];
+
+            $recentGenerations = GlintGeneration::query()
+                ->where('started_at', '>=', now()->subHours(24))
+                ->get(['started_at']);
+
+            foreach ($recentGenerations as $generation) {
+                $key = $generation->started_at->format('Y-m-d H');
+                $hourlyTotals[$key] = ($hourlyTotals[$key] ?? 0) + 1;
+            }
+
+            $buckets = [];
+            for ($h = 23; $h >= 0; $h--) {
+                $hour = now()->subHours($h);
+                $buckets[] = [
+                    'label' => $h % 4 === 0 ? $hour->format('ga') : '',
+                    'total' => $hourlyTotals[$hour->format('Y-m-d H')] ?? 0,
+                ];
+            }
+
+            return collect($buckets);
+        }
+
+        $rows = GlintGeneration::query()
+            ->selectRaw('DATE(started_at) as date, COUNT(*) as total')
+            ->when($fromDt, fn ($q) => $q->where('started_at', '>=', $fromDt))
+            ->when($toDt, fn ($q) => $q->where('started_at', '<=', $toDt))
+            ->when($fromDt === null && $toDt === null, fn ($q) => $q->where('started_at', '>=', now()->subDays(13)->startOfDay()))
+            ->groupByRaw('DATE(started_at)')
+            ->orderBy('date')
+            ->get();
+
+        /** @var array<string, int> $dailyTotals */
+        $dailyTotals = [];
+        foreach ($rows as $row) {
+            $date = $row->getAttribute('date');
+            $total = $row->getAttribute('total');
+
+            if (is_string($date) && $date !== '') {
+                $dailyTotals[$date] = is_numeric($total) ? (int) $total : 0;
+            }
+        }
+
+        // Anchor the window on the end of the selected range so custom
+        // ranges chart their own days instead of a window ending today.
+        $rangeEnd = ($toDt ?? now())->copy()->startOfDay();
+
+        $dayCount = match ($period) {
+            '7d' => 7,
+            '30d' => 30,
+            '90d' => 90,
+            // Custom/unknown: span the selected range (capped), else two weeks.
+            default => $fromDt !== null
+                ? min(120, (int) $fromDt->copy()->startOfDay()->diffInDays($rangeEnd) + 1)
+                : 14,
+        };
+
+        $buckets = [];
+        for ($i = $dayCount - 1; $i >= 0; $i--) {
+            $day = $rangeEnd->copy()->subDays($i);
+            $buckets[] = [
+                'label' => $dayCount <= 14
+                    ? $day->format('M j')
+                    : ($i % 7 === 0 ? $day->format('M j') : ''),
+                'total' => $dailyTotals[$day->format('Y-m-d')] ?? 0,
+            ];
+        }
+
+        return collect($buckets);
     }
 }

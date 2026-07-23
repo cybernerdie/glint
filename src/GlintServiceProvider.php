@@ -89,10 +89,10 @@ final class GlintServiceProvider extends ServiceProvider
 
     private function registerSyncListeners(): void
     {
-        Event::listen(LlmCallStarted::class,  [GlintRecorder::class, 'handleLlmCallStarted']);
+        Event::listen(LlmCallStarted::class, [GlintRecorder::class, 'handleLlmCallStarted']);
         Event::listen(LlmCallFinished::class, [GlintRecorder::class, 'handleLlmCallFinished']);
-        Event::listen(LlmToolCalled::class,   [GlintRecorder::class, 'handleLlmToolCalled']);
-        Event::listen(LlmCallFailed::class,   [GlintRecorder::class, 'handleLlmCallFailed']);
+        Event::listen(LlmToolCalled::class, [GlintRecorder::class, 'handleLlmToolCalled']);
+        Event::listen(LlmCallFailed::class, [GlintRecorder::class, 'handleLlmCallFailed']);
     }
 
     private function registerQueueListeners(): void
@@ -103,7 +103,7 @@ final class GlintServiceProvider extends ServiceProvider
         $rawQueue = Config::get('glint.queue.queue');
         $queue = is_string($rawQueue) && $rawQueue !== '' ? $rawQueue : null;
 
-        $dispatch = fn (object $e) => RecordLlmCallJob::dispatch($e)->onConnection($connection)->onQueue($queue);
+        $dispatch = fn (LlmCallStarted|LlmCallFinished|LlmToolCalled|LlmCallFailed $e) => RecordLlmCallJob::dispatch($e)->onConnection($connection)->onQueue($queue);
 
         foreach ([LlmCallStarted::class, LlmCallFinished::class, LlmToolCalled::class, LlmCallFailed::class] as $event) {
             Event::listen($event, $dispatch);
@@ -122,10 +122,7 @@ final class GlintServiceProvider extends ServiceProvider
             'neuron-ai' => Instrumentation\NeuronAiInstrumentation::class,
         ];
 
-        // HttpClientInstrumentation, LaravelAiInstrumentation, and
-        // GlintNeuronAiObserver carry per-request mutable state ($pending,
-        // $toolStartTimes). Bind them as scoped so Octane re-creates them
-        // each request, preventing state from leaking across requests.
+        // Scoped so Octane re-creates them per request, preventing mutable state leakage.
         $this->app->scoped(Instrumentation\HttpClientInstrumentation::class);
         $this->app->scoped(Instrumentation\LaravelAiInstrumentation::class);
         $this->app->scoped(Instrumentation\NeuronAi\GlintNeuronAiObserver::class);

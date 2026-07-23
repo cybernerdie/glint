@@ -5,6 +5,22 @@ declare(strict_types=1);
 use Cybernerdie\Glint\Console\Commands\InstallCommand;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Support\Facades\File;
+
+// Ensure config/glint.php exists before each test so that InstallCommand
+// always asks the overwrite confirmation prompt. The testbench skeleton's
+// config directory may not contain the file on a fresh CI checkout.
+beforeEach(function () {
+    file_put_contents(config_path('glint.php'), '<?php return [];');
+});
+
+afterEach(function () {
+    @unlink(config_path('glint.php'));
+
+    // Published views override the package views for every test that runs
+    // after this file — remove them so view resolution stays on resources/views.
+    File::deleteDirectory(resource_path('views/vendor/glint'));
+});
 
 it('has the correct signature', function () {
     expect((new InstallCommand)->getName())->toBe('glint:install');

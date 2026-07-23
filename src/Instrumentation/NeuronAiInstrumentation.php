@@ -19,10 +19,7 @@ final class NeuronAiInstrumentation implements InstrumentationDriver
 
     public function register(): void
     {
-        // Register a lightweight proxy as the global NeuronAI observer.
-        // The proxy resolves the per-request scoped GlintNeuronAiObserver from
-        // the container at event time, providing Octane safety without adding
-        // multiple observer registrations for long-running processes.
+        // Proxy resolves the scoped GlintNeuronAiObserver at event time for Octane safety.
         EventBus::observe(new class implements ObserverInterface
         {
             public function onEvent(string $event, object $source, mixed $data = null, ?string $branchId = null): void

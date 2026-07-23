@@ -1,71 +1,71 @@
 @extends('glint::layout')
 
-@section('page-title', 'Traces')
-@section('refresh-interval', 5)
+@section('page-title', $userId)
+
+@section('breadcrumb')
+    <span class="topbar-sep">/</span>
+    <a href="{{ route('glint.users.index') }}" class="breadcrumb-link">Users</a>
+    <span class="topbar-sep">/</span>
+    <span class="breadcrumb-current">{{ $userId }}</span>
+@endsection
 
 @section('content')
 
-    <form method="GET" action="{{ route('glint.traces.index') }}">
-
     <div class="page-head">
         <div>
-            <div class="page-title">Traces</div>
+            <div class="page-title" style="font-family:var(--font-mono);font-size:19px">{{ $userId }}</div>
         </div>
-        <div class="page-toolbar">
+        <form method="GET" action="{{ route('glint.users.show', $userId) }}" class="page-toolbar">
             @include('glint::partials.filters.date-range', [
                 'activePeriod' => $period,
                 'activeFrom'   => $fromDate,
                 'activeTo'     => $toDate,
             ])
+        </form>
+    </div>
+
+    <div class="metric-strip">
+        <div class="metric">
+            <div class="metric-label">Traces</div>
+            <div class="metric-value">{{ number_format($stats['trace_count']) }}</div>
+            <div class="metric-foot">@include('glint::partials.period-label', ['period' => $period, 'fromDate' => $fromDate, 'toDate' => $toDate])</div>
+        </div>
+
+        <div class="metric">
+            <div class="metric-label">Total Cost</div>
+            <div class="metric-value">${{ number_format($stats['total_cost'], 2) }}</div>
+            <div class="metric-foot"><span class="t-mono" style="font-size:11px">${{ number_format($stats['total_cost'], 4) }}</span> USD</div>
+        </div>
+
+        <div class="metric">
+            <div class="metric-label">Avg Duration</div>
+            <div class="metric-value">{{ number_format($stats['avg_duration']) }}<span class="metric-unit">ms</span></div>
+            <div class="metric-foot">Per trace</div>
+        </div>
+
+        <div class="metric">
+            <div class="metric-label">Tokens</div>
+            <div class="metric-value">{{ number_format($stats['total_tokens']) }}</div>
+            <div class="metric-foot">Across all traces</div>
+        </div>
+
+        <div class="metric">
+            <div class="metric-label">Errors</div>
+            <div class="metric-value">
+                <span class="{{ $stats['error_count'] > 0 ? 'is-bad' : '' }}">{{ number_format($stats['error_count']) }}</span>
+            </div>
+            <div class="metric-foot">Failed traces</div>
         </div>
     </div>
 
     <div class="panel">
-        <div class="panel-toolbar">
-            <div class="search-wrap">
-                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
-                </svg>
-                <label for="traces-search" class="sr-only">Search by name</label>
-                <input
-                    id="traces-search"
-                    type="text"
-                    name="search"
-                    value="{{ $search }}"
-                    placeholder="Search by name..."
-                    class="input"
-                    style="width:220px"
-                    autocomplete="off"
-                >
-            </div>
-
-            <label for="traces-user" class="sr-only">Filter by user ID</label>
-            <input
-                id="traces-user"
-                type="text"
-                name="user_id"
-                value="{{ $userId }}"
-                placeholder="User ID..."
-                class="input"
-                style="width:150px"
-                autocomplete="off"
-            >
-
-            <input type="hidden" name="status" id="traces-status-val" value="{{ $status }}">
-            <div class="status-pills" role="group" aria-label="Filter by status" style="margin-left:auto">
-                <button type="button"
-                        class="status-pill {{ !$status ? 'is-active' : '' }}"
-                        onclick="document.getElementById('traces-status-val').value=''; this.closest('form').requestSubmit()">All</button>
-                @foreach($statuses as $s)
-                    <button type="button"
-                            class="status-pill {{ $status === $s->value ? 'is-active' : '' }}"
-                            onclick="document.getElementById('traces-status-val').value='{{ $s->value }}'; this.closest('form').requestSubmit()">
-                        {{ ucfirst($s->value) }}
-                    </button>
-                @endforeach
-            </div>
+        <div class="panel-header">
+            <span class="panel-title">Traces</span>
         </div>
-        @if(method_exists($traces, 'isEmpty') ? $traces->isEmpty() : count($traces) === 0)
+
+        @php $isEmpty = method_exists($traces, 'isEmpty') ? $traces->isEmpty() : count($traces) === 0; @endphp
+
+        @if($isEmpty)
             <div class="empty">
                 <svg class="empty-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.4">
                     <path stroke-linecap="round" stroke-linejoin="round"
@@ -73,7 +73,11 @@
                 </svg>
                 <div class="empty-title">No traces found</div>
                 <div class="empty-sub">
-                    Traces will appear here once your app makes LLM calls.
+                    @if($period && $period !== '24h')
+                        Try a different date range.
+                    @else
+                        This user has no recorded traces yet.
+                    @endif
                 </div>
             </div>
         @else
@@ -83,7 +87,6 @@
                         <th>Trace</th>
                         <th>Name</th>
                         <th>Status</th>
-                        <th>User</th>
                         <th class="num">Duration</th>
                         <th class="num">Started</th>
                     </tr>
@@ -102,7 +105,6 @@
                                 </a>
                             </td>
                             <td>@include('glint::partials.status-badge', ['status' => $trace->status])</td>
-                            <td class="t-muted t-mono">{{ $trace->user_id ?? '—' }}</td>
                             <td class="t-muted t-mono num">
                                 {{ $trace->duration_ms !== null ? number_format($trace->duration_ms).'ms' : '—' }}
                             </td>
@@ -121,7 +123,5 @@
             @endif
         @endif
     </div>
-
-    </form>
 
 @endsection

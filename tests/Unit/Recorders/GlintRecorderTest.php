@@ -14,6 +14,7 @@ use Cybernerdie\Glint\Filtering\GlintFilterRegistry;
 use Cybernerdie\Glint\GlintManager;
 use Cybernerdie\Glint\Models\GlintGeneration;
 use Cybernerdie\Glint\Models\GlintSpan;
+use Cybernerdie\Glint\Models\GlintTrace;
 use Cybernerdie\Glint\Pricing\PricingRegistry;
 use Cybernerdie\Glint\Recorders\GlintRecorder;
 use Illuminate\Support\Facades\DB;
@@ -74,7 +75,7 @@ it('does nothing when isSampled() is false', function () {
     expect(GlintGeneration::where('id', 'gen-unsampled')->exists())->toBeFalse();
 });
 
-it('does nothing when traceId is null and no trace is open', function () {
+it('auto-creates a headless trace when traceId is null and no trace is open', function () {
     $context = new TraceContext; // no openTrace call — traceId is null
 
     $recorder = makeRecorder($context);
@@ -92,7 +93,76 @@ it('does nothing when traceId is null and no trace is open', function () {
 
     $recorder->handleLlmCallStarted($event);
 
-    expect(GlintGeneration::where('id', 'gen-no-trace')->exists())->toBeFalse();
+    $gen = GlintGeneration::find('gen-no-trace');
+    expect($gen)->not->toBeNull();
+
+    $trace = GlintTrace::find($gen->trace_id);
+    expect($trace)->not->toBeNull();
+    expect($trace->name)->toBe('auto:openai/gpt-4o');
+    expect($trace->status)->toBe(RecordStatus::Pending);
+});
+
+it('closes the headless trace with status=success when LlmCallFinished fires', function () {
+    $context = new TraceContext;
+    $recorder = makeRecorder($context);
+
+    $started = new LlmCallStarted(
+        generationId: 'gen-headless-finish',
+        provider: 'openai',
+        model: 'gpt-4o',
+        messages: null,
+        temperature: null,
+        maxTokens: null,
+        isStreaming: false,
+        traceId: null,
+    );
+    $recorder->handleLlmCallStarted($started);
+
+    $gen = GlintGeneration::find('gen-headless-finish');
+    $traceId = $gen->trace_id;
+
+    $recorder->handleLlmCallFinished(new LlmCallFinished(
+        generationId: 'gen-headless-finish',
+        completion: 'done',
+        promptTokens: 5,
+        completionTokens: 5,
+        finishReason: 'stop',
+        durationMs: 100,
+    ));
+
+    $trace = GlintTrace::find($traceId);
+    expect($trace->status)->toBe(RecordStatus::Success);
+    expect($trace->ended_at)->not->toBeNull();
+});
+
+it('closes the headless trace with status=error when LlmCallFailed fires', function () {
+    $context = new TraceContext;
+    $recorder = makeRecorder($context);
+
+    $started = new LlmCallStarted(
+        generationId: 'gen-headless-fail',
+        provider: 'openai',
+        model: 'gpt-4o',
+        messages: null,
+        temperature: null,
+        maxTokens: null,
+        isStreaming: false,
+        traceId: null,
+    );
+    $recorder->handleLlmCallStarted($started);
+
+    $gen = GlintGeneration::find('gen-headless-fail');
+    $traceId = $gen->trace_id;
+
+    $recorder->handleLlmCallFailed(LlmCallFailed::fromThrowable(
+        generationId: 'gen-headless-fail',
+        exception: new RuntimeException('timeout'),
+        durationMs: 50,
+    ));
+
+    $trace = GlintTrace::find($traceId);
+    expect($trace->status)->toBe(RecordStatus::Error);
+    expect($trace->ended_at)->not->toBeNull();
 });
 
 it('updates generation with tokens, cost, finish_reason, and status=success on LlmCallFinished', function () {

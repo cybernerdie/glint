@@ -32,3 +32,10 @@ it('calculates error rate when there are error generations', function () {
     $this->get(route('glint.dashboard'))
         ->assertStatus(200);
 });
+
+it('treats an unknown period slug as the 24h default', function () {
+    $this->get(route('glint.dashboard', ['period' => '7daaaa']))
+        ->assertStatus(200)
+        ->assertSee('Last 24 hours')
+        ->assertDontSee('7daaaa');
+});

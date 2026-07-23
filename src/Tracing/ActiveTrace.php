@@ -130,13 +130,6 @@ final class ActiveTrace implements TraceInterface
         return $result;
     }
 
-    /**
-     * Add a key/value tag to the trace's metadata.
-     *
-     * Each call issues a SELECT + UPDATE against glint_traces. For traces
-     * that receive many tags, batch them before calling tag() or accumulate
-     * them in the metadata array passed to Glint::trace().
-     */
     public function tag(string $key, string $value): static
     {
         rescue(function () use ($key, $value): void {
@@ -162,9 +155,6 @@ final class ActiveTrace implements TraceInterface
     }
 
     /**
-     * Write multiple key/value tags in a single atomic transaction.
-     * Prefer this over calling tag() in a loop when you have several tags.
-     *
      * @param  array<string, string>  $tags
      */
     public function tags(array $tags): static

@@ -22,7 +22,6 @@ final class VerifyCommand extends Command
 
         $issues = 0;
 
-        // ── Recording enabled ─────────────────────────────────────────────────
         $enabled = Config::boolean('glint.enabled', false);
 
         if ($enabled) {
@@ -33,7 +32,6 @@ final class VerifyCommand extends Command
             $issues++;
         }
 
-        // ── Database tables ───────────────────────────────────────────────────
         $required = [
             'glint_traces', 'glint_spans', 'glint_generations',
             'glint_aggregates', 'glint_alert_rules', 'glint_alert_events',
@@ -52,7 +50,6 @@ final class VerifyCommand extends Command
             $issues++;
         }
 
-        // ── GlintServiceProvider registered ───────────────────────────────────
         $providersPath = base_path('bootstrap/providers.php');
         $registered = file_exists($providersPath)
             && str_contains((string) file_get_contents($providersPath), 'GlintServiceProvider');
@@ -65,7 +62,6 @@ final class VerifyCommand extends Command
             $issues++;
         }
 
-        // ── Recording mode & queue ────────────────────────────────────────────
         $mode = Config::string('glint.recording.mode', 'queue');
         $this->components->twoColumnDetail('Recording mode', "<fg=cyan>{$mode}</>");
 
@@ -78,12 +74,12 @@ final class VerifyCommand extends Command
             $this->line("  <fg=yellow>Note:</> Ensure a worker is running: <fg=cyan>php artisan queue:work --queue={$queue}</>");
         }
 
-        // ── Active drivers ────────────────────────────────────────────────────
         $driversRaw = Config::get('glint.drivers', ['http']);
-        $drivers = is_array($driversRaw) ? $driversRaw : ['http'];
+        $drivers = is_array($driversRaw)
+            ? array_values(array_filter(array_map(fn (mixed $d): ?string => is_string($d) ? $d : null, $driversRaw)))
+            : ['http'];
         $this->components->twoColumnDetail('Active drivers', '<fg=cyan>'.implode(', ', $drivers).'</>');
 
-        // ── Pricing registry ──────────────────────────────────────────────────
         $count = 0;
         foreach ($pricing->all() as $models) {
             $count += count($models);
@@ -100,7 +96,6 @@ final class VerifyCommand extends Command
             $this->line('  <fg=yellow>→</> Run: <fg=cyan>php artisan glint:pricing</> to inspect loaded prices.');
         }
 
-        // ── Result ────────────────────────────────────────────────────────────
         $this->newLine();
 
         if ($issues === 0) {

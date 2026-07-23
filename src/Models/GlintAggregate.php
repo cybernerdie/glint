@@ -11,9 +11,32 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\MassPrunable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Config;
 
-/** @implements HasPrunable<GlintAggregate> */
+/**
+ * @property int $id
+ * @property AggregatePeriod $period
+ * @property Carbon $period_at
+ * @property string $provider
+ * @property string $model
+ * @property string|null $user_id
+ * @property string|null $team_id
+ * @property int $total_requests
+ * @property int $successful_requests
+ * @property int $failed_requests
+ * @property int $total_tokens
+ * @property int $prompt_tokens
+ * @property int $completion_tokens
+ * @property numeric-string $total_cost_usd
+ * @property int|null $avg_duration_ms
+ * @property int|null $p95_duration_ms
+ * @property int|null $p99_duration_ms
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ *
+ * @implements HasPrunable<GlintAggregate>
+ */
 class GlintAggregate extends Model implements HasPrunable
 {
     /** @use HasFactory<GlintAggregateFactory> */

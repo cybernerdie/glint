@@ -15,11 +15,6 @@ use Illuminate\Support\Facades\DB;
 
 final class AlertDispatcher
 {
-    /**
-     * Evaluate all active alert rules against current aggregates.
-     * Creates a GlintAlertEvent when a threshold is crossed.
-     * Respects the cooldown_minutes setting on each rule.
-     */
     public function evaluate(): void
     {
         $rules = GlintAlertRule::query()->where('enabled', true)->get();
@@ -28,8 +23,6 @@ final class AlertDispatcher
             return;
         }
 
-        // Batch-fetch the latest aggregate row per (period, provider) combination
-        // required by the loaded rules, instead of issuing one query per rule (N+1).
         $aggregateCache = $this->buildAggregateCache($rules);
 
         foreach ($rules as $rule) {
@@ -38,16 +31,11 @@ final class AlertDispatcher
     }
 
     /**
-     * Pre-load the most recent aggregate for every (period, provider) pair
-     * referenced across all rules. Returns a keyed Collection so each rule
-     * can look up its aggregate in O(1) without an extra DB query.
-     *
      * @param  Collection<int, GlintAlertRule>  $rules
      * @return Collection<string, GlintAggregate>
      */
     private function buildAggregateCache(Collection $rules): Collection
     {
-        // Collect the distinct (period, provider|null) pairs needed
         $pairs = $rules
             ->filter(fn (GlintAlertRule $r) => ! $r->isWithinCooldown())
             ->map(function (GlintAlertRule $rule): array {
@@ -86,7 +74,6 @@ final class AlertDispatcher
      */
     private function evaluateRule(GlintAlertRule $rule, Collection $aggregateCache): void
     {
-        // Respect cooldown — skip if a recent alert was already fired
         if ($rule->isWithinCooldown()) {
             return;
         }
@@ -101,7 +88,6 @@ final class AlertDispatcher
             return;
         }
 
-        // Look up the pre-fetched aggregate — no extra DB query per rule
         $cacheKey = $period.'|'.($provider ?? '');
         $aggregate = $aggregateCache->get($cacheKey);
 

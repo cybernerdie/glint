@@ -28,9 +28,6 @@ final class GlintMiddleware
             return $next($request);
         }
 
-        // Skip tracing requests to the Glint dashboard itself — same pattern as Telescope.
-        // Without this, every dashboard page view would create a trace row, polluting
-        // the trace list with noise unrelated to LLM observability.
         $glintPath = Config::string('glint.path', 'glint');
         if ($request->is($glintPath) || $request->is($glintPath.'/*')) {
             return $next($request);
@@ -84,31 +81,18 @@ final class GlintMiddleware
         }
     }
 
-    /**
-     * Strip control characters, apply configured redaction patterns, and
-     * enforce a maximum length on the User-Agent string before persisting.
-     */
     private function sanitizeUserAgent(?string $userAgent): ?string
     {
         if ($userAgent === null) {
             return null;
         }
 
-        // Remove ASCII control characters (0x00-0x1F and 0x7F) which have no
-        // business being in a User-Agent header and can cause display issues.
         $cleaned = preg_replace('/[\x00-\x1F\x7F]/', '', $userAgent) ?? '';
-
-        // Apply the privacy redaction patterns from config.
         $cleaned = $this->applyRedactionPatterns($cleaned);
 
-        // Hard cap at 512 characters — real UA strings are far shorter.
         return substr($cleaned, 0, 512);
     }
 
-    /**
-     * Apply every regex in glint.privacy.redact_patterns, replacing matches
-     * with [REDACTED]. Patterns that fail to compile are silently skipped.
-     */
     private function applyRedactionPatterns(string $value): string
     {
         $patterns = (array) Config::get('glint.privacy.redact_patterns', []);
@@ -118,9 +102,6 @@ final class GlintMiddleware
                 continue;
             }
 
-            // Use a silent @ to prevent a broken pattern from crashing the app.
-            // preg_last_error() is checked afterwards so misconfigured patterns
-            // surface as a debug log entry rather than silently disappearing.
             $result = @preg_replace($pattern, '[REDACTED]', $value);
 
             if ($result === null || preg_last_error() !== PREG_NO_ERROR) {
@@ -147,8 +128,6 @@ final class GlintMiddleware
             return true;
         }
 
-        // random_int() produces a cryptographically secure uniform integer,
-        // giving accurate sampling at any fractional rate (e.g. 0.005 = 0.5%).
         return (random_int(0, PHP_INT_MAX) / PHP_INT_MAX) < $rate;
     }
 }

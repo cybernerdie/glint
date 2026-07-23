@@ -35,10 +35,7 @@ final class HttpClientInstrumentation implements InstrumentationDriver
 
     public function register(): void
     {
-        // Use app(self::class) in each closure so that Octane's per-request
-        // scoped instance is resolved at invocation time, not at boot time.
-        // Without this, the boot-time instance's $pending/$hashMap would be
-        // shared across all requests instead of being reset per request.
+        // Resolve via app() at event time so Octane's per-request scoped instance is used.
         Event::listen(RequestSending::class, fn (RequestSending $e) => app(self::class)->onRequestSending($e));
         Event::listen(ResponseReceived::class, fn (ResponseReceived $e) => app(self::class)->onResponseReceived($e));
         Event::listen(ConnectionFailed::class, fn (ConnectionFailed $e) => app(self::class)->onConnectionFailed($e));
@@ -57,7 +54,6 @@ final class HttpClientInstrumentation implements InstrumentationDriver
         }
 
         $generationId = (string) Str::ulid();
-        // correlationId is an in-memory key only — never persisted to the DB.
         $correlationId = (string) Str::uuid();
         $startedAt = now();
 
@@ -87,9 +83,6 @@ final class HttpClientInstrumentation implements InstrumentationDriver
         try {
             $rawBody = $event->request->body();
             if (! empty($rawBody)) {
-                // json_decode with assoc=true may return a non-array for scalar JSON
-                // values (e.g. a bare string "hello" or a number 42). Ensure we always
-                // have an array; ?? [] only catches null (failed decode), not scalars.
                 $decoded = json_decode($rawBody, true);
                 $body = is_array($decoded) ? $decoded : [];
             }

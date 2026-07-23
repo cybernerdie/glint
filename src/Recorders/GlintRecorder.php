@@ -16,9 +16,11 @@ use Cybernerdie\Glint\Filtering\FilterEntry;
 use Cybernerdie\Glint\Filtering\GlintFilterRegistry;
 use Cybernerdie\Glint\Models\GlintGeneration;
 use Cybernerdie\Glint\Models\GlintSpan;
+use Cybernerdie\Glint\Models\GlintTrace;
 use Cybernerdie\Glint\Pricing\PricingRegistry;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 final class GlintRecorder
 {
@@ -47,7 +49,18 @@ final class GlintRecorder
             }
 
             if ($traceId === null) {
-                return;
+                // No active trace context (e.g. background job, Artisan command).
+                // Auto-create a headless trace so the generation is still recorded.
+                $traceId = (string) Str::ulid();
+
+                GlintTrace::create([
+                    'id' => $traceId,
+                    'name' => 'auto:'.$event->provider.'/'.$event->model,
+                    'status' => RecordStatus::Pending,
+                    'started_at' => now(),
+                ]);
+
+                $this->context->registerAutoTrace($event->generationId, $traceId);
             }
 
             GlintGeneration::firstOrCreate(
@@ -105,6 +118,7 @@ final class GlintRecorder
             ]);
 
             $this->upsertAggregate($generation);
+            $this->closeAutoTrace($event->generationId, RecordStatus::Success);
         });
     }
 
@@ -118,6 +132,8 @@ final class GlintRecorder
                 'duration_ms' => $event->durationMs,
                 'ended_at' => now(),
             ]);
+
+            $this->closeAutoTrace($event->generationId, RecordStatus::Error);
         });
     }
 
@@ -143,13 +159,36 @@ final class GlintRecorder
         });
     }
 
+    private function closeAutoTrace(string $generationId, RecordStatus $status): void
+    {
+        $traceId = $this->context->autoTraceIdForGeneration($generationId);
+
+        if ($traceId === null) {
+            return;
+        }
+
+        $trace = GlintTrace::find($traceId);
+
+        if ($trace === null) {
+            $this->context->clearAutoTrace($generationId);
+
+            return;
+        }
+
+        $endedAt = now();
+        $durationMs = (int) $trace->started_at->diffInMilliseconds($endedAt);
+
+        $trace->update([
+            'status' => $status,
+            'duration_ms' => $durationMs,
+            'ended_at' => $endedAt,
+        ]);
+
+        $this->context->clearAutoTrace($generationId);
+    }
+
     private function upsertAggregate(GlintGeneration $generation): void
     {
-        // One atomic upsert per period bucket. Writing all four periods (hour/day/week/month)
-        // on every finished generation ensures alert rules and cost queries can use any
-        // period granularity without missing data.
-        // NOTE: For high-traffic apps, consider batching these increments via a scheduled
-        // job rather than writing on every single LLM call.
         $this->safeWrite('upsertAggregate', function () use ($generation): void {
             $durationMs = (int) $generation->duration_ms;
             $totalTokens = (int) $generation->total_tokens;
@@ -167,41 +206,54 @@ final class GlintRecorder
             ];
 
             foreach ($periodAts as $period => $periodAt) {
-                DB::table('glint_aggregates')->upsert(
-                    [
+                $inserted = DB::table('glint_aggregates')->insertOrIgnore([
+                    'period' => $period,
+                    'period_at' => $periodAt,
+                    'provider' => $generation->provider,
+                    'model' => $generation->model,
+                    'user_id' => null,
+                    'team_id' => null,
+                    'total_requests' => 1,
+                    'successful_requests' => 1,
+                    'failed_requests' => 0,
+                    'total_tokens' => $totalTokens,
+                    'prompt_tokens' => $promptTokens,
+                    'completion_tokens' => $completionTokens,
+                    'total_cost_usd' => (float) $costUsd,
+                    'avg_duration_ms' => $durationMs,
+                    'created_at' => now()->toDateTimeString(),
+                    'updated_at' => now()->toDateTimeString(),
+                ]);
+
+                if ($inserted === 0) {
+                    DB::update(
+                        <<<'SQL'
+                        UPDATE glint_aggregates
+                        SET total_requests     = total_requests + 1,
+                            successful_requests = successful_requests + 1,
+                            total_tokens       = total_tokens + ?,
+                            prompt_tokens      = prompt_tokens + ?,
+                            completion_tokens  = completion_tokens + ?,
+                            total_cost_usd     = total_cost_usd + ?,
+                            avg_duration_ms    = (COALESCE(avg_duration_ms, 0) * total_requests + ?) / (total_requests + 1),
+                            updated_at         = ?
+                        WHERE period = ? AND period_at = ? AND provider = ? AND model = ?
+                          AND user_id IS NULL AND team_id IS NULL
+                        SQL,
                         [
-                            'period' => $period,
-                            'period_at' => $periodAt,
-                            'provider' => $generation->provider,
-                            'model' => $generation->model,
-                            'user_id' => null,
-                            'team_id' => null,
-                            'total_requests' => 1,
-                            'successful_requests' => 1,
-                            'failed_requests' => 0,
-                            'total_tokens' => $totalTokens,
-                            'prompt_tokens' => $promptTokens,
-                            'completion_tokens' => $completionTokens,
-                            'total_cost_usd' => (float) $costUsd,
-                            'avg_duration_ms' => $durationMs,
-                            'created_at' => now()->toDateTimeString(),
-                            'updated_at' => now()->toDateTimeString(),
-                        ],
-                    ],
-                    // Unique key columns (must match the glint_agg_unique index)
-                    ['period', 'period_at', 'provider', 'model', 'user_id', 'team_id'],
-                    // Columns to increment on conflict
-                    [
-                        'total_requests' => DB::raw('glint_aggregates.total_requests + 1'),
-                        'successful_requests' => DB::raw('glint_aggregates.successful_requests + 1'),
-                        'total_tokens' => DB::raw('glint_aggregates.total_tokens + '.intval($totalTokens)),
-                        'prompt_tokens' => DB::raw('glint_aggregates.prompt_tokens + '.intval($promptTokens)),
-                        'completion_tokens' => DB::raw('glint_aggregates.completion_tokens + '.intval($completionTokens)),
-                        'total_cost_usd' => DB::raw('glint_aggregates.total_cost_usd + '.$costUsd),
-                        'avg_duration_ms' => DB::raw('(COALESCE(glint_aggregates.avg_duration_ms, 0) * glint_aggregates.total_requests + '.intval($durationMs).') / (glint_aggregates.total_requests + 1)'),
-                        'updated_at' => now()->toDateTimeString(),
-                    ]
-                );
+                            $totalTokens,
+                            $promptTokens,
+                            $completionTokens,
+                            (float) $costUsd,
+                            $durationMs,
+                            now()->toDateTimeString(),
+                            $period,
+                            $periodAt,
+                            $generation->provider,
+                            $generation->model,
+                        ]
+                    );
+                }
             }
         });
     }

@@ -15,7 +15,6 @@ use Illuminate\Support\Facades\Config;
 
 final class PruneCommand extends Command
 {
-    /** Minimum number of days that must remain before records can be pruned. */
     private const MIN_RETENTION_DAYS = 1;
 
     protected $signature = 'glint:prune {--days= : Override retention days (minimum 1)} {--force : Skip confirmation}';
@@ -24,7 +23,6 @@ final class PruneCommand extends Command
 
     public function handle(): int
     {
-        // Validate --days override when provided
         $daysOption = $this->option('days');
 
         if ($daysOption !== null) {
@@ -38,14 +36,11 @@ final class PruneCommand extends Command
                 return self::FAILURE;
             }
 
-            // Apply override to config so models pick it up via Config::integer()
             config(['glint.retention.traces_days' => $days]);
             config(['glint.retention.aggregates_days' => $days]);
             config(['glint.retention.alert_days' => $days]);
         }
 
-        // Guard against misconfigured retention values already in config.
-        // Each model reads its own config key, so we check both.
         $tracesDays = Config::integer('glint.retention.traces_days', 30);
         $aggregatesDays = Config::integer('glint.retention.aggregates_days', 365);
 
