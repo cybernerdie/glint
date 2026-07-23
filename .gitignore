@@ -1,0 +1,51 @@
+# Dependencies
+/vendor/
+/node_modules/
+
+# Composer
+composer.lock
+composer.phar
+
+# PHPUnit
+/.phpunit.cache
+/phpunit.xml.bak
+.phpunit.result.cache
+
+# Laravel Pint
+.pint.cache
+
+# PHPStan
+.phpstan.cache/
+/phpstan-baseline.neon
+
+# IDE
+/.idea/
+/.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Build output (pre-built assets committed under dist/, not here)
+/node_modules/
+/package-lock.json
+/yarn.lock
+
+# Testbench
+/testbench.yaml
+
+# Internal planning docs — not published with the package
+/.internal/
+
+# Workbench (Orchestra Testbench dev app)
+/workbench/
+
+# Coverage
+/coverage/
+/coverage.xml
+/.nyc_output/

@@ -1,0 +1,123 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Cybernerdie\Glint\Tracing;
+
+use Carbon\Carbon;
+use Cybernerdie\Glint\Contracts\GenerationInterface;
+use Cybernerdie\Glint\Enums\RecordStatus;
+use Cybernerdie\Glint\Models\GlintGeneration;
+use Cybernerdie\Glint\Pricing\PricingRegistry;
+use Illuminate\Support\Facades\DB;
+
+final class ActiveGeneration implements GenerationInterface
+{
+    public function __construct(
+        private readonly string $generationId,
+        private readonly PricingRegistry $pricing,
+        private readonly string $provider,
+        private readonly string $model,
+        private readonly Carbon $startedAt,
+    ) {}
+
+    /**
+     * Add a key/value tag to the generation's metadata.
+     *
+     * Each call issues a SELECT + UPDATE against glint_generations. For
+     * generations that receive many tags, pass them upfront via the metadata
+     * array in Glint::generation() instead.
+     */
+    public function tag(string $key, string $value): static
+    {
+        rescue(function () use ($key, $value): void {
+            DB::transaction(function () use ($key, $value): void {
+                $generation = GlintGeneration::where('id', $this->generationId)->lockForUpdate()->first();
+
+                if ($generation === null) {
+                    return;
+                }
+
+                /** @var array<string, mixed> $metadata */
+                $metadata = (array) ($generation->metadata ?? []);
+                /** @var array<string, mixed> $tags */
+                $tags = is_array($metadata['tags'] ?? null) ? $metadata['tags'] : [];
+                $tags[$key] = $value;
+                $metadata['tags'] = $tags;
+
+                $generation->update(['metadata' => $metadata]);
+            });
+        });
+
+        return $this;
+    }
+
+    /**
+     * Write multiple key/value tags in a single atomic transaction.
+     * Prefer this over calling tag() in a loop when you have several tags.
+     *
+     * @param  array<string, string>  $tags
+     */
+    public function tags(array $tags): static
+    {
+        if ($tags === []) {
+            return $this;
+        }
+
+        rescue(function () use ($tags): void {
+            DB::transaction(function () use ($tags): void {
+                $generation = GlintGeneration::where('id', $this->generationId)->lockForUpdate()->first();
+
+                if ($generation === null) {
+                    return;
+                }
+
+                /** @var array<string, mixed> $metadata */
+                $metadata = (array) ($generation->metadata ?? []);
+                /** @var array<string, mixed> $existing */
+                $existing = is_array($metadata['tags'] ?? null) ? $metadata['tags'] : [];
+                $metadata['tags'] = array_merge($existing, $tags);
+
+                $generation->update(['metadata' => $metadata]);
+            });
+        });
+
+        return $this;
+    }
+
+    public function finish(string $completion, int $promptTokens, int $completionTokens, string $finishReason = 'stop'): void
+    {
+        rescue(function () use ($completion, $promptTokens, $completionTokens, $finishReason): void {
+            $now = now();
+            GlintGeneration::where('id', $this->generationId)->update([
+                'completion' => $completion,
+                'prompt_tokens' => $promptTokens,
+                'completion_tokens' => $completionTokens,
+                'total_tokens' => $promptTokens + $completionTokens,
+                'finish_reason' => $finishReason,
+                'status' => RecordStatus::Success,
+                'cost_usd' => $this->pricing->costFor($this->provider, $this->model, $promptTokens, $completionTokens),
+                'ended_at' => $now,
+                'duration_ms' => (int) $this->startedAt->diffInMilliseconds($now),
+            ]);
+        });
+    }
+
+    public function fail(\Throwable $e): void
+    {
+        rescue(function () use ($e): void {
+            $now = now();
+            GlintGeneration::where('id', $this->generationId)->update([
+                'status' => RecordStatus::Error,
+                'error_message' => $e->getMessage(),
+                'ended_at' => $now,
+                'duration_ms' => (int) $this->startedAt->diffInMilliseconds($now),
+            ]);
+        });
+    }
+
+    public function generationId(): string
+    {
+        return $this->generationId;
+    }
+}

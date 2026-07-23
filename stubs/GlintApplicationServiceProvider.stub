@@ -1,0 +1,30 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Providers;
+
+use Cybernerdie\Glint\GlintApplicationServiceProvider;
+use Illuminate\Support\Facades\Gate;
+
+class GlintServiceProvider extends GlintApplicationServiceProvider
+{
+    /**
+     * Register the Glint dashboard authorization gate.
+     *
+     * IMPORTANT: Add the email addresses (or other checks) for users who
+     * should have access to the Glint dashboard. An empty list means no one
+     * can access the dashboard outside of the local environment.
+     *
+     * The gate is automatically bypassed in the local environment so you can
+     * view the dashboard during development without logging in.
+     */
+    protected function gate(): void
+    {
+        Gate::define('viewGlint', function ($user) {
+            return in_array($user->email, [
+                // 'admin@example.com',
+            ], strict: true);
+        });
+    }
+}
