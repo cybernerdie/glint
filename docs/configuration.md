@@ -26,7 +26,7 @@ After installation, the full configuration file is available at `config/glint.ph
 
 ## Recording mode
 
-**`queue` (default)** — Glint dispatches a `RecordLlmCallJob` for every LLM event. The DB write happens asynchronously in a queue worker. Recommended for production: zero latency impact on your application.
+**`queue` (default)** — Glint dispatches a `RecordLlmCallJob` for every LLM event. The DB write happens asynchronously in a queue worker. Use this in production when queue workers are available.
 
 **`sync`** — Glint writes to the database immediately, in the same process as the request. Useful for local development or when you don't have a queue configured.
 
@@ -43,7 +43,7 @@ By default Glint jobs are pushed to your application's default queue. To isolate
 GLINT_QUEUE=glint
 ```
 
-Then run a dedicated worker:
+Make sure a worker consumes that queue:
 
 ```bash
 php artisan queue:work --queue=glint
@@ -76,9 +76,9 @@ Schedule the prune command at the cadence that matches your traffic volume:
 Schedule::command('glint:prune')->daily();
 ```
 
-For low-volume applications, daily pruning is usually enough. For high-volume applications, schedule pruning more frequently, for example every few hours, and keep raw trace retention short enough that dashboard queries stay fast. Aggregates are much smaller than raw traces/generations, so they can usually be retained longer.
+For low-volume applications, daily pruning is usually enough. For high-volume applications, schedule pruning more frequently and keep raw trace retention short enough that dashboard queries stay fast. Aggregates are smaller than raw traces/generations, so they can usually be retained longer.
 
-Glint follows the same operational model as Laravel Telescope: it stores its tables in your application database and expects the application owner to decide how often pruning should run. If you need hard isolation for observability data, use your normal Laravel/database deployment tools to provision that isolation; Glint does not require a separate connection for release-readiness.
+Glint follows the same operational model as Laravel Telescope: it stores its tables in your application database and expects the application owner to decide how often pruning should run. If you need hard isolation for observability data, use your normal Laravel and database deployment tools to provision that isolation.
 
 ## Pricing registry
 

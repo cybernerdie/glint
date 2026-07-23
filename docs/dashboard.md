@@ -24,7 +24,7 @@ The Glint dashboard is available at `/glint` (configurable via `GLINT_PATH`).
 
 ## Current scope and limits
 
-The dashboard is intended to give Laravel teams a first-party view of LLM traffic, cost, latency, errors, traces, generations, users, and alerts.
+The dashboard gives Laravel teams an application-local view of LLM traffic, cost, latency, errors, traces, generations, users, and alerts.
 
 It does not currently include:
 

@@ -58,7 +58,7 @@ GLINT_RETENTION_AGGREGATES=365  # days for aggregate statistics
 GLINT_RETENTION_ALERTS=90       # days for alert event history
 ```
 
-Schedule `glint:prune` to run daily to enforce these limits:
+Schedule `glint:prune` at the cadence that matches your traffic volume:
 
 ```php
 // routes/console.php

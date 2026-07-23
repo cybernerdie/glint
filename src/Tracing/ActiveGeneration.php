@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cybernerdie\Glint\Tracing;
 
 use Carbon\Carbon;
+use Cybernerdie\Glint\Aggregates\GenerationAggregateRecorder;
 use Cybernerdie\Glint\Concerns\ProtectsWrites;
 use Cybernerdie\Glint\Contracts\GenerationInterface;
 use Cybernerdie\Glint\Enums\RecordStatus;
@@ -146,7 +147,15 @@ final class ActiveGeneration implements GenerationInterface
     {
         $this->protectedWrite(function () use ($completion, $promptTokens, $completionTokens, $finishReason): void {
             $now = now();
-            GlintGeneration::where('id', $this->generationId)->update([
+            $generation = GlintGeneration::where('id', $this->generationId)->first();
+
+            if ($generation === null) {
+                return;
+            }
+
+            $shouldRecordAggregate = $generation->status === RecordStatus::Pending;
+
+            $generation->update([
                 'completion' => $this->redactor()->string($completion),
                 'prompt_tokens' => $promptTokens,
                 'completion_tokens' => $completionTokens,
@@ -157,6 +166,12 @@ final class ActiveGeneration implements GenerationInterface
                 'ended_at' => $now,
                 'duration_ms' => (int) $this->startedAt->diffInMilliseconds($now),
             ]);
+
+            if (! $shouldRecordAggregate) {
+                return;
+            }
+
+            app(GenerationAggregateRecorder::class)->record($generation->refresh());
         });
     }
 
@@ -164,12 +179,26 @@ final class ActiveGeneration implements GenerationInterface
     {
         $this->protectedWrite(function () use ($e): void {
             $now = now();
-            GlintGeneration::where('id', $this->generationId)->update([
+            $generation = GlintGeneration::where('id', $this->generationId)->first();
+
+            if ($generation === null) {
+                return;
+            }
+
+            $shouldRecordAggregate = $generation->status === RecordStatus::Pending;
+
+            $generation->update([
                 'status' => RecordStatus::Error,
                 'error_message' => $this->redactor()->string($e->getMessage()),
                 'ended_at' => $now,
                 'duration_ms' => (int) $this->startedAt->diffInMilliseconds($now),
             ]);
+
+            if (! $shouldRecordAggregate) {
+                return;
+            }
+
+            app(GenerationAggregateRecorder::class)->record($generation->refresh());
         });
     }
 

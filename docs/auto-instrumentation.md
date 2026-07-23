@@ -1,6 +1,6 @@
 # Auto-Instrumentation
 
-Auto-instrumentation means Glint captures supported LLM calls **without changes to the call site**. Install the package, set `GLINT_ENABLED=true`, choose a driver, and matching LLM calls are recorded automatically.
+Auto-instrumentation records supported LLM calls without changing the call site. Install the package, set `GLINT_ENABLED=true`, choose a driver, and matching calls are recorded.
 
 ## How it works
 
@@ -19,7 +19,7 @@ Each driver hooks into framework-level events or wraps the SDK's entry point. Wh
 
 | Driver | Package | When to use |
 |--------|---------|-------------|
-| `http` | *(built-in)* | Universal fallback — works with any SDK that uses Laravel's HTTP client |
+| `http` | *(built-in)* | LLM requests sent through Laravel's HTTP client |
 | `prism` | `echolabsdev/prism` | You're using the Prism SDK |
 | `laravel-ai` | `laravel/ai` | You're using Laravel's AI layer |
 | `neuron-ai` | `useiconic/neuron-ai` | You're using the NeuronAI agent framework |
@@ -47,11 +47,11 @@ Register `GlintMiddleware` globally if you want LLM calls grouped by the HTTP re
 })
 ```
 
-Without it, generations are still recorded — they just won't have a parent trace showing which route or user triggered them.
+Without it, generations are still recorded, but they do not have a parent trace showing which route or user triggered them.
 
 ## Background jobs and console commands
 
-LLM calls made inside queued jobs and Artisan commands are always captured. Without `GlintMiddleware` there is no HTTP request context, so Glint defaults to recording everything.
+LLM calls made inside queued jobs and Artisan commands are recorded when an active driver sees them. Without `GlintMiddleware` there is no HTTP request context, so Glint creates an automatic trace unless you open one manually.
 
 See [Background Jobs](background-jobs.md) for details on adding trace context inside jobs.
 

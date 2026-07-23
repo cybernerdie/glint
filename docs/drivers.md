@@ -13,9 +13,9 @@ A driver is the mechanism that detects outgoing LLM calls and fires the internal
 
 ---
 
-## `http` — Laravel HTTP client driver
+## `http` — Laravel HTTP client
 
-Hooks into Laravel's HTTP client events (`RequestSending`, `ResponseReceived`). Any LLM call that uses Laravel's HTTP client internally is automatically captured, including custom integrations built on the `Http` facade.
+Hooks into Laravel's HTTP client events (`RequestSending`, `ResponseReceived`). LLM calls that use Laravel's HTTP client are captured, including custom integrations built on the `Http` facade.
 
 Use this when your application sends LLM requests through Laravel's `Http` facade/client, or through a package that internally uses Laravel's HTTP client.
 
@@ -54,7 +54,7 @@ To add a custom host (e.g. a proxy or a self-hosted model):
 
 ## `prism` — Prism SDK driver
 
-Wraps Prism's provider manager with a decorator at the SDK layer. Captures structured message arrays, tool call details, and token counts directly — more reliable than parsing raw HTTP bodies.
+Wraps Prism's provider manager at the SDK layer. Captures structured message arrays, token counts, request options, completion text, and errors without parsing raw HTTP bodies.
 
 Requires `echolabsdev/prism` to be installed.
 
@@ -92,11 +92,9 @@ Provider names are resolved automatically from the provider class name (e.g. `Op
 
 ---
 
----
-
 ## `neuron-ai` — NeuronAI driver
 
-Registers a global observer with NeuronAI's `EventBus`. Every agent that calls `EventBus::emit()` (which all standard NeuronAI agents do automatically) is traced without any code changes to your agents.
+Registers a global observer with NeuronAI's `EventBus`. Standard NeuronAI agents that emit observability events are traced without changes to the agent code.
 
 Captures inference start/stop, tool calls, RAG retrieval, and errors. Token counts are taken directly from the response `Usage` object.
 
@@ -112,7 +110,7 @@ Provider name and model are resolved via reflection on the agent's internal prov
 
 ## Unsupported SDKs and custom clients
 
-Glint currently ships native drivers for Laravel HTTP client, Prism, Laravel AI, and NeuronAI. Calls made through other transports are not automatically captured unless the SDK itself uses Laravel's HTTP client.
+Glint ships native drivers for Laravel HTTP client, Prism, Laravel AI, and NeuronAI. Calls made through other transports are not automatically captured unless the SDK itself uses Laravel's HTTP client.
 
 Common examples that may need manual tracing or a future native driver:
 
@@ -122,5 +120,3 @@ Common examples that may need manual tracing or a future native driver:
 - streaming clients where token usage is only known after the final stream event.
 
 For these cases, use `Glint::trace()` / `Glint::generation()` around the call so the dashboard still receives tokens, cost, latency, and error status. See [Manual Tracing](manual-tracing.md).
-
-Native OpenAI/Anthropic/Guzzle/PSR-18 drivers are roadmap items, not required for the current release.

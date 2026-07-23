@@ -47,9 +47,11 @@ final class HttpClientInstrumentation implements InstrumentationDriver
     public function onRequestSending(RequestSending $event): void
     {
         $host = (string) parse_url($event->request->url(), PHP_URL_HOST);
+        $port = parse_url($event->request->url(), PHP_URL_PORT);
         $llmHostsRaw = Config::get('glint.llm_hosts', []);
         $llmHosts = is_array($llmHostsRaw) ? $llmHostsRaw : [];
-        $providerRaw = $llmHosts[$host] ?? null;
+        $hostWithPort = is_int($port) ? "{$host}:{$port}" : $host;
+        $providerRaw = $llmHosts[$hostWithPort] ?? $llmHosts[$host] ?? null;
         $provider = is_string($providerRaw) ? $providerRaw : null;
 
         if ($provider === null) {
@@ -88,15 +90,18 @@ final class HttpClientInstrumentation implements InstrumentationDriver
 
         $modelRaw = $body['model'] ?? 'unknown';
         $model = is_string($modelRaw) ? $modelRaw : 'unknown';
+        $promptRaw = $body['prompt'] ?? null;
         $messagesRaw = isset($body['messages']) && is_array($body['messages']) ? $body['messages'] : null;
+        $messagesRaw ??= is_string($promptRaw) ? [['role' => 'user', 'content' => $promptRaw]] : null;
         $messages = Config::boolean('glint.recording.store_bodies', true) && $messagesRaw !== null
             ? array_values($messagesRaw)
             : null;
-        $temperatureRaw = $body['temperature'] ?? null;
+        $options = is_array($body['options'] ?? null) ? $body['options'] : [];
+        $temperatureRaw = $body['temperature'] ?? $options['temperature'] ?? null;
         $temperature = is_float($temperatureRaw) ? $temperatureRaw : (is_int($temperatureRaw) ? (float) $temperatureRaw : null);
-        $maxTokensRaw = $body['max_tokens'] ?? null;
+        $maxTokensRaw = $body['max_tokens'] ?? $options['num_predict'] ?? null;
         $maxTokens = is_int($maxTokensRaw) ? $maxTokensRaw : null;
-        $topPRaw = $body['top_p'] ?? null;
+        $topPRaw = $body['top_p'] ?? $options['top_p'] ?? null;
         $topP = is_float($topPRaw) ? $topPRaw : (is_int($topPRaw) ? (float) $topPRaw : null);
         $isStreaming = (bool) ($body['stream'] ?? false);
         $dedupeKey = GenerationFingerprint::make(

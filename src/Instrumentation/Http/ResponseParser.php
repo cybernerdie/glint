@@ -92,6 +92,12 @@ final class ResponseParser
     /** @param array<array-key, mixed> $body */
     private function extractOllamaCompletion(array $body): ?string
     {
+        $response = $body['response'] ?? null;
+
+        if (is_string($response)) {
+            return $response;
+        }
+
         $message = is_array($body['message'] ?? null) ? $body['message'] : [];
         $content = $message['content'] ?? null;
 

@@ -62,6 +62,14 @@ final class LaravelAiInstrumentation implements InstrumentationDriver
             }
         }
 
+        foreach (self::EventClassPairs as $eventClasses) {
+            foreach ($eventClasses as $eventClass) {
+                if (class_exists($eventClass)) {
+                    return true;
+                }
+            }
+        }
+
         return false;
     }
 

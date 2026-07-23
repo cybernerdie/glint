@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `HttpClientInstrumentation` — hooks into Laravel HTTP client events for configured LLM provider hosts
 - `PrismInstrumentation` — wraps `PrismManager` via a decorator to trace every Prism text generation
 - `NeuronAiInstrumentation` — hooks into NeuronAI's built-in observability pipeline
-- `LaravelAiInstrumentation` — translates Laravel AI events (Laravel 12+) to Glint events
+- `LaravelAiInstrumentation` — translates `laravel/ai` events to Glint events
 
 **Manual tracing API**
 - `Glint::trace()`, `Glint::span()`, `Glint::generation()` facade methods

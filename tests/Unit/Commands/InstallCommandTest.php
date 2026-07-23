@@ -161,3 +161,13 @@ it('shows queue worker hint when recording mode is queue', function () {
         ->expectsOutputToContain('queue:work')
         ->assertSuccessful();
 });
+
+it('falls back to the default queue name when queue config is null', function () {
+    config()->set('glint.recording.mode', 'queue');
+    config()->set('glint.queue.queue', null);
+
+    $this->artisan('glint:install')
+        ->expectsConfirmation('config/glint.php already exists. Overwrite it?', 'yes')
+        ->expectsOutputToContain('php artisan queue:work --queue=default')
+        ->assertSuccessful();
+});

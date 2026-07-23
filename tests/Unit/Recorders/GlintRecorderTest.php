@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Cybernerdie\Glint\Aggregates\GenerationAggregateRecorder;
 use Cybernerdie\Glint\Context\TraceContext;
 use Cybernerdie\Glint\Enums\RecordStatus;
 use Cybernerdie\Glint\Enums\SpanType;
@@ -26,7 +27,13 @@ function makeRecorder(?TraceContext $context = null, ?PricingRegistry $pricing =
     $context ??= tap(new TraceContext, fn ($ctx) => $ctx->openTrace('trace-test-001'));
     $pricing ??= new PricingRegistry(__DIR__.'/../../../pricing/providers.json');
 
-    return new GlintRecorder($context, $pricing, app(GlintFilterRegistry::class), app(Redactor::class));
+    return new GlintRecorder(
+        $context,
+        $pricing,
+        app(GlintFilterRegistry::class),
+        app(Redactor::class),
+        app(GenerationAggregateRecorder::class),
+    );
 }
 
 it('creates a glint_generations row with status=pending on LlmCallStarted', function () {
@@ -437,7 +444,13 @@ it('redacts tool input output and metadata on LlmToolCalled', function () {
 it('is silent when a duplicate generation_id causes a DB error on handleLlmCallStarted', function () {
     $context = tap(new TraceContext, fn ($ctx) => $ctx->openTrace('trace-silent'));
     $pricing = new PricingRegistry(__DIR__.'/../../../pricing/providers.json');
-    $recorder = new GlintRecorder($context, $pricing, app(GlintFilterRegistry::class), app(Redactor::class));
+    $recorder = new GlintRecorder(
+        $context,
+        $pricing,
+        app(GlintFilterRegistry::class),
+        app(Redactor::class),
+        app(GenerationAggregateRecorder::class),
+    );
 
     $event = new LlmCallStarted(
         generationId: 'gen-silent-dup',

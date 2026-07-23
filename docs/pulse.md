@@ -1,6 +1,6 @@
 # Laravel Pulse Integration
 
-Glint ships an optional card for [Laravel Pulse](https://pulse.laravel.com) that shows today's LLM cost, request count, error rate, and a 7-day cost sparkline — all sourced from Glint's own `glint_aggregates` table.
+Glint includes an optional card for [Laravel Pulse](https://pulse.laravel.com). It shows today's LLM cost, request count, error rate, and a 7-day cost sparkline from Glint's `glint_aggregates` table.
 
 ## Requirements
 

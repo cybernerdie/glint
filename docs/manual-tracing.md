@@ -111,13 +111,13 @@ When `GlintMiddleware` is active (or you've called `Glint::trace()` manually), a
 
 ```php
 // GlintMiddleware opens a trace for this request automatically.
-// The auto-instrumented HTTP call below is grouped under it — no extra code needed.
+// The auto-instrumented HTTP call below is grouped under it.
 $response = Http::post('https://api.openai.com/v1/chat/completions', [...]);
 ```
 
 ## Null safety
 
-When Glint is disabled (`GLINT_ENABLED=false`), `Glint::trace()`, `Glint::span()`, and `Glint::generation()` return null objects (`NullTrace`, `NullSpan`, `NullGeneration`). These implement the same interfaces and are completely safe to call — they just do nothing.
+When Glint is disabled (`GLINT_ENABLED=false`), `Glint::trace()`, `Glint::span()`, and `Glint::generation()` return null objects (`NullTrace`, `NullSpan`, `NullGeneration`). These implement the same interfaces and are safe to call.
 
 ```php
 // This is always safe regardless of whether Glint is enabled

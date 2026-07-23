@@ -1,6 +1,6 @@
 # Testing
 
-Glint ships a first-class fake that replaces the database recorder with an in-memory store, so your tests stay fast and never touch the database.
+Glint includes a fake recorder for tests. It replaces database recording with an in-memory store.
 
 ## Setup
 

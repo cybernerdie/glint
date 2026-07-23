@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 use Carbon\Carbon;
 use Cybernerdie\Glint\Enums\RecordStatus;
+use Cybernerdie\Glint\Models\GlintAggregate;
 use Cybernerdie\Glint\Models\GlintGeneration;
 use Cybernerdie\Glint\Pricing\PricingRegistry;
 use Cybernerdie\Glint\Tracing\ActiveGeneration;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 function makeActiveGeneration(?string $genId = null, string $provider = 'openai', string $model = 'gpt-4o'): array
@@ -176,6 +178,57 @@ it('finish updates generation record with token counts and status', function ():
         ->and($row->duration_ms)->toBeGreaterThanOrEqual(0);
 });
 
+it('finish updates aggregate buckets for manual generations', function (): void {
+    [$generation] = makeActiveGeneration(provider: 'openai', model: 'gpt-4o');
+
+    $generation->finish('The answer', 100, 50, 'stop');
+
+    $periods = DB::table('glint_aggregates')
+        ->where('provider', 'openai')
+        ->where('model', 'gpt-4o')
+        ->pluck('period')
+        ->sort()
+        ->values()
+        ->toArray();
+
+    expect($periods)->toBe(['day', 'hour', 'month', 'week']);
+
+    $hour = DB::table('glint_aggregates')
+        ->where('provider', 'openai')
+        ->where('model', 'gpt-4o')
+        ->where('period', 'hour')
+        ->first();
+
+    expect($hour)->not->toBeNull()
+        ->and((int) $hour->total_requests)->toBe(1)
+        ->and((int) $hour->successful_requests)->toBe(1)
+        ->and((int) $hour->failed_requests)->toBe(0)
+        ->and((int) $hour->prompt_tokens)->toBe(100)
+        ->and((int) $hour->completion_tokens)->toBe(50)
+        ->and((int) $hour->total_tokens)->toBe(150)
+        ->and($hour->user_id)->toBe(GlintAggregate::GlobalDimension)
+        ->and($hour->team_id)->toBe(GlintAggregate::GlobalDimension);
+});
+
+it('finish only increments manual aggregates once', function (): void {
+    [$generation] = makeActiveGeneration(provider: 'openai', model: 'gpt-4o-mini');
+
+    $generation->finish('First answer', 100, 50, 'stop');
+    $generation->finish('Second answer', 200, 75, 'stop');
+
+    $hour = DB::table('glint_aggregates')
+        ->where('provider', 'openai')
+        ->where('model', 'gpt-4o-mini')
+        ->where('period', 'hour')
+        ->first();
+
+    expect($hour)->not->toBeNull()
+        ->and((int) $hour->total_requests)->toBe(1)
+        ->and((int) $hour->successful_requests)->toBe(1)
+        ->and((int) $hour->prompt_tokens)->toBe(100)
+        ->and((int) $hour->completion_tokens)->toBe(50);
+});
+
 it('redacts completion when manually finishing a generation', function (): void {
     config()->set('glint.privacy.redact_patterns', ['/secret-token-\w+/']);
     [$generation, $genId] = makeActiveGeneration();
@@ -204,6 +257,34 @@ it('fail updates generation record with error status', function (): void {
         ->and($row->error_message)->toBe('Provider timeout')
         ->and($row->ended_at)->not->toBeNull()
         ->and($row->duration_ms)->toBeGreaterThanOrEqual(0);
+});
+
+it('fail updates aggregate buckets for manual generations', function (): void {
+    [$generation] = makeActiveGeneration(provider: 'anthropic', model: 'claude-3-5-haiku-20241022');
+
+    $generation->fail(new RuntimeException('Provider timeout'));
+
+    $periods = DB::table('glint_aggregates')
+        ->where('provider', 'anthropic')
+        ->where('model', 'claude-3-5-haiku-20241022')
+        ->pluck('period')
+        ->sort()
+        ->values()
+        ->toArray();
+
+    expect($periods)->toBe(['day', 'hour', 'month', 'week']);
+
+    $hour = DB::table('glint_aggregates')
+        ->where('provider', 'anthropic')
+        ->where('model', 'claude-3-5-haiku-20241022')
+        ->where('period', 'hour')
+        ->first();
+
+    expect($hour)->not->toBeNull()
+        ->and((int) $hour->total_requests)->toBe(1)
+        ->and((int) $hour->successful_requests)->toBe(0)
+        ->and((int) $hour->failed_requests)->toBe(1)
+        ->and((int) $hour->total_tokens)->toBe(0);
 });
 
 it('redacts error messages when manually failing a generation', function (): void {

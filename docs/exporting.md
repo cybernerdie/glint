@@ -1,6 +1,6 @@
 # Exporting and external observability
 
-Glint currently stores observability data inside the host Laravel application and provides extension points for teams that need to forward selected data elsewhere.
+Glint stores observability data inside the host Laravel application and provides extension points for teams that need to forward selected data elsewhere.
 
 It does not currently ship a first-party OpenTelemetry bridge, Prometheus endpoint, Datadog exporter, Honeycomb exporter, or warehouse connector.
 
@@ -36,7 +36,7 @@ Lifecycle events are useful for custom hooks, but they are not a complete teleme
 
 ### Alert webhooks
 
-Glint supports alert destinations such as mail, Slack, generic webhooks, and logs.
+Glint supports alert destinations for mail, Slack, generic webhooks, and logs.
 
 These destinations are for alert notifications only. They are not intended to replace a full telemetry export pipeline.
 

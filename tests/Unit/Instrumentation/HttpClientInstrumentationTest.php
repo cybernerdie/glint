@@ -87,6 +87,41 @@ it('onRequestSending fires LlmCallStarted for api.openai.com', function () {
     });
 });
 
+it('onRequestSending matches configured LLM hosts with ports', function () {
+    Event::fake();
+
+    config()->set('glint.llm_hosts', [
+        '127.0.0.1:11434' => 'ollama',
+    ]);
+    config()->set('glint.recording.store_bodies', true);
+
+    $context = new TraceContext;
+    $instrumentation = new HttpClientInstrumentation($context);
+
+    $body = json_encode([
+        'model' => 'mistral:latest',
+        'prompt' => 'Explain Laravel LLM observability.',
+        'options' => [
+            'temperature' => 0.2,
+            'num_predict' => 120,
+            'top_p' => 0.9,
+        ],
+    ]);
+
+    $request = makeHttpRequest('http://127.0.0.1:11434/api/generate', $body);
+
+    $instrumentation->onRequestSending(new RequestSending($request));
+
+    Event::assertDispatched(LlmCallStarted::class, function (LlmCallStarted $e) {
+        return $e->provider === 'ollama'
+            && $e->model === 'mistral:latest'
+            && $e->messages === [['role' => 'user', 'content' => 'Explain Laravel LLM observability.']]
+            && $e->temperature === 0.2
+            && $e->maxTokens === 120
+            && $e->topP === 0.9;
+    });
+});
+
 it('onRequestSending sets isStreaming true when stream flag present', function () {
     Event::fake();
 
@@ -161,6 +196,39 @@ it('onResponseReceived fires LlmCallFinished for a tracked request', function ()
 
     Event::assertDispatched(LlmCallFinished::class, function (LlmCallFinished $e) {
         return $e->promptTokens === 10 && $e->completionTokens === 5 && $e->completion === 'Hello!';
+    });
+});
+
+it('onResponseReceived extracts Ollama generate responses', function () {
+    Event::fake();
+
+    config()->set('glint.llm_hosts', ['127.0.0.1:11434' => 'ollama']);
+    config()->set('glint.recording.store_bodies', true);
+
+    $context = new TraceContext;
+    $instrumentation = new HttpClientInstrumentation($context);
+
+    $request = makeHttpRequest('http://127.0.0.1:11434/api/generate', json_encode([
+        'model' => 'mistral:latest',
+        'prompt' => 'Hi',
+    ]));
+
+    $instrumentation->onRequestSending(new RequestSending($request));
+
+    $response = new Illuminate\Http\Client\Response(new Response(200, ['Content-Type' => 'application/json'], json_encode([
+        'response' => 'Laravel Glint records prompts, completions, and latency.',
+        'prompt_eval_count' => 8,
+        'eval_count' => 12,
+        'done_reason' => 'stop',
+    ])));
+
+    $instrumentation->onResponseReceived(new ResponseReceived($request, $response));
+
+    Event::assertDispatched(LlmCallFinished::class, function (LlmCallFinished $e) {
+        return $e->completion === 'Laravel Glint records prompts, completions, and latency.'
+            && $e->promptTokens === 8
+            && $e->completionTokens === 12
+            && $e->finishReason === 'stop';
     });
 });
 
