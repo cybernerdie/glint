@@ -110,5 +110,4 @@ final class GlintMiddleware
 
         return $value;
     }
-
 }

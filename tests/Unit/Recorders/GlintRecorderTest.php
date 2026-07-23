@@ -54,7 +54,7 @@ it('creates a glint_generations row with status=pending on LlmCallStarted', func
 });
 
 it('auto-creates a headless trace when traceId is null and no trace is open', function () {
-    $context = new TraceContext; // no openTrace call — traceId is null
+    $context = new TraceContext;
 
     $recorder = makeRecorder($context);
 
@@ -75,9 +75,9 @@ it('auto-creates a headless trace when traceId is null and no trace is open', fu
     expect($gen)->not->toBeNull();
 
     $trace = GlintTrace::find($gen->trace_id);
-    expect($trace)->not->toBeNull();
-    expect($trace->name)->toBe('auto:openai/gpt-4o');
-    expect($trace->status)->toBe(RecordStatus::Pending);
+    expect($trace)->not->toBeNull()
+        ->and($trace->name)->toBe('auto:openai/gpt-4o')
+        ->and($trace->status)->toBe(RecordStatus::Pending);
 });
 
 it('closes the headless trace with status=success when LlmCallFinished fires', function () {
@@ -109,8 +109,8 @@ it('closes the headless trace with status=success when LlmCallFinished fires', f
     ));
 
     $trace = GlintTrace::find($traceId);
-    expect($trace->status)->toBe(RecordStatus::Success);
-    expect($trace->ended_at)->not->toBeNull();
+    expect($trace->status)->toBe(RecordStatus::Success)
+        ->and($trace->ended_at)->not->toBeNull();
 });
 
 it('closes the headless trace with status=error when LlmCallFailed fires', function () {
@@ -139,8 +139,8 @@ it('closes the headless trace with status=error when LlmCallFailed fires', funct
     ));
 
     $trace = GlintTrace::find($traceId);
-    expect($trace->status)->toBe(RecordStatus::Error);
-    expect($trace->ended_at)->not->toBeNull();
+    expect($trace->status)->toBe(RecordStatus::Error)
+        ->and($trace->ended_at)->not->toBeNull();
 });
 
 it('updates generation with tokens, cost, finish_reason, and status=success on LlmCallFinished', function () {
@@ -451,4 +451,112 @@ it('propagates DB exceptions when throw_on_exceptions is true', function () {
     );
 
     expect(fn () => $recorder->handleLlmCallStarted($event))->toThrow(Exception::class);
+});
+
+it('is silent when the auto trace row is deleted before closeAutoTrace', function () {
+    $context = new TraceContext;
+    $recorder = makeRecorder($context);
+
+    $recorder->handleLlmCallStarted(new LlmCallStarted(
+        generationId: 'gen-deleted-trace',
+        provider: 'openai',
+        model: 'gpt-4o',
+        messages: null,
+        temperature: null,
+        maxTokens: null,
+        isStreaming: false,
+        traceId: null,
+    ));
+
+    $gen = GlintGeneration::find('gen-deleted-trace');
+    $traceId = $gen->trace_id;
+
+    GlintTrace::where('id', $traceId)->delete();
+
+    expect(fn () => $recorder->handleLlmCallFinished(new LlmCallFinished(
+        generationId: 'gen-deleted-trace',
+        completion: 'done',
+        promptTokens: 5,
+        completionTokens: 3,
+        finishReason: 'stop',
+        durationMs: 100,
+    )))->not->toThrow(Throwable::class);
+});
+
+it('truncate returns value unchanged when max_completion_chars is 0', function () {
+    config()->set('glint.recording.max_completion_chars', 0);
+
+    $recorder = makeRecorder();
+
+    $recorder->handleLlmCallStarted(new LlmCallStarted(
+        generationId: 'gen-trunc-zero',
+        provider: 'openai',
+        model: 'gpt-4o',
+        messages: null,
+        temperature: null,
+        maxTokens: null,
+        isStreaming: false,
+        traceId: 'trace-test-001',
+    ));
+
+    $longCompletion = str_repeat('x', 100);
+
+    $recorder->handleLlmCallFinished(new LlmCallFinished(
+        generationId: 'gen-trunc-zero',
+        completion: $longCompletion,
+        promptTokens: 5,
+        completionTokens: 20,
+        finishReason: 'stop',
+        durationMs: 100,
+    ));
+
+    $row = GlintGeneration::find('gen-trunc-zero');
+    expect($row->completion)->toBe($longCompletion);
+});
+
+it('truncate truncates completion when it exceeds max_completion_chars', function () {
+    config()->set('glint.recording.max_completion_chars', 10);
+
+    $recorder = makeRecorder();
+
+    $recorder->handleLlmCallStarted(new LlmCallStarted(
+        generationId: 'gen-trunc-limit',
+        provider: 'openai',
+        model: 'gpt-4o',
+        messages: null,
+        temperature: null,
+        maxTokens: null,
+        isStreaming: false,
+        traceId: 'trace-test-001',
+    ));
+
+    $recorder->handleLlmCallFinished(new LlmCallFinished(
+        generationId: 'gen-trunc-limit',
+        completion: 'This is a long completion string',
+        promptTokens: 5,
+        completionTokens: 10,
+        finishReason: 'stop',
+        durationMs: 100,
+    ));
+
+    $row = GlintGeneration::find('gen-trunc-limit');
+    expect(mb_strlen((string) $row->completion))->toBe(10);
+});
+
+it('LlmToolCalled normalizes an object result to an associative array', function () {
+    $obj = new stdClass;
+    $obj->hits = 42;
+    $obj->label = 'test';
+
+    $event = new LlmToolCalled(
+        spanId: 'span-obj-001',
+        traceId: 'trace-001',
+        parentSpanId: null,
+        toolName: 'search',
+        arguments: [],
+        result: $obj,
+        durationMs: 10,
+    );
+
+    expect($event->result)->toBe(['hits' => 42, 'label' => 'test']);
 });

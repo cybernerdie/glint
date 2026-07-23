@@ -234,6 +234,7 @@ final class DashboardController
      * A driver-portable SQL expression producing an "Y-m-d H" hour key that
      * matches the PHP-side bucket keys.
      */
+    /** @return literal-string */
     private function hourBucketExpression(): string
     {
         return match (DB::connection()->getDriverName()) {

@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /**
+ * @property bool $enabled
  * @property AlertRuleType $type
  * @property AlertRuleScope $scope
  * @property Carbon|null $last_triggered_at

@@ -6,7 +6,9 @@ use Cybernerdie\Glint\Facades\Glint;
 use Cybernerdie\Glint\GlintManager;
 use Cybernerdie\Glint\Testing\GlintFake;
 
-it('facade accessor returns glint', function (): void {
+it(/**
+ * @throws ReflectionException
+ */ 'facade accessor returns glint', function (): void {
     $accessor = (new ReflectionMethod(Glint::class, 'getFacadeAccessor'))
         ->invoke(null);
 

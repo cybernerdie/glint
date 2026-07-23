@@ -67,8 +67,8 @@ it('trace returns ActiveTrace when enabled', function (): void {
 
     $trace = $manager->trace('my-trace');
 
-    expect($trace)->toBeInstanceOf(ActiveTrace::class);
-    expect($trace->traceId())->toBeString()->not->toBeNull();
+    expect($trace)->toBeInstanceOf(ActiveTrace::class)
+        ->and($trace->traceId())->toBeString()->not->toBeNull();
 });
 
 it('span returns ActiveSpan when enabled', function (): void {
@@ -78,8 +78,8 @@ it('span returns ActiveSpan when enabled', function (): void {
 
     $span = $manager->span('my-span');
 
-    expect($span)->toBeInstanceOf(ActiveSpan::class);
-    expect($span->spanId())->toBeString()->not->toBeNull();
+    expect($span)->toBeInstanceOf(ActiveSpan::class)
+        ->and($span->spanId())->toBeString()->not->toBeNull();
 });
 
 it('generation returns ActiveGeneration when enabled', function (): void {
@@ -89,8 +89,8 @@ it('generation returns ActiveGeneration when enabled', function (): void {
 
     $gen = $manager->generation('my-gen', 'openai', 'gpt-4');
 
-    expect($gen)->toBeInstanceOf(ActiveGeneration::class);
-    expect($gen->generationId())->toBeString()->not->toBeNull();
+    expect($gen)->toBeInstanceOf(ActiveGeneration::class)
+        ->and($gen->generationId())->toBeString()->not->toBeNull();
 });
 
 it('trace creates a GlintTrace row in the database', function (): void {
@@ -135,3 +135,30 @@ it('shouldRecord returns false when a filter rejects the entry', function (): vo
     expect(GlintManager::shouldRecord($entry))->toBeFalse();
 });
 
+it('trace() executes the write directly when throw_on_exceptions is true', function (): void {
+    config()->set('glint.throw_on_exceptions', true);
+
+    $manager = makeManager(true);
+    $trace = $manager->trace('protected-write-trace');
+
+    expect($trace)->toBeInstanceOf(ActiveTrace::class)
+        ->and(GlintTrace::where('name', 'protected-write-trace')->exists())->toBeTrue();
+});
+
+it('span creates a headless trace when no trace context is open', function (): void {
+    $manager = makeManager(true);
+
+    $span = $manager->span('headless-span');
+
+    expect($span)->toBeInstanceOf(ActiveSpan::class)
+        ->and(GlintTrace::where('name', 'auto:headless-span')->exists())->toBeTrue();
+});
+
+it('generation creates a headless trace when no trace context is open', function (): void {
+    $manager = makeManager(true);
+
+    $gen = $manager->generation('headless-gen', 'openai', 'gpt-4o');
+
+    expect($gen)->toBeInstanceOf(ActiveGeneration::class)
+        ->and(GlintTrace::where('name', 'like', 'auto:%')->exists())->toBeTrue();
+});

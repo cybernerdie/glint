@@ -47,3 +47,24 @@ it('filters generations by model', function () {
         ->assertStatus(200)
         ->assertSee('gpt-4o');
 });
+
+it('filters generations by status', function () {
+    GlintGeneration::factory()->create(['provider' => 'openai', 'model' => 'gpt-4o']);
+    GlintGeneration::factory()->failed()->create(['provider' => 'openai', 'model' => 'gpt-4o']);
+
+    $this->get(route('glint.generations.index', ['status' => 'success']))
+        ->assertStatus(200);
+});
+
+it('returns 200 for 7d period', function () {
+    $this->get(route('glint.generations.index', ['period' => '7d']))
+        ->assertStatus(200);
+});
+
+it('returns 200 for custom period with valid dates', function () {
+    $this->get(route('glint.generations.index', [
+        'period' => 'custom',
+        'from' => '2026-01-01',
+        'to' => '2026-06-01',
+    ]))->assertStatus(200);
+});

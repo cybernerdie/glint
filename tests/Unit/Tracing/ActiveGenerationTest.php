@@ -94,14 +94,14 @@ it('finish updates generation record with token counts and status', function ():
     $generation->finish('The answer', 100, 50, 'stop');
 
     $row = GlintGeneration::where('id', $genId)->first();
-    expect($row->status)->toBe(RecordStatus::Success);
-    expect($row->completion)->toBe('The answer');
-    expect((int) $row->prompt_tokens)->toBe(100);
-    expect((int) $row->completion_tokens)->toBe(50);
-    expect((int) $row->total_tokens)->toBe(150);
-    expect($row->finish_reason)->toBe('stop');
-    expect($row->ended_at)->not->toBeNull();
-    expect($row->duration_ms)->toBeGreaterThanOrEqual(0);
+    expect($row->status)->toBe(RecordStatus::Success)
+        ->and($row->completion)->toBe('The answer')
+        ->and((int) $row->prompt_tokens)->toBe(100)
+        ->and((int) $row->completion_tokens)->toBe(50)
+        ->and((int) $row->total_tokens)->toBe(150)
+        ->and($row->finish_reason)->toBe('stop')
+        ->and($row->ended_at)->not->toBeNull()
+        ->and($row->duration_ms)->toBeGreaterThanOrEqual(0);
 });
 
 it('finish calculates cost for known models', function (): void {
@@ -119,8 +119,8 @@ it('fail updates generation record with error status', function (): void {
     $generation->fail(new RuntimeException('Provider timeout'));
 
     $row = GlintGeneration::where('id', $genId)->first();
-    expect($row->status)->toBe(RecordStatus::Error);
-    expect($row->error_message)->toBe('Provider timeout');
-    expect($row->ended_at)->not->toBeNull();
-    expect($row->duration_ms)->toBeGreaterThanOrEqual(0);
+    expect($row->status)->toBe(RecordStatus::Error)
+        ->and($row->error_message)->toBe('Provider timeout')
+        ->and($row->ended_at)->not->toBeNull()
+        ->and($row->duration_ms)->toBeGreaterThanOrEqual(0);
 });

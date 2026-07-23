@@ -7,9 +7,6 @@ use Illuminate\Console\Command;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\File;
 
-// Ensure config/glint.php exists before each test so that InstallCommand
-// always asks the overwrite confirmation prompt. The testbench skeleton's
-// config directory may not contain the file on a fresh CI checkout.
 beforeEach(function () {
     file_put_contents(config_path('glint.php'), '<?php return [];');
 });
@@ -17,8 +14,6 @@ beforeEach(function () {
 afterEach(function () {
     @unlink(config_path('glint.php'));
 
-    // Published views override the package views for every test that runs
-    // after this file — remove them so view resolution stays on resources/views.
     File::deleteDirectory(resource_path('views/vendor/glint'));
 });
 
@@ -155,4 +150,14 @@ it('warns when preg_replace cannot auto-register GlintServiceProvider', function
         ->assertSuccessful();
 
     file_put_contents($providersPath, $original);
+});
+
+it('shows queue worker hint when recording mode is queue', function () {
+    config()->set('glint.recording.mode', 'queue');
+    config()->set('glint.queue.queue', 'glint');
+
+    $this->artisan('glint:install')
+        ->expectsConfirmation('config/glint.php already exists. Overwrite it?', 'yes')
+        ->expectsOutputToContain('queue:work')
+        ->assertSuccessful();
 });

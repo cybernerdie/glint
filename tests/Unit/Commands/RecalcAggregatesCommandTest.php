@@ -27,11 +27,11 @@ it('creates aggregate records from generation data', function () {
     expect(GlintAggregate::count())->toBe(1);
 
     $agg = GlintAggregate::first();
-    expect($agg->provider)->toBe('openai');
-    expect($agg->model)->toBe('gpt-4o');
-    expect($agg->total_requests)->toBe(1);
-    expect((int) $agg->prompt_tokens)->toBe(100);
-    expect((int) $agg->completion_tokens)->toBe(50);
+    expect($agg->provider)->toBe('openai')
+        ->and($agg->model)->toBe('gpt-4o')
+        ->and($agg->total_requests)->toBe(1)
+        ->and((int) $agg->prompt_tokens)->toBe(100)
+        ->and((int) $agg->completion_tokens)->toBe(50);
 });
 
 it('respects --from and --to date filters', function () {
@@ -64,8 +64,8 @@ it('respects --from and --to date filters', function () {
         '--to' => $to,
     ])->assertSuccessful();
 
-    expect(GlintAggregate::where('provider', 'anthropic')->count())->toBe(1);
-    expect(GlintAggregate::where('provider', 'openai')->count())->toBe(0);
+    expect(GlintAggregate::where('provider', 'anthropic')->count())->toBe(1)
+        ->and(GlintAggregate::where('provider', 'openai')->count())->toBe(0);
 });
 
 it('returns failure for an invalid period option', function () {
@@ -127,7 +127,7 @@ it('aggregates errors separately from successes', function () {
         ->assertSuccessful();
 
     $agg = GlintAggregate::where('provider', 'openai')->first();
-    expect($agg)->not->toBeNull();
-    expect($agg->failed_requests)->toBe(1);
-    expect($agg->successful_requests)->toBe(0);
+    expect($agg)->not->toBeNull()
+        ->and($agg->failed_requests)->toBe(1)
+        ->and($agg->successful_requests)->toBe(0);
 });

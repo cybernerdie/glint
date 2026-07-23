@@ -23,7 +23,7 @@ it('casts is_streaming to boolean', function () {
 it('casts cost_usd to a decimal', function () {
     $generation = new GlintGeneration(['cost_usd' => '0.00125000']);
 
-    expect($generation->cost_usd)->toBeString(); // cast to decimal string
+    expect($generation->cost_usd)->toBeString();
 });
 
 it('declares metadata as an array cast', function () {

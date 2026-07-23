@@ -26,12 +26,10 @@ composer.phar
 .DS_Store
 Thumbs.db
 
-# Environment
 .env
 .env.*
 !.env.example
 
-# Build output (pre-built assets committed under dist/, not here)
 /node_modules/
 /package-lock.json
 /yarn.lock
@@ -39,10 +37,8 @@ Thumbs.db
 # Testbench
 /testbench.yaml
 
-# Internal planning docs — not published with the package
 /.internal/
 
-# Workbench (Orchestra Testbench dev app)
 /workbench/
 
 # Coverage

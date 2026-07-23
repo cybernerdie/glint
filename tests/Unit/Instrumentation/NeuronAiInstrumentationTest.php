@@ -20,10 +20,6 @@ use NeuronAI\Observability\Events\ToolCalled;
 use NeuronAI\Observability\Events\ToolCalling;
 use NeuronAI\Tools\ToolInterface;
 
-/**
- * A minimal source node stub that exposes a $provider property accessible
- * via reflection — matches how NeuronAI's ChatNode is structured.
- */
 function makeSourceNode(string $providerClass = 'openai', string $model = 'gpt-4o'): object
 {
     return new class($providerClass, $model)
@@ -35,9 +31,6 @@ function makeSourceNode(string $providerClass = 'openai', string $model = 'gpt-4
     };
 }
 
-/**
- * A concrete ToolInterface stub for use in tool event tests.
- */
 function makeTool(string $name, string $result = 'ok', array $inputs = []): ToolInterface
 {
     return new class($name, $result, $inputs) implements ToolInterface
@@ -375,7 +368,7 @@ it('onEvent inference-stop falls back to zero tokens when response has no usage'
     $source = makeSourceNode();
     $observer->onEvent('inference-start', $source, new InferenceStart(new Message('Hello')));
 
-    $responseWithNoUsage = new Message('World'); // no Usage
+    $responseWithNoUsage = new Message('World');
     $observer->onEvent('inference-stop', $source, new InferenceStop(false, $responseWithNoUsage));
 
     Event::assertDispatched(LlmCallFinished::class, function (LlmCallFinished $e) {

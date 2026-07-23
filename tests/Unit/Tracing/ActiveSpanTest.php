@@ -86,7 +86,7 @@ it('end updates the span status to success', function (): void {
     $span->end();
 
     $row = GlintSpan::where('id', $spanId)->first();
-    expect($row->status)->toBe(RecordStatus::Success);
-    expect($row->ended_at)->not->toBeNull();
-    expect($row->duration_ms)->toBeGreaterThanOrEqual(0);
+    expect($row->status)->toBe(RecordStatus::Success)
+        ->and($row->ended_at)->not->toBeNull()
+        ->and($row->duration_ms)->toBeGreaterThanOrEqual(0);
 });

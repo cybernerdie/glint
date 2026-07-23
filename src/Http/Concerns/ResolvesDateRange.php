@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cybernerdie\Glint\Http\Concerns;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 
 trait ResolvesDateRange
@@ -74,7 +75,7 @@ trait ResolvesDateRange
     /**
      * Apply from/to Carbon bounds to an Eloquent builder on a given column.
      *
-     * @template TModel of \Illuminate\Database\Eloquent\Model
+     * @template TModel of Model
      *
      * @param  Builder<TModel>  $query
      * @return Builder<TModel>

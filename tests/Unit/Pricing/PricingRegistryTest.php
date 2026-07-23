@@ -96,14 +96,25 @@ it('calculates cost for anthropic models', function () {
 it('loads pricing lazily — file is not read until first use', function () {
     $registry = new PricingRegistry('/non/existent/path.json');
 
-    expect($registry)->toBeInstanceOf(PricingRegistry::class);
+    expect($registry)->toBeInstanceOf(PricingRegistry::class)
+        ->and($registry->costFor('openai', 'gpt-4o', 100, 50))->toBe(0.0);
 
-    expect($registry->costFor('openai', 'gpt-4o', 100, 50))->toBe(0.0);
 });
 
 it('returns 0.0 when pricing file contains invalid JSON', function () {
     $tmpFile = tempnam(sys_get_temp_dir(), 'glint_pricing_test_');
     file_put_contents($tmpFile, 'not valid json }{');
+
+    $registry = new PricingRegistry($tmpFile);
+
+    expect($registry->costFor('openai', 'gpt-4o', 100, 50))->toBe(0.0);
+
+    unlink($tmpFile);
+});
+
+it('returns 0.0 when pricing file contains a non-object JSON value', function () {
+    $tmpFile = tempnam(sys_get_temp_dir(), 'glint_pricing_noobj_');
+    file_put_contents($tmpFile, 'null');
 
     $registry = new PricingRegistry($tmpFile);
 

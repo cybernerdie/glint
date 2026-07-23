@@ -171,8 +171,8 @@ it('toolCalls() returns collection from store', function (): void {
         durationMs: 50,
     ));
 
-    expect($fake->toolCalls())->toHaveCount(1);
-    expect($fake->toolCalls()->first()['toolName'])->toBe('search');
+    expect($fake->toolCalls())->toHaveCount(1)
+        ->and($fake->toolCalls()->first()['toolName'])->toBe('search');
 });
 
 it('assertHasToolCall passes when tool call exists', function (): void {
@@ -502,4 +502,29 @@ it('asserts no spans were recorded', function (): void {
     $fake = GlintFake::swap();
 
     $fake->assertNoSpans();
+});
+
+it('restore() executes without error after a swap', function (): void {
+    GlintFake::swap();
+
+    expect(fn () => GlintFake::restore())->not->toThrow(Throwable::class);
+});
+
+it('restore() forgets event listeners so events no longer reach the fake store', function (): void {
+    $fake = GlintFake::swap();
+
+    GlintFake::restore();
+
+    event(new LlmCallStarted(
+        generationId: 'gen-after-restore',
+        provider: 'openai',
+        model: 'gpt-4o',
+        messages: null,
+        temperature: null,
+        maxTokens: null,
+        isStreaming: false,
+        traceId: 'trace-r-001',
+    ));
+
+    expect($fake->generations())->toHaveCount(0);
 });

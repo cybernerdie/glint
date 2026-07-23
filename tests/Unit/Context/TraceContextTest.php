@@ -7,8 +7,8 @@ use Cybernerdie\Glint\Context\TraceContext;
 it('starts with no active trace', function () {
     $context = new TraceContext;
 
-    expect($context->traceId())->toBeNull();
-    expect($context->activeSpanId())->toBeNull();
+    expect($context->traceId())->toBeNull()
+        ->and($context->activeSpanId())->toBeNull();
 });
 
 it('openTrace sets traceId', function () {
@@ -25,9 +25,9 @@ it('closeTrace resets all state', function () {
     $context->setActiveSpan('span-1');
     $context->closeTrace();
 
-    expect($context->traceId())->toBeNull();
-    expect($context->activeSpanId())->toBeNull();
-    expect($context->traceIdForGeneration('gen-1'))->toBeNull();
+    expect($context->traceId())->toBeNull()
+        ->and($context->activeSpanId())->toBeNull()
+        ->and($context->traceIdForGeneration('gen-1'))->toBeNull();
 });
 
 it('registerGeneration and traceIdForGeneration round-trip', function () {

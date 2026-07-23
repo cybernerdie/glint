@@ -260,7 +260,7 @@ it('onToolInvoked does nothing for untracked tool invocation IDs', function () {
 it('onToolInvoked uses spanId as traceId fallback when no trace context is open', function () {
     Event::fake();
 
-    $context = new TraceContext; // no open trace
+    $context = new TraceContext;
     $instrumentation = new LaravelAiInstrumentation($context);
 
     $prompt = new AgentPrompt(prompt: 'No trace', model: 'gpt-4o');

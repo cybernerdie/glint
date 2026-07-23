@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Cybernerdie\Glint\GlintApplicationServiceProvider;
+use Illuminate\Auth\Middleware\Authorize;
 use Illuminate\Foundation\Auth\User;
 use Illuminate\Support\Facades\Gate;
 
@@ -111,7 +112,6 @@ it('Gate::before returns null for non-viewGlint abilities', function () {
 });
 
 it('denies authenticated users when the gate returns false in a non-local environment', function () {
-    // The test environment is "testing" — the local bypass in Gate::before does NOT apply.
     $provider = new class($this->app) extends GlintApplicationServiceProvider
     {
         protected function gate(): void
@@ -126,4 +126,59 @@ it('denies authenticated users when the gate returns false in a non-local enviro
     $user->forceFill(['id' => 1, 'email' => 'restricted@example.com']);
 
     expect(Gate::forUser($user)->denies('viewGlint'))->toBeTrue();
+});
+
+it('concrete gate() allows users whose email is in admin_emails', function () {
+    config()->set('glint.admin_emails', ['admin@example.com']);
+
+    $provider = new class($this->app) extends GlintApplicationServiceProvider {};
+
+    $provider->boot();
+
+    $user = new User;
+    $user->forceFill(['id' => 10, 'email' => 'admin@example.com']);
+
+    expect(Gate::forUser($user)->allows('viewGlint'))->toBeTrue();
+});
+
+it('concrete gate() denies users whose email is not in admin_emails', function () {
+    config()->set('glint.admin_emails', ['admin@example.com']);
+
+    $provider = new class($this->app) extends GlintApplicationServiceProvider {};
+
+    $provider->boot();
+
+    $user = new User;
+    $user->forceFill(['id' => 11, 'email' => 'other@example.com']);
+
+    expect(Gate::forUser($user)->denies('viewGlint'))->toBeTrue();
+});
+
+it('concrete gate() denies when admin_emails is empty', function () {
+    config()->set('glint.admin_emails', []);
+
+    $provider = new class($this->app) extends GlintApplicationServiceProvider {};
+
+    $provider->boot();
+
+    $user = new User;
+    $user->forceFill(['id' => 12, 'email' => 'anyone@example.com']);
+
+    expect(Gate::forUser($user)->denies('viewGlint'))->toBeTrue();
+});
+
+it('authorization() pushes Authorize:viewGlint into the glint-auth middleware group', function () {
+    $provider = new class($this->app) extends GlintApplicationServiceProvider
+    {
+        protected function gate(): void
+        {
+            Gate::define('viewGlint', fn ($user) => true);
+        }
+    };
+
+    $provider->boot();
+
+    $groups = $this->app['router']->getMiddlewareGroups();
+
+    expect($groups['glint-auth'])->toContain(Authorize::class.':viewGlint');
 });

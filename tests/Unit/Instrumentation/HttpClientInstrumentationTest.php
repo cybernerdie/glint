@@ -465,8 +465,7 @@ it('onResponseReceived does nothing when pending entry is missing for a known co
     $ref = new ReflectionClass($instrumentation);
 
     $pendingProp = $ref->getProperty('pending');
-    $pendingProp->setAccessible(true);
-    $pendingProp->setValue($instrumentation, []);  // clear pending while hashMap still has entry
+    $pendingProp->setValue($instrumentation, []);
 
     $responseBody = json_encode(['choices' => [['message' => ['content' => 'Hi'], 'finish_reason' => 'stop']], 'usage' => ['prompt_tokens' => 5, 'completion_tokens' => 3]]);
     $psrResponse = new Response(200, ['Content-Type' => 'application/json'], $responseBody);
@@ -514,8 +513,7 @@ it('onConnectionFailed does nothing when pending entry is missing for a known co
     $ref = new ReflectionClass($instrumentation);
 
     $pendingProp = $ref->getProperty('pending');
-    $pendingProp->setAccessible(true);
-    $pendingProp->setValue($instrumentation, []);  // clear pending while hashMap still has entry
+    $pendingProp->setValue($instrumentation, []);
 
     $connException = new ConnectionException('Connection refused');
 

@@ -70,9 +70,9 @@ it('end updates the trace status to success and closes context', function (): vo
     $trace->end();
 
     $row = GlintTrace::where('id', $traceId)->first();
-    expect($row->status)->toBe(RecordStatus::Success);
-    expect($row->ended_at)->not->toBeNull();
-    expect($row->duration_ms)->toBeGreaterThanOrEqual(0);
+    expect($row->status)->toBe(RecordStatus::Success)
+        ->and($row->ended_at)->not->toBeNull()
+        ->and($row->duration_ms)->toBeGreaterThanOrEqual(0);
 });
 
 it('end closes the trace context', function (): void {
@@ -93,9 +93,9 @@ it('span creates a span row and calls callback with ActiveSpan', function (): vo
         return 'span-result';
     });
 
-    expect($called)->toBeTrue();
-    expect($result)->toBe('span-result');
-    expect(GlintSpan::where('trace_id', $traceId)->count())->toBe(1);
+    expect($called)->toBeTrue()
+        ->and($result)->toBe('span-result')
+        ->and(GlintSpan::where('trace_id', $traceId)->count())->toBe(1);
 });
 
 it('span auto-ends the span after callback', function (): void {
@@ -104,8 +104,8 @@ it('span auto-ends the span after callback', function (): void {
     $trace->span('auto-end-span', fn ($span) => null);
 
     $span = GlintSpan::where('trace_id', $traceId)->first();
-    expect($span->status)->toBe(RecordStatus::Success);
-    expect($span->ended_at)->not->toBeNull();
+    expect($span->status)->toBe(RecordStatus::Success)
+        ->and($span->ended_at)->not->toBeNull();
 });
 
 it('generation creates generation row and calls callback', function (): void {
@@ -118,9 +118,9 @@ it('generation creates generation row and calls callback', function (): void {
         return 'gen-result';
     });
 
-    expect($called)->toBeTrue();
-    expect($result)->toBe('gen-result');
-    expect(GlintGeneration::where('trace_id', $traceId)->count())->toBe(1);
+    expect($called)->toBeTrue()
+        ->and($result)->toBe('gen-result')
+        ->and(GlintGeneration::where('trace_id', $traceId)->count())->toBe(1);
 });
 
 it('generation passes ActiveGeneration to callback', function (): void {
@@ -142,9 +142,9 @@ it('span marks span as error and re-throws when callback throws', function (): v
     }))->toThrow(RuntimeException::class, 'span failed');
 
     $span = GlintSpan::where('trace_id', $traceId)->first();
-    expect($span->status)->toBe(RecordStatus::Error);
-    expect($span->ended_at)->not->toBeNull();
-    expect($span->duration_ms)->toBeGreaterThanOrEqual(0);
+    expect($span->status)->toBe(RecordStatus::Error)
+        ->and($span->ended_at)->not->toBeNull()
+        ->and($span->duration_ms)->toBeGreaterThanOrEqual(0);
 });
 
 it('generation stores provider and model when supplied', function (): void {
@@ -192,12 +192,12 @@ it('generation marks generation and span as error and re-throws when callback th
     }))->toThrow(RuntimeException::class, 'gen failed');
 
     $span = GlintSpan::where('trace_id', $traceId)->first();
-    expect($span->status)->toBe(RecordStatus::Error);
-    expect($span->ended_at)->not->toBeNull();
+    expect($span->status)->toBe(RecordStatus::Error)
+        ->and($span->ended_at)->not->toBeNull();
 
     $gen = GlintGeneration::where('trace_id', $traceId)->first();
-    expect($gen->status)->toBe(RecordStatus::Error);
-    expect($gen->ended_at)->not->toBeNull();
+    expect($gen->status)->toBe(RecordStatus::Error)
+        ->and($gen->ended_at)->not->toBeNull();
 });
 
 it('generation sets parent_span_id on the generation row', function (): void {
@@ -209,4 +209,35 @@ it('generation sets parent_span_id on the generation row', function (): void {
     $gen = GlintGeneration::where('trace_id', $traceId)->first();
 
     expect($gen->parent_span_id)->toBe($span->id);
+});
+
+it('tags() returns self when trace row does not exist', function (): void {
+    $fakeId = (string) \Illuminate\Support\Str::uuid();
+    $context = app(TraceContext::class);
+    $context->openTrace($fakeId);
+    $pricing = app(PricingRegistry::class);
+    $trace = new ActiveTrace($fakeId, $context, Carbon::now(), $pricing);
+
+    $result = $trace->tags(['env' => 'testing', 'version' => '1']);
+
+    expect($result)->toBe($trace);
+});
+
+it('ActiveSpan tags() returns self when span row does not exist', function (): void {
+    $fakeSpanId = (string) \Illuminate\Support\Str::uuid();
+    $span = new \Cybernerdie\Glint\Tracing\ActiveSpan($fakeSpanId, Carbon::now());
+
+    $result = $span->tags(['env' => 'testing']);
+
+    expect($result)->toBe($span);
+});
+
+it('ActiveGeneration tags() returns self when generation row does not exist', function (): void {
+    $fakeGenId = (string) \Illuminate\Support\Str::uuid();
+    $pricing = app(PricingRegistry::class);
+    $gen = new \Cybernerdie\Glint\Tracing\ActiveGeneration($fakeGenId, $pricing, 'openai', 'gpt-4o', Carbon::now());
+
+    $result = $gen->tags(['env' => 'testing']);
+
+    expect($result)->toBe($gen);
 });
