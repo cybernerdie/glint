@@ -16,14 +16,14 @@ final class TraceIndexAction
         [$fromDt, $toDt] = $request->dateRange();
 
         return [
-            'traces'   => rescue(fn () => (new TraceListQuery($fromDt, $toDt, $request->search(), $request->status(), $request->userId()))->get(), collect()),
+            'traces' => rescue(fn () => (new TraceListQuery($fromDt, $toDt, $request->search(), $request->status(), $request->userId()))->get(), collect()),
             'statuses' => RecordStatus::cases(),
-            'search'   => $request->search(),
-            'status'   => $request->status(),
-            'userId'   => $request->userId(),
-            'period'   => $request->period(),
+            'search' => $request->search(),
+            'status' => $request->status(),
+            'userId' => $request->userId(),
+            'period' => $request->period(),
             'fromDate' => $request->fromDate(),
-            'toDate'   => $request->toDate(),
+            'toDate' => $request->toDate(),
         ];
     }
 }

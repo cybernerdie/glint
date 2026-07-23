@@ -9,12 +9,12 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
-final class TopTraceUseCasesQuery
+final readonly class TopTraceUseCasesQuery
 {
     public function __construct(
-        private readonly ?Carbon $fromDt,
-        private readonly ?Carbon $toDt,
-        private readonly string $provider = '',
+        private ?Carbon $fromDt,
+        private ?Carbon $toDt,
+        private string $provider = '',
     ) {}
 
     /** @return Collection<int, GlintTrace> */

@@ -15,11 +15,11 @@ final class UserIndexAction
         [$fromDt, $toDt] = $request->dateRange();
 
         return [
-            'users'    => rescue(fn () => (new UserListQuery($fromDt, $toDt, $request->search()))->get(), collect()),
-            'search'   => $request->search(),
-            'period'   => $request->period(),
+            'users' => rescue(fn () => (new UserListQuery($fromDt, $toDt, $request->search()))->get(), collect()),
+            'search' => $request->search(),
+            'period' => $request->period(),
             'fromDate' => $request->fromDate(),
-            'toDate'   => $request->toDate(),
+            'toDate' => $request->toDate(),
         ];
     }
 }

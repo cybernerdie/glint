@@ -8,12 +8,12 @@ use Cybernerdie\Glint\Models\GlintGeneration;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
-final class CostTrendQuery
+final readonly class CostTrendQuery
 {
     public function __construct(
-        private readonly ?Carbon $fromDt,
-        private readonly ?Carbon $toDt,
-        private readonly string $provider = '',
+        private ?Carbon $fromDt,
+        private ?Carbon $toDt,
+        private string $provider = '',
     ) {}
 
     /** @return Collection<int, GlintGeneration> */

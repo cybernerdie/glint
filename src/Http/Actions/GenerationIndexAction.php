@@ -20,15 +20,15 @@ final class GenerationIndexAction
 
         return [
             'generations' => rescue(fn () => (new GenerationListQuery($fromDt, $toDt, $request->provider(), $request->model(), $request->status()))->get(), collect()),
-            'providers'   => $filters['providers'],
-            'models'      => $filters['models'],
-            'statuses'    => RecordStatus::cases(),
-            'provider'    => $request->provider(),
-            'model'       => $request->model(),
-            'status'      => $request->status(),
-            'period'      => $request->period(),
-            'fromDate'    => $request->fromDate(),
-            'toDate'      => $request->toDate(),
+            'providers' => $filters['providers'],
+            'models' => $filters['models'],
+            'statuses' => RecordStatus::cases(),
+            'provider' => $request->provider(),
+            'model' => $request->model(),
+            'status' => $request->status(),
+            'period' => $request->period(),
+            'fromDate' => $request->fromDate(),
+            'toDate' => $request->toDate(),
         ];
     }
 }

@@ -8,17 +8,17 @@ use Cybernerdie\Glint\Models\GlintGeneration;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
 
-final class GenerationListQuery
+final readonly class GenerationListQuery
 {
     public function __construct(
-        private readonly ?Carbon $fromDt,
-        private readonly ?Carbon $toDt,
-        private readonly string $provider = '',
-        private readonly string $model = '',
-        private readonly string $status = '',
+        private ?Carbon $fromDt,
+        private ?Carbon $toDt,
+        private string $provider = '',
+        private string $model = '',
+        private string $status = '',
     ) {}
 
-    /** @return LengthAwarePaginator<GlintGeneration> */
+    /** @return LengthAwarePaginator<int, GlintGeneration> */
     public function get(): LengthAwarePaginator
     {
         $query = GlintGeneration::query()->latest('started_at');
@@ -31,7 +31,7 @@ final class GenerationListQuery
             $query->where('model', $this->model);
         }
 
-        if ($this->status !== '' && in_array($this->status, ['success', 'error', 'pending'], true)) {
+        if (in_array($this->status, ['success', 'error', 'pending'], true)) {
             $query->where('status', $this->status);
         }
 

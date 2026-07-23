@@ -9,12 +9,12 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
-final class VolumeBucketsQuery
+final readonly class VolumeBucketsQuery
 {
     public function __construct(
-        private readonly string $period,
-        private readonly ?Carbon $fromDt,
-        private readonly ?Carbon $toDt,
+        private string $period,
+        private ?Carbon $fromDt,
+        private ?Carbon $toDt,
     ) {}
 
     /** @return Collection<int, array{label: string, total: int}> */
@@ -83,9 +83,9 @@ final class VolumeBucketsQuery
         $rangeEnd = ($this->toDt ?? now())->copy()->startOfDay();
 
         $dayCount = match ($this->period) {
-            '7d'    => 7,
-            '30d'   => 30,
-            '90d'   => 90,
+            '7d' => 7,
+            '30d' => 30,
+            '90d' => 90,
             default => $this->fromDt !== null
                 ? min(120, (int) $this->fromDt->copy()->startOfDay()->diffInDays($rangeEnd) + 1)
                 : 14,
@@ -110,8 +110,8 @@ final class VolumeBucketsQuery
     {
         return match (DB::connection()->getDriverName()) {
             'mysql', 'mariadb' => "DATE_FORMAT(started_at, '%Y-%m-%d %H')",
-            'pgsql'            => "to_char(started_at, 'YYYY-MM-DD HH24')",
-            default            => "strftime('%Y-%m-%d %H', started_at)",
+            'pgsql' => "to_char(started_at, 'YYYY-MM-DD HH24')",
+            default => "strftime('%Y-%m-%d %H', started_at)",
         };
     }
 }

@@ -8,11 +8,11 @@ use Cybernerdie\Glint\Models\GlintTrace;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
-final class RecentTracesQuery
+final readonly class RecentTracesQuery
 {
     public function __construct(
-        private readonly ?Carbon $fromDt,
-        private readonly ?Carbon $toDt,
+        private ?Carbon $fromDt,
+        private ?Carbon $toDt,
     ) {}
 
     /** @return Collection<int, GlintTrace> */

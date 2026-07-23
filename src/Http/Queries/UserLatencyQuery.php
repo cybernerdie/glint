@@ -9,11 +9,11 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
-final class UserLatencyQuery
+final readonly class UserLatencyQuery
 {
     public function __construct(
-        private readonly ?Carbon $fromDt,
-        private readonly ?Carbon $toDt,
+        private ?Carbon $fromDt,
+        private ?Carbon $toDt,
     ) {}
 
     /** @return Collection<int, GlintTrace> */

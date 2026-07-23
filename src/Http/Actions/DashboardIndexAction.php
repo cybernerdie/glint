@@ -21,15 +21,15 @@ final class DashboardIndexAction
         $period = $request->period();
 
         return [
-            'stats'         => rescue(fn () => (new DashboardStatsQuery($fromDt, $toDt))->get(), DashboardStatsQuery::empty()),
+            'stats' => rescue(fn () => (new DashboardStatsQuery($fromDt, $toDt))->get(), DashboardStatsQuery::empty()),
             'volumeBuckets' => rescue(fn () => (new VolumeBucketsQuery($period, $fromDt, $toDt))->get(), collect()),
-            'recentTraces'  => rescue(fn () => (new RecentTracesQuery($fromDt, $toDt))->get(), collect()),
+            'recentTraces' => rescue(fn () => (new RecentTracesQuery($fromDt, $toDt))->get(), collect()),
             'topTraceNames' => rescue(fn () => (new TopTraceNamesQuery($fromDt, $toDt))->get(), collect()),
             'topModelCosts' => rescue(fn () => (new TopModelCostsQuery($fromDt, $toDt))->get(), collect()),
-            'topUserCosts'  => rescue(fn () => (new TopUserCostsQuery($fromDt, $toDt))->get(), collect()),
-            'period'        => $period,
-            'fromDate'      => $request->fromDate(),
-            'toDate'        => $request->toDate(),
+            'topUserCosts' => rescue(fn () => (new TopUserCostsQuery($fromDt, $toDt))->get(), collect()),
+            'period' => $period,
+            'fromDate' => $request->fromDate(),
+            'toDate' => $request->toDate(),
         ];
     }
 }

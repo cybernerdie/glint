@@ -7,11 +7,11 @@ namespace Cybernerdie\Glint\Http\Queries;
 use Cybernerdie\Glint\Models\GlintTrace;
 use Illuminate\Support\Carbon;
 
-final class TracePercentilesQuery
+final readonly class TracePercentilesQuery
 {
     public function __construct(
-        private readonly ?Carbon $fromDt,
-        private readonly ?Carbon $toDt,
+        private ?Carbon $fromDt,
+        private ?Carbon $toDt,
     ) {}
 
     /** @return array<int, array{name: string, count: int, p50: int, p90: int, p95: int, p99: int}> */
@@ -39,12 +39,12 @@ final class TracePercentilesQuery
         foreach ($grouped as $name => $durations) {
             sort($durations);
             $result[] = [
-                'name'  => $name,
+                'name' => $name,
                 'count' => count($durations),
-                'p50'   => $this->percentile($durations, 50),
-                'p90'   => $this->percentile($durations, 90),
-                'p95'   => $this->percentile($durations, 95),
-                'p99'   => $this->percentile($durations, 99),
+                'p50' => $this->percentile($durations, 50),
+                'p90' => $this->percentile($durations, 90),
+                'p95' => $this->percentile($durations, 95),
+                'p99' => $this->percentile($durations, 99),
             ];
         }
 

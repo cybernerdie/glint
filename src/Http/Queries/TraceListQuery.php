@@ -8,17 +8,17 @@ use Cybernerdie\Glint\Models\GlintTrace;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
 
-final class TraceListQuery
+final readonly class TraceListQuery
 {
     public function __construct(
-        private readonly ?Carbon $fromDt,
-        private readonly ?Carbon $toDt,
-        private readonly string $search = '',
-        private readonly string $status = '',
-        private readonly string $userId = '',
+        private ?Carbon $fromDt,
+        private ?Carbon $toDt,
+        private string $search = '',
+        private string $status = '',
+        private string $userId = '',
     ) {}
 
-    /** @return LengthAwarePaginator<GlintTrace> */
+    /** @return LengthAwarePaginator<int, GlintTrace> */
     public function get(): LengthAwarePaginator
     {
         $query = GlintTrace::query()->latest('started_at');

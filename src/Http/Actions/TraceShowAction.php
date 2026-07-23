@@ -17,7 +17,7 @@ final class TraceShowAction
             abort(404);
         }
 
-        $spans       = rescue(fn () => $trace->spans()->orderBy('started_at')->limit(500)->get(), collect());
+        $spans = rescue(fn () => $trace->spans()->orderBy('started_at')->limit(500)->get(), collect());
         $generations = rescue(fn () => $trace->generations()->orderBy('started_at')->limit(500)->get(), collect());
 
         return compact('trace', 'spans', 'generations');

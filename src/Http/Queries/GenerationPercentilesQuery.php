@@ -7,11 +7,11 @@ namespace Cybernerdie\Glint\Http\Queries;
 use Cybernerdie\Glint\Models\GlintGeneration;
 use Illuminate\Support\Carbon;
 
-final class GenerationPercentilesQuery
+final readonly class GenerationPercentilesQuery
 {
     public function __construct(
-        private readonly ?Carbon $fromDt,
-        private readonly ?Carbon $toDt,
+        private ?Carbon $fromDt,
+        private ?Carbon $toDt,
     ) {}
 
     /** @return array<int, array{model: string, provider: string, count: int, p50: int, p90: int, p95: int, p99: int}> */
@@ -42,13 +42,13 @@ final class GenerationPercentilesQuery
         foreach ($grouped as $model => $durations) {
             sort($durations);
             $result[] = [
-                'model'    => $model,
+                'model' => $model,
                 'provider' => $providers[$model] ?? '',
-                'count'    => count($durations),
-                'p50'      => $this->percentile($durations, 50),
-                'p90'      => $this->percentile($durations, 90),
-                'p95'      => $this->percentile($durations, 95),
-                'p99'      => $this->percentile($durations, 99),
+                'count' => count($durations),
+                'p50' => $this->percentile($durations, 50),
+                'p90' => $this->percentile($durations, 90),
+                'p95' => $this->percentile($durations, 95),
+                'p99' => $this->percentile($durations, 99),
             ];
         }
 

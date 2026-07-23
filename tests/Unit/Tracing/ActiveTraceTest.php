@@ -10,6 +10,7 @@ use Cybernerdie\Glint\Models\GlintSpan;
 use Cybernerdie\Glint\Models\GlintTrace;
 use Cybernerdie\Glint\Pricing\PricingRegistry;
 use Cybernerdie\Glint\Tracing\ActiveGeneration;
+use Cybernerdie\Glint\Tracing\ActiveSpan;
 use Cybernerdie\Glint\Tracing\ActiveTrace;
 use Illuminate\Support\Str;
 
@@ -212,7 +213,7 @@ it('generation sets parent_span_id on the generation row', function (): void {
 });
 
 it('tags() returns self when trace row does not exist', function (): void {
-    $fakeId = (string) \Illuminate\Support\Str::uuid();
+    $fakeId = (string) Str::uuid();
     $context = app(TraceContext::class);
     $context->openTrace($fakeId);
     $pricing = app(PricingRegistry::class);
@@ -224,8 +225,8 @@ it('tags() returns self when trace row does not exist', function (): void {
 });
 
 it('ActiveSpan tags() returns self when span row does not exist', function (): void {
-    $fakeSpanId = (string) \Illuminate\Support\Str::uuid();
-    $span = new \Cybernerdie\Glint\Tracing\ActiveSpan($fakeSpanId, Carbon::now());
+    $fakeSpanId = (string) Str::uuid();
+    $span = new ActiveSpan($fakeSpanId, Carbon::now());
 
     $result = $span->tags(['env' => 'testing']);
 
@@ -233,9 +234,9 @@ it('ActiveSpan tags() returns self when span row does not exist', function (): v
 });
 
 it('ActiveGeneration tags() returns self when generation row does not exist', function (): void {
-    $fakeGenId = (string) \Illuminate\Support\Str::uuid();
+    $fakeGenId = (string) Str::uuid();
     $pricing = app(PricingRegistry::class);
-    $gen = new \Cybernerdie\Glint\Tracing\ActiveGeneration($fakeGenId, $pricing, 'openai', 'gpt-4o', Carbon::now());
+    $gen = new ActiveGeneration($fakeGenId, $pricing, 'openai', 'gpt-4o', Carbon::now());
 
     $result = $gen->tags(['env' => 'testing']);
 

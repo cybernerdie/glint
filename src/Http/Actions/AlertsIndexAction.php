@@ -13,7 +13,7 @@ final class AlertsIndexAction
     public function handle(): array
     {
         return [
-            'rules'        => rescue(fn () => GlintAlertRule::query()->latest()->paginate(25), collect()),
+            'rules' => rescue(fn () => GlintAlertRule::query()->latest()->paginate(25)->withQueryString(), collect()),
             'recentEvents' => rescue(fn () => GlintAlertEvent::query()->with('rule')->latest('triggered_at')->limit(50)->get(), collect()),
         ];
     }

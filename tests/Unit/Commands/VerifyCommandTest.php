@@ -72,4 +72,3 @@ it('shows active drivers list', function () {
     $this->artisan('glint:verify')
         ->expectsOutputToContain('http');
 });
-

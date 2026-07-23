@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use Cybernerdie\Glint\Http\Controllers\AlertsController;
 use Cybernerdie\Glint\Http\Controllers\AnalyticsController;
-use Cybernerdie\Glint\Http\Controllers\ApiController;
 use Cybernerdie\Glint\Http\Controllers\AssetController;
 use Cybernerdie\Glint\Http\Controllers\CostsController;
 use Cybernerdie\Glint\Http\Controllers\DashboardController;
@@ -35,13 +34,12 @@ Route::prefix($glintPath)
         Route::get('/costs', [CostsController::class, 'index'])->name('costs.index');
         Route::get('/users', [UsersController::class, 'index'])->name('users.index');
         Route::get('/users/{userId}', [UsersController::class, 'show'])->name('users.show')->where('userId', '.{1,255}');
-        Route::get('/analytics/latency', [AnalyticsController::class, 'latency'])->name('analytics.latency');
+        Route::get('/analytics/latency', AnalyticsController::class)->name('analytics.latency');
         Route::get('/alerts', [AlertsController::class, 'index'])->name('alerts.index');
         Route::get('/alerts/create', [AlertsController::class, 'create'])->name('alerts.create');
         Route::post('/alerts', [AlertsController::class, 'store'])->name('alerts.store');
         Route::post('/alerts/{alertRuleId}/toggle', [AlertsController::class, 'toggle'])->name('alerts.toggle');
         Route::delete('/alerts/{alertRuleId}', [AlertsController::class, 'destroy'])->name('alerts.destroy');
-        Route::get('/api/metrics', [ApiController::class, 'metrics'])->name('api.metrics')->middleware('throttle:60,1');
     });
 
 // The touch icon sits outside the auth middleware: it is a public logo and

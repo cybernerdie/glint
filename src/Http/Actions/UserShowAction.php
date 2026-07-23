@@ -16,8 +16,8 @@ final class UserShowAction
         [$fromDt, $toDt] = $request->dateRange();
 
         return [
-            'stats'    => rescue(fn () => (new UserStatsQuery($userId, $fromDt, $toDt))->get(), UserStatsQuery::empty()),
-            'traces'   => rescue(
+            'stats' => rescue(fn () => (new UserStatsQuery($userId, $fromDt, $toDt))->get(), UserStatsQuery::empty()),
+            'traces' => rescue(
                 fn () => GlintTrace::query()
                     ->where('user_id', $userId)
                     ->when($fromDt, fn ($q) => $q->where('started_at', '>=', $fromDt))
@@ -27,10 +27,10 @@ final class UserShowAction
                     ->withQueryString(),
                 collect()
             ),
-            'userId'   => $userId,
-            'period'   => $request->period(),
+            'userId' => $userId,
+            'period' => $request->period(),
             'fromDate' => $request->fromDate(),
-            'toDate'   => $request->toDate(),
+            'toDate' => $request->toDate(),
         ];
     }
 }

@@ -23,7 +23,7 @@ final class GenerationFiltersQuery
 
         return [
             'providers' => $rows->pluck('provider')->unique()->values(),
-            'models'    => $rows->pluck('model')->unique()->values(),
+            'models' => $rows->pluck('model')->unique()->values(),
         ];
     }
 }

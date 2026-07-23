@@ -8,12 +8,12 @@ use Cybernerdie\Glint\Enums\RecordStatus;
 use Cybernerdie\Glint\Models\GlintTrace;
 use Illuminate\Support\Carbon;
 
-final class UserStatsQuery
+final readonly class UserStatsQuery
 {
     public function __construct(
-        private readonly string $userId,
-        private readonly ?Carbon $fromDt,
-        private readonly ?Carbon $toDt,
+        private string $userId,
+        private ?Carbon $fromDt,
+        private ?Carbon $toDt,
     ) {}
 
     /** @return array{trace_count: int, total_cost: float, avg_duration: int, total_tokens: int, error_count: int} */
@@ -37,11 +37,11 @@ final class UserStatsQuery
         $attrs = $row ? $row->getAttributes() : [];
 
         return [
-            'trace_count'  => isset($attrs['trace_count']) && is_numeric($attrs['trace_count']) ? (int) $attrs['trace_count'] : 0,
-            'total_cost'   => isset($attrs['total_cost']) && is_numeric($attrs['total_cost']) ? (float) $attrs['total_cost'] : 0.0,
+            'trace_count' => isset($attrs['trace_count']) && is_numeric($attrs['trace_count']) ? (int) $attrs['trace_count'] : 0,
+            'total_cost' => isset($attrs['total_cost']) && is_numeric($attrs['total_cost']) ? (float) $attrs['total_cost'] : 0.0,
             'avg_duration' => isset($attrs['avg_duration']) && is_numeric($attrs['avg_duration']) ? (int) $attrs['avg_duration'] : 0,
             'total_tokens' => isset($attrs['total_tokens']) && is_numeric($attrs['total_tokens']) ? (int) $attrs['total_tokens'] : 0,
-            'error_count'  => isset($attrs['error_count']) && is_numeric($attrs['error_count']) ? (int) $attrs['error_count'] : 0,
+            'error_count' => isset($attrs['error_count']) && is_numeric($attrs['error_count']) ? (int) $attrs['error_count'] : 0,
         ];
     }
 
@@ -49,11 +49,11 @@ final class UserStatsQuery
     public static function empty(): array
     {
         return [
-            'trace_count'  => 0,
-            'total_cost'   => 0.0,
+            'trace_count' => 0,
+            'total_cost' => 0.0,
             'avg_duration' => 0,
             'total_tokens' => 0,
-            'error_count'  => 0,
+            'error_count' => 0,
         ];
     }
 }

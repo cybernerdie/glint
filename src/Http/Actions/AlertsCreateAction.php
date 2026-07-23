@@ -14,8 +14,8 @@ final class AlertsCreateAction
     public function handle(): array
     {
         return [
-            'types'   => AlertRuleType::cases(),
-            'scopes'  => AlertRuleScope::cases(),
+            'types' => AlertRuleType::cases(),
+            'scopes' => AlertRuleScope::cases(),
             'periods' => AggregatePeriod::cases(),
         ];
     }

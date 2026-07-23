@@ -9,11 +9,11 @@ use Cybernerdie\Glint\Models\GlintGeneration;
 use Cybernerdie\Glint\Models\GlintTrace;
 use Illuminate\Support\Carbon;
 
-final class DashboardStatsQuery
+final readonly class DashboardStatsQuery
 {
     public function __construct(
-        private readonly ?Carbon $fromDt,
-        private readonly ?Carbon $toDt,
+        private ?Carbon $fromDt,
+        private ?Carbon $toDt,
     ) {}
 
     /** @return array{total_traces: int, total_generations: int, total_cost_usd: float, avg_duration_ms: int, error_rate: float} */
@@ -43,11 +43,11 @@ final class DashboardStatsQuery
             ->count();
 
         return [
-            'total_traces'      => $traceCount,
+            'total_traces' => $traceCount,
             'total_generations' => $total,
-            'total_cost_usd'    => $totalCost,
-            'avg_duration_ms'   => $avgDuration,
-            'error_rate'        => $errorRate,
+            'total_cost_usd' => $totalCost,
+            'avg_duration_ms' => $avgDuration,
+            'error_rate' => $errorRate,
         ];
     }
 
@@ -55,11 +55,11 @@ final class DashboardStatsQuery
     public static function empty(): array
     {
         return [
-            'total_traces'      => 0,
+            'total_traces' => 0,
             'total_generations' => 0,
-            'total_cost_usd'    => 0.0,
-            'avg_duration_ms'   => 0,
-            'error_rate'        => 0.0,
+            'total_cost_usd' => 0.0,
+            'avg_duration_ms' => 0,
+            'error_rate' => 0.0,
         ];
     }
 }

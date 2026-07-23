@@ -11,7 +11,7 @@ use Illuminate\Support\ViewErrorBag;
 
 beforeEach(function () {
     config()->set('glint.enabled', true);
-    View::share('errors', new ViewErrorBag());
+    View::share('errors', new ViewErrorBag);
 });
 
 it('returns 200 on alerts index', function () {

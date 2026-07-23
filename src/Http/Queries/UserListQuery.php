@@ -9,15 +9,15 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
-final class UserListQuery
+final readonly class UserListQuery
 {
     public function __construct(
-        private readonly ?Carbon $fromDt,
-        private readonly ?Carbon $toDt,
-        private readonly string $search = '',
+        private ?Carbon $fromDt,
+        private ?Carbon $toDt,
+        private string $search = '',
     ) {}
 
-    /** @return LengthAwarePaginator<GlintTrace> */
+    /** @return LengthAwarePaginator<int, GlintTrace> */
     public function get(): LengthAwarePaginator
     {
         return GlintTrace::query()
