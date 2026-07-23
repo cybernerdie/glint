@@ -10,6 +10,7 @@ use Cybernerdie\Glint\Events\LlmCallFailed;
 use Cybernerdie\Glint\Events\LlmCallFinished;
 use Cybernerdie\Glint\Events\LlmCallStarted;
 use Cybernerdie\Glint\Instrumentation\Http\ResponseParser;
+use Cybernerdie\Glint\Support\GenerationFingerprint;
 use Illuminate\Http\Client\Events\ConnectionFailed;
 use Illuminate\Http\Client\Events\RequestSending;
 use Illuminate\Http\Client\Events\ResponseReceived;
@@ -88,13 +89,24 @@ final class HttpClientInstrumentation implements InstrumentationDriver
         $modelRaw = $body['model'] ?? 'unknown';
         $model = is_string($modelRaw) ? $modelRaw : 'unknown';
         $messagesRaw = isset($body['messages']) && is_array($body['messages']) ? $body['messages'] : null;
-        $messages = Config::boolean('glint.recording.store_bodies', false) && $messagesRaw !== null
+        $messages = Config::boolean('glint.recording.store_bodies', true) && $messagesRaw !== null
             ? array_values($messagesRaw)
             : null;
         $temperatureRaw = $body['temperature'] ?? null;
         $temperature = is_float($temperatureRaw) ? $temperatureRaw : (is_int($temperatureRaw) ? (float) $temperatureRaw : null);
         $maxTokensRaw = $body['max_tokens'] ?? null;
         $maxTokens = is_int($maxTokensRaw) ? $maxTokensRaw : null;
+        $topPRaw = $body['top_p'] ?? null;
+        $topP = is_float($topPRaw) ? $topPRaw : (is_int($topPRaw) ? (float) $topPRaw : null);
+        $isStreaming = (bool) ($body['stream'] ?? false);
+        $dedupeKey = GenerationFingerprint::make(
+            provider: $provider,
+            model: $model,
+            messages: $messagesRaw !== null ? array_values($messagesRaw) : null,
+            temperature: $temperature,
+            maxTokens: $maxTokens,
+            isStreaming: $isStreaming,
+        );
 
         event(new LlmCallStarted(
             generationId: $generationId,
@@ -103,9 +115,14 @@ final class HttpClientInstrumentation implements InstrumentationDriver
             messages: $messages,
             temperature: $temperature,
             maxTokens: $maxTokens,
-            isStreaming: (bool) ($body['stream'] ?? false),
+            isStreaming: $isStreaming,
             traceId: $this->context->traceId(),
             parentSpanId: $this->context->activeSpanId(),
+            metadata: [
+                'glint_driver' => 'http',
+                'glint_dedupe_key' => $dedupeKey,
+            ],
+            topP: $topP,
         ));
     }
 
@@ -148,7 +165,7 @@ final class HttpClientInstrumentation implements InstrumentationDriver
 
         event(new LlmCallFinished(
             generationId: $pending['generationId'],
-            completion: Config::boolean('glint.recording.store_bodies', false)
+            completion: Config::boolean('glint.recording.store_bodies', true)
                 ? $parser->completion($pending['provider'], $body)
                 : null,
             promptTokens: $parser->promptTokens($pending['provider'], $body),

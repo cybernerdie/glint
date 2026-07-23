@@ -22,6 +22,8 @@ final class GlintAggregateFactory extends Factory
             'period_at' => now()->startOfDay(),
             'provider' => 'openai',
             'model' => 'gpt-4o',
+            'user_id' => GlintAggregate::GlobalDimension,
+            'team_id' => GlintAggregate::GlobalDimension,
             'total_requests' => 10,
             'successful_requests' => 10,
             'failed_requests' => 0,

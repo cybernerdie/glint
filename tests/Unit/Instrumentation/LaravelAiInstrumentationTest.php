@@ -7,17 +7,17 @@ use Cybernerdie\Glint\Events\LlmCallFinished;
 use Cybernerdie\Glint\Events\LlmCallStarted;
 use Cybernerdie\Glint\Events\LlmToolCalled;
 use Cybernerdie\Glint\Instrumentation\LaravelAiInstrumentation;
-use Illuminate\AI\AgentPrompt;
-use Illuminate\AI\AgentResponse;
-use Illuminate\AI\Events\AgentPrompted;
-use Illuminate\AI\Events\AgentStreamed;
-use Illuminate\AI\Events\InvokingTool;
-use Illuminate\AI\Events\PromptingAgent;
-use Illuminate\AI\Events\StreamingAgent;
-use Illuminate\AI\Events\ToolInvoked;
-use Illuminate\AI\Meta;
-use Illuminate\AI\Usage;
 use Illuminate\Support\Facades\Event;
+use Laravel\Ai\AgentPrompt;
+use Laravel\Ai\AgentResponse;
+use Laravel\Ai\Events\AgentPrompted;
+use Laravel\Ai\Events\AgentStreamed;
+use Laravel\Ai\Events\InvokingTool;
+use Laravel\Ai\Events\PromptingAgent;
+use Laravel\Ai\Events\StreamingAgent;
+use Laravel\Ai\Events\ToolInvoked;
+use Laravel\Ai\Meta;
+use Laravel\Ai\Usage;
 
 it('isAvailable returns true when the AI stub class exists', function () {
     $instrumentation = new LaravelAiInstrumentation(new TraceContext);
@@ -297,7 +297,7 @@ it('resolves FQCN provider strings correctly', function () {
     $prompt = new AgentPrompt(
         prompt: 'Hello',
         model: 'claude-3-5-sonnet',
-        providerClass: 'Illuminate\\AI\\Providers\\AnthropicProvider',
+        providerClass: 'Laravel\\Ai\\Providers\\AnthropicProvider',
     );
 
     $instrumentation->onPrompting(new PromptingAgent('inv-fqcn', $prompt));

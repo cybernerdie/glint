@@ -2,32 +2,32 @@
 
 ## Prompt and completion storage
 
-By default Glint does **not** store prompt messages or completion text. Only metadata is recorded (model, tokens, cost, latency, status).
+By default Glint stores prompt messages and completion text so generation details can show the actual LLM input and output.
 
-To enable body storage:
+To record only metadata (model, tokens, cost, latency, status), disable body storage:
 
 ```env
-GLINT_STORE_BODIES=true
+GLINT_STORE_BODIES=false
 ```
 
-When enabled, Glint applies redaction patterns before writing to the database.
+Glint applies redaction patterns before writing bodies to the database.
 
 ## IP address
 
-The requester's IP address is stored in trace metadata by default. Disable it for GDPR compliance:
+The requester's IP address is not stored by default. Enable it only when you need it and your privacy policy allows it:
 
 ```env
-GLINT_STORE_IP=false
+GLINT_STORE_IP=true
 ```
 
 ## Redaction patterns
 
-Glint applies regex patterns to prompt/completion text and User-Agent strings before persisting them. The default patterns strip API keys, bearer tokens, and OpenAI secret keys:
+Glint applies regex patterns before persisting prompts, completions, tool input/output, metadata, middleware response bodies, User-Agent strings, and error messages. The default patterns strip API keys, bearer tokens, and OpenAI secret keys:
 
 ```php
 // config/glint.php
 'privacy' => [
-    'store_ip' => env('GLINT_STORE_IP', true),
+    'store_ip' => env('GLINT_STORE_IP', false),
     'redact_patterns' => [
         '/api[_-]?key["\s:=]+([a-zA-Z0-9_\-]+)/i',
         '/bearer\s+([a-zA-Z0-9_\-\.]+)/i',
@@ -64,4 +64,3 @@ Schedule `glint:prune` to run daily to enforce these limits:
 // routes/console.php
 Schedule::command('glint:prune')->daily();
 ```
-

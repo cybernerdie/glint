@@ -25,7 +25,7 @@ GLINT_PULSE_ENABLED=true
 **3. Add to your Pulse dashboard view** (`resources/views/vendor/pulse/dashboard.blade.php`):
 
 ```blade
-<livewire:cybernerdie.glint::glint-card cols="2" />
+<livewire:glint-card cols="2" />
 ```
 
 ## Notes

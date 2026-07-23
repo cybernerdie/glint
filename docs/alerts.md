@@ -32,19 +32,7 @@ Open the Glint dashboard and click **Alerts** in the sidebar, then **New Rule**.
 
 **Evaluation Period** — Which aggregate window to check: Hour, Day, Week, or Month. Glint compares the threshold against the most recent aggregate for that window.
 
-**Scope** — How broadly the rule watches:
-
-| Scope | What it covers |
-|-------|---------------|
-| Global | All traffic |
-| User | Calls attributed to a specific user ID |
-| Team | Calls attributed to a specific team ID |
-| Provider | Calls to a specific provider (e.g. `openai`) |
-| Model | Calls using a specific model (e.g. `gpt-4o`) |
-
-Selecting any scope other than Global reveals a **Scope ID** field where you enter the matching value.
-
-**Provider Filter** — Optionally narrow the rule to a single provider regardless of scope. Leave blank to watch all providers.
+**Provider Filter** — Optionally narrow the rule to a single provider. Leave blank to watch all providers.
 
 **Notification Channels** — Where to send the alert. Select one or more:
 
@@ -61,7 +49,7 @@ Selecting any scope other than Global reveals a **Scope ID** field where you ent
 
 ## Managing rules
 
-The Alerts index lists all rules with their type, threshold, scope, channels, and enabled status. From there you can:
+The Alerts index lists all rules with their type, threshold, provider filter, channels, and enabled status. From there you can:
 
 - **Enable / Disable** — Toggle a rule without deleting it.
 - **Delete** — Remove the rule and its event history permanently.

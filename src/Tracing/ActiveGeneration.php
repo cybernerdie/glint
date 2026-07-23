@@ -10,6 +10,7 @@ use Cybernerdie\Glint\Contracts\GenerationInterface;
 use Cybernerdie\Glint\Enums\RecordStatus;
 use Cybernerdie\Glint\Models\GlintGeneration;
 use Cybernerdie\Glint\Pricing\PricingRegistry;
+use Cybernerdie\Glint\Support\Redactor;
 use Illuminate\Support\Facades\DB;
 
 final class ActiveGeneration implements GenerationInterface
@@ -45,7 +46,7 @@ final class ActiveGeneration implements GenerationInterface
                 $metadata = (array) ($generation->metadata ?? []);
                 /** @var array<string, mixed> $tags */
                 $tags = is_array($metadata['tags'] ?? null) ? $metadata['tags'] : [];
-                $tags[$key] = $value;
+                $tags[$key] = $this->redactor()->string($value);
                 $metadata['tags'] = $tags;
 
                 $generation->update(['metadata' => $metadata]);
@@ -79,10 +80,63 @@ final class ActiveGeneration implements GenerationInterface
                 $metadata = (array) ($generation->metadata ?? []);
                 /** @var array<string, mixed> $existing */
                 $existing = is_array($metadata['tags'] ?? null) ? $metadata['tags'] : [];
-                $metadata['tags'] = array_merge($existing, $tags);
+                /** @var array<string, string> $redactedTags */
+                $redactedTags = $this->redactor()->metadata($tags) ?? [];
+                $metadata['tags'] = array_merge($existing, $redactedTags);
 
                 $generation->update(['metadata' => $metadata]);
             });
+        });
+
+        return $this;
+    }
+
+    public function prompt(string $prompt): static
+    {
+        $this->protectedWrite(function () use ($prompt): void {
+            GlintGeneration::where('id', $this->generationId)->update([
+                'prompt' => [
+                    [
+                        'role' => 'user',
+                        'content' => $this->redactor()->string($prompt),
+                    ],
+                ],
+            ]);
+        });
+
+        return $this;
+    }
+
+    public function options(
+        ?float $temperature = null,
+        ?int $maxTokens = null,
+        ?float $topP = null,
+        ?bool $streaming = null,
+    ): static {
+        $attributes = [];
+
+        if ($temperature !== null) {
+            $attributes['temperature'] = $temperature;
+        }
+
+        if ($maxTokens !== null) {
+            $attributes['max_tokens'] = $maxTokens;
+        }
+
+        if ($topP !== null) {
+            $attributes['top_p'] = $topP;
+        }
+
+        if ($streaming !== null) {
+            $attributes['is_streaming'] = $streaming;
+        }
+
+        if ($attributes === []) {
+            return $this;
+        }
+
+        $this->protectedWrite(function () use ($attributes): void {
+            GlintGeneration::where('id', $this->generationId)->update($attributes);
         });
 
         return $this;
@@ -93,7 +147,7 @@ final class ActiveGeneration implements GenerationInterface
         $this->protectedWrite(function () use ($completion, $promptTokens, $completionTokens, $finishReason): void {
             $now = now();
             GlintGeneration::where('id', $this->generationId)->update([
-                'completion' => $completion,
+                'completion' => $this->redactor()->string($completion),
                 'prompt_tokens' => $promptTokens,
                 'completion_tokens' => $completionTokens,
                 'total_tokens' => $promptTokens + $completionTokens,
@@ -112,7 +166,7 @@ final class ActiveGeneration implements GenerationInterface
             $now = now();
             GlintGeneration::where('id', $this->generationId)->update([
                 'status' => RecordStatus::Error,
-                'error_message' => $e->getMessage(),
+                'error_message' => $this->redactor()->string($e->getMessage()),
                 'ended_at' => $now,
                 'duration_ms' => (int) $this->startedAt->diffInMilliseconds($now),
             ]);
@@ -122,5 +176,10 @@ final class ActiveGeneration implements GenerationInterface
     public function generationId(): string
     {
         return $this->generationId;
+    }
+
+    private function redactor(): Redactor
+    {
+        return app(Redactor::class);
     }
 }

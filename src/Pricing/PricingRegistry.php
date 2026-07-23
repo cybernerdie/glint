@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Cybernerdie\Glint\Pricing;
 
+use Illuminate\Support\Facades\Config;
+
 final class PricingRegistry
 {
     /** @var array<string, array<string, array{input: float, output: float}>> */
@@ -105,9 +107,65 @@ final class PricingRegistry
             return;
         }
 
-        unset($decoded['_comment']);
+        $this->prices = $this->parsePrices($decoded);
+        $this->prices = $this->mergeOverrides($this->prices);
+    }
 
-        /** @var array<string, array<string, array{input: float, output: float}>> $decoded */
-        $this->prices = $decoded;
+    /**
+     * @param  array<array-key, mixed>  $decoded
+     * @return array<string, array<string, array{input: float, output: float}>>
+     */
+    private function parsePrices(array $decoded): array
+    {
+        $prices = [];
+
+        foreach ($decoded as $provider => $models) {
+            if (! is_string($provider) || str_starts_with($provider, '_') || ! is_array($models)) {
+                continue;
+            }
+
+            foreach ($models as $model => $entry) {
+                if (! is_string($model) || ! is_array($entry)) {
+                    continue;
+                }
+
+                $input = $entry['input'] ?? null;
+                $output = $entry['output'] ?? null;
+
+                if (! is_numeric($input) || ! is_numeric($output)) {
+                    continue;
+                }
+
+                $prices[$provider][$model] = [
+                    'input' => (float) $input,
+                    'output' => (float) $output,
+                ];
+            }
+        }
+
+        return $prices;
+    }
+
+    /**
+     * @param  array<string, array<string, array{input: float, output: float}>>  $prices
+     * @return array<string, array<string, array{input: float, output: float}>>
+     */
+    private function mergeOverrides(array $prices): array
+    {
+        $overrides = Config::get('glint.pricing_overrides', []);
+
+        if (! is_array($overrides)) {
+            return $prices;
+        }
+
+        $parsedOverrides = $this->parsePrices($overrides);
+
+        foreach ($parsedOverrides as $provider => $models) {
+            foreach ($models as $model => $entry) {
+                $prices[$provider][$model] = $entry;
+            }
+        }
+
+        return $prices;
     }
 }

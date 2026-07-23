@@ -1,5 +1,4 @@
 {
-  "_comment": "Prices are USD per 1 million tokens. Submit PRs to keep this updated.",
   "openai": {
     "gpt-4o": { "input": 2.50, "output": 10.00 },
     "gpt-4o-mini": { "input": 0.15, "output": 0.60 },

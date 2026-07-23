@@ -16,8 +16,8 @@ return new class extends Migration
             $table->timestamp('period_at');
             $table->string('provider', 100);
             $table->string('model', 255);
-            $table->string('user_id', 255)->nullable();
-            $table->string('team_id', 255)->nullable();
+            $table->string('user_id', 191)->default('');
+            $table->string('team_id', 191)->default('');
             $table->unsignedInteger('total_requests')->default(0);
             $table->unsignedInteger('successful_requests')->default(0);
             $table->unsignedInteger('failed_requests')->default(0);

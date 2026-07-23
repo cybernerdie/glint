@@ -77,10 +77,20 @@ it('correctly identifies whether a provider + model combination exists', functio
     expect($registry->has('unknown', 'gpt-4o'))->toBeFalse();
 });
 
-it('does not include the _comment key in the all() output', function () {
+it('applies app-level pricing overrides', function () {
+    config()->set('glint.pricing_overrides', [
+        'openai' => [
+            'gpt-4o' => ['input' => 1.00, 'output' => 2.00],
+        ],
+        'custom' => [
+            'my-model' => ['input' => 3.00, 'output' => 4.00],
+        ],
+    ]);
+
     $registry = new PricingRegistry(__DIR__.'/../../../pricing/providers.json');
 
-    expect($registry->all())->not->toHaveKey('_comment');
+    expect($registry->costFor('openai', 'gpt-4o', 1_000_000, 1_000_000))->toBe(3.0)
+        ->and($registry->costFor('custom', 'my-model', 1_000_000, 1_000_000))->toBe(7.0);
 });
 
 it('calculates cost for anthropic models', function () {

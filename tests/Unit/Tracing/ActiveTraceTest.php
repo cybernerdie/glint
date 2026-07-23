@@ -43,6 +43,17 @@ it('tag updates metadata on the trace record', function (): void {
     expect($row->metadata['tags']['env'])->toBe('testing');
 });
 
+it('redacts trace tag values', function (): void {
+    config()->set('glint.privacy.redact_patterns', ['/secret-token-\w+/']);
+    [$trace, $traceId] = makeActiveTrace();
+
+    $trace->tag('token', 'secret-token-abc123');
+
+    $row = GlintTrace::where('id', $traceId)->first();
+
+    expect($row->metadata['tags']['token'])->toBe('[REDACTED]');
+});
+
 it('tag appends to existing tags', function (): void {
     [$trace, $traceId] = makeActiveTrace();
 

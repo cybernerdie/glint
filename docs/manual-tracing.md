@@ -22,9 +22,16 @@ $trace = Glint::trace('chat.pipeline', ['user_id' => auth()->id()]);
 $result = $trace->generation(
     name: 'summarise',
     callback: function ($gen) use ($prompt) {
+        $gen
+            ->prompt($prompt)
+            ->options(temperature: 0.7, maxTokens: 1024, topP: 0.9);
+
         $response = $this->openai->chat()->create([
             'model' => 'gpt-4o',
             'messages' => [['role' => 'user', 'content' => $prompt]],
+            'temperature' => 0.7,
+            'max_tokens' => 1024,
+            'top_p' => 0.9,
         ]);
 
         $gen->finish(
@@ -58,6 +65,10 @@ $span->end();
 // Generation inherits the active trace automatically
 $gen = Glint::generation('summarise', 'openai', 'gpt-4o');
 try {
+    $gen
+        ->prompt($document->content)
+        ->options(temperature: 0.7, maxTokens: 1024, topP: 0.9);
+
     $response = $this->callLlm($document->content);
     $gen->finish($response->text, $response->promptTokens, $response->completionTokens);
 } catch (\Throwable $e) {
@@ -66,6 +77,17 @@ try {
 }
 
 $trace->end();
+```
+
+`prompt()` stores the user prompt in the same message format used by auto-instrumentation. `options()` records request options that are useful when comparing outputs across runs:
+
+```php
+$gen->options(
+    temperature: 0.2,
+    maxTokens: 2048,
+    topP: 0.95,
+    streaming: false,
+);
 ```
 
 ## Tagging a trace

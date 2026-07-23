@@ -1,6 +1,6 @@
 {
     "name": "cybernerdie/laravel-glint",
-    "description": "Built-in LLM observability for Laravel. No external services. No manual wrapping. Just install and see everything.",
+    "description": "Laravel-native LLM observability with local traces, generations, cost tracking, latency, errors, and alerts.",
     "keywords": ["laravel", "llm", "observability", "ai", "tracing", "openai", "anthropic"],
     "homepage": "https://github.com/cybernerdie/laravel-glint",
     "type": "library",
@@ -8,7 +8,7 @@
     "authors": [
         {
             "name": "Joshua Paul",
-            "email": "veecthorpaul@gmail.com",
+            "email": "cybernerdie@gmail.com",
             "homepage": "https://github.com/cybernerdie",
             "role": "Developer"
         }
@@ -30,7 +30,7 @@
     "suggest": {
         "echolabsdev/prism": "Required for Prism auto-instrumentation driver (^0.100)",
         "useiconic/neuron-ai": "Required for the neuron-ai auto-instrumentation driver",
-        "illuminate/ai": "Required for the laravel-ai auto-instrumentation driver (Laravel 12+)",
+        "laravel/ai": "Required for the laravel-ai auto-instrumentation driver",
         "illuminate/notifications": "Required for alert notification delivery",
         "laravel/pulse": "Required for the Glint Pulse dashboard card (^1.0)",
         "laravel/slack-notification-channel": "Required for Slack alert channel"
@@ -46,7 +46,7 @@
             "Tests\\": "tests/",
             "Prism\\Prism\\": "tests/Stubs/Prism/",
             "NeuronAI\\": "tests/Stubs/NeuronAi/",
-            "Illuminate\\AI\\": "tests/Stubs/LaravelAi/"
+            "Laravel\\Ai\\": "tests/Stubs/LaravelAi/"
         }
     },
     "extra": {

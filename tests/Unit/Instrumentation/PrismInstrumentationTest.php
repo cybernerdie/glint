@@ -12,7 +12,20 @@ use Cybernerdie\Glint\Instrumentation\PrismInstrumentation;
 use Illuminate\Support\Facades\Event;
 use Prism\Prism\PrismManager;
 use Prism\Prism\Providers\Anthropic;
+use Prism\Prism\Providers\Provider;
+use Prism\Prism\Text\Request;
+use Prism\Prism\Text\Response;
 use Tests\Stubs\FinishReasonEnum;
+
+function prismTextRequest(
+    string $model = 'test-model',
+    array $messages = [],
+    int|float|null $temperature = null,
+    ?int $maxTokens = null,
+    int|float|null $topP = null,
+): Request {
+    return new Request($model, $messages, $temperature, $maxTokens, $topP);
+}
 
 it('isAvailable returns true when Prism stub class exists', function () {
     $instrumentation = new PrismInstrumentation($this->app);
@@ -25,7 +38,7 @@ it('isAvailable returns false for a class that does not exist', function () {
 });
 
 it('register() wraps PrismManager with TracingPrismManager in the container', function () {
-    $this->app->singleton(PrismManager::class, fn () => new PrismManager);
+    $this->app->singleton(PrismManager::class, fn () => new PrismManager($this->app));
 
     $instrumentation = new PrismInstrumentation($this->app);
     $instrumentation->register();
@@ -45,12 +58,13 @@ it('TracingProvider fires LlmCallStarted before delegating text() call', functio
 
     $provider = new TracingProvider($inner, $context);
 
-    $request = (object) [
-        'model' => 'claude-3-5-sonnet-20241022',
-        'messages' => [['role' => 'user', 'content' => 'Hi']],
-        'temperature' => 0.7,
-        'maxTokens' => 100,
-    ];
+    $request = prismTextRequest(
+        model: 'claude-3-5-sonnet-20241022',
+        messages: [['role' => 'user', 'content' => 'Hi']],
+        temperature: 0.7,
+        maxTokens: 100,
+        topP: 0.9,
+    );
 
     config()->set('glint.recording.store_bodies', true);
 
@@ -59,6 +73,7 @@ it('TracingProvider fires LlmCallStarted before delegating text() call', functio
     Event::assertDispatched(LlmCallStarted::class, function (LlmCallStarted $e) {
         return $e->provider === 'anthropic'
             && $e->model === 'claude-3-5-sonnet-20241022'
+            && $e->topP === 0.9
             && $e->traceId === 'trace-123';
     });
 });
@@ -66,15 +81,15 @@ it('TracingProvider fires LlmCallStarted before delegating text() call', functio
 it('TracingProvider fires LlmCallFinished after successful text() call', function () {
     Event::fake();
 
-    $inner = new class
+    $inner = new class extends Provider
     {
-        public function text(mixed $request): object
+        public function text(mixed $request): Response
         {
-            return (object) [
-                'text' => 'Response text',
-                'usage' => (object) ['promptTokens' => 10, 'completionTokens' => 5],
-                'finishReason' => 'stop',
-            ];
+            return new Response(
+                text: 'Response text',
+                usage: (object) ['promptTokens' => 10, 'completionTokens' => 5],
+                finishReason: 'stop',
+            );
         }
     };
 
@@ -83,7 +98,7 @@ it('TracingProvider fires LlmCallFinished after successful text() call', functio
 
     config()->set('glint.recording.store_bodies', true);
 
-    $provider->text((object) ['model' => 'claude-3', 'messages' => []]);
+    $provider->text(prismTextRequest(model: 'claude-3'));
 
     Event::assertDispatched(LlmCallFinished::class, function (LlmCallFinished $e) {
         return $e->promptTokens === 10
@@ -96,7 +111,7 @@ it('TracingProvider fires LlmCallFinished after successful text() call', functio
 it('TracingProvider fires LlmCallFailed and re-throws exception on error', function () {
     Event::fake();
 
-    $inner = new class
+    $inner = new class extends Provider
     {
         public function text(mixed $request): never
         {
@@ -107,7 +122,7 @@ it('TracingProvider fires LlmCallFailed and re-throws exception on error', funct
     $context = new TraceContext;
     $provider = new TracingProvider($inner, $context);
 
-    expect(fn () => $provider->text((object) ['model' => 'gpt-4']))
+    expect(fn () => $provider->text(prismTextRequest(model: 'gpt-4')))
         ->toThrow(RuntimeException::class, 'Provider error');
 
     Event::assertDispatched(LlmCallFailed::class, function (LlmCallFailed $e) {
@@ -126,24 +141,24 @@ it('TracingProvider fires both LlmCallStarted and LlmCallFinished in correct ord
         $fired[] = 'finished';
     });
 
-    $inner = new class
+    $inner = new class extends Provider
     {
-        public function text(mixed $request): object
+        public function text(mixed $request): Response
         {
-            return (object) [];
+            return new Response;
         }
     };
 
     $context = new TraceContext;
     $provider = new TracingProvider($inner, $context);
 
-    $provider->text((object) []);
+    $provider->text(prismTextRequest());
 
     expect($fired)->toBe(['started', 'finished']);
 });
 
 it('TracingProvider passes through non-text calls via __call', function () {
-    $inner = new class
+    $inner = new class extends Provider
     {
         public function embeddings(string $text): string
         {
@@ -158,7 +173,7 @@ it('TracingProvider passes through non-text calls via __call', function () {
 });
 
 it('TracingProvider throws BadMethodCallException for __call to unknown method', function () {
-    $inner = new class {};
+    $inner = new class extends Provider {};
 
     $context = new TraceContext;
     $provider = new TracingProvider($inner, $context);
@@ -169,22 +184,21 @@ it('TracingProvider throws BadMethodCallException for __call to unknown method',
 it('TracingProvider defaults finishReason to stop when finishReason is not a string or BackedEnum', function () {
     Event::fake();
 
-    $inner = new class
+    $inner = new class extends Provider
     {
-        public function text(mixed $request): object
+        public function text(mixed $request): Response
         {
-            $result = new stdClass;
-            $result->usage = (object) ['promptTokens' => 1, 'completionTokens' => 1];
-            $result->finishReason = 99;
-
-            return $result;
+            return new Response(
+                usage: (object) ['promptTokens' => 1, 'completionTokens' => 1],
+                finishReason: 99,
+            );
         }
     };
 
     $context = new TraceContext;
     $provider = new TracingProvider($inner, $context);
 
-    $provider->text((object) []);
+    $provider->text(prismTextRequest());
 
     Event::assertDispatched(LlmCallFinished::class, function (LlmCallFinished $e) {
         return $e->finishReason === 'stop';
@@ -194,15 +208,14 @@ it('TracingProvider defaults finishReason to stop when finishReason is not a str
 it('TracingProvider uses BackedEnum value for finishReason', function () {
     Event::fake();
 
-    $inner = new class
+    $inner = new class extends Provider
     {
-        public function text(mixed $request): object
+        public function text(mixed $request): Response
         {
-            $result = new stdClass;
-            $result->usage = (object) ['promptTokens' => 1, 'completionTokens' => 1];
-            $result->finishReason = FinishReasonEnum::Stop;
-
-            return $result;
+            return new Response(
+                usage: (object) ['promptTokens' => 1, 'completionTokens' => 1],
+                finishReason: FinishReasonEnum::Stop,
+            );
         }
     };
 
@@ -211,7 +224,7 @@ it('TracingProvider uses BackedEnum value for finishReason', function () {
 
     config()->set('glint.recording.store_bodies', false);
 
-    $provider->text((object) ['model' => 'test-model']);
+    $provider->text(prismTextRequest(model: 'test-model'));
 
     Event::assertDispatched(LlmCallFinished::class, function (LlmCallFinished $e) {
         return $e->finishReason === 'stop';
@@ -226,13 +239,13 @@ it('resolves provider name using hardcoded map for Provider-suffixed class names
     $context = new TraceContext;
     $provider = new TracingProvider($inner, $context);
 
-    $provider->text((object) ['model' => 'claude-3-5-sonnet-20241022']);
+    $provider->text(prismTextRequest(model: 'claude-3-5-sonnet-20241022'));
 
     Event::assertDispatched(LlmCallStarted::class, fn (LlmCallStarted $e) => $e->provider === 'anthropic');
 });
 
 it('TracingPrismManager is a PrismManager instance', function () {
-    $inner = new PrismManager;
+    $inner = new PrismManager($this->app);
     $manager = new TracingPrismManager($inner, $this->app);
 
     expect($manager)->toBeInstanceOf(PrismManager::class);

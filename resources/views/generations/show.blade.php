@@ -67,6 +67,14 @@
             <div class="stat-value">{{ $generation->temperature ?? '—' }}</div>
         </div>
         <div class="stat">
+            <div class="stat-label">Max Tokens</div>
+            <div class="stat-value">{{ $generation->max_tokens !== null ? number_format($generation->max_tokens) : '—' }}</div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">Top P</div>
+            <div class="stat-value">{{ $generation->top_p ?? '—' }}</div>
+        </div>
+        <div class="stat">
             <div class="stat-label">Finish Reason</div>
             <div class="stat-value">{{ $generation->finish_reason ?? '—' }}</div>
         </div>

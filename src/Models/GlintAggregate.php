@@ -20,8 +20,8 @@ use Illuminate\Support\Facades\Config;
  * @property Carbon $period_at
  * @property string $provider
  * @property string $model
- * @property string|null $user_id
- * @property string|null $team_id
+ * @property string $user_id
+ * @property string $team_id
  * @property int $total_requests
  * @property int $successful_requests
  * @property int $failed_requests
@@ -39,6 +39,8 @@ use Illuminate\Support\Facades\Config;
  */
 class GlintAggregate extends Model implements HasPrunable
 {
+    public const GlobalDimension = '';
+
     /** @use HasFactory<GlintAggregateFactory> */
     use HasFactory;
 

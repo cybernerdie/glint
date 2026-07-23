@@ -102,6 +102,49 @@ it('resolves GlintRecorder from the container in the handle method', function ()
     expect(fn () => $job->handle($recorder))->not->toThrow(Throwable::class);
 });
 
+it('releases finish events when the generation start row is not available yet', function () {
+    $event = new LlmCallFinished(
+        generationId: 'gen-job-finish-before-start',
+        completion: null,
+        promptTokens: 10,
+        completionTokens: 5,
+        finishReason: 'stop',
+        durationMs: 100,
+    );
+
+    $job = (new RecordLlmCallJob($event))->withFakeQueueInteractions();
+
+    $job->handle(app(GlintRecorder::class));
+
+    $job->assertReleased(delay: 1);
+});
+
+it('does not release finish events after the start row exists', function () {
+    GlintGeneration::create([
+        'id' => 'gen-job-finish-after-start',
+        'trace_id' => 'trace-job-test',
+        'provider' => 'openai',
+        'model' => 'gpt-4o',
+        'status' => RecordStatus::Pending,
+        'started_at' => now(),
+    ]);
+
+    $event = new LlmCallFinished(
+        generationId: 'gen-job-finish-after-start',
+        completion: null,
+        promptTokens: 10,
+        completionTokens: 5,
+        finishReason: 'stop',
+        durationMs: 100,
+    );
+
+    $job = (new RecordLlmCallJob($event))->withFakeQueueInteractions();
+
+    $job->handle(app(GlintRecorder::class));
+
+    $job->assertNotReleased();
+});
+
 it('handles LlmToolCalled event by calling the recorder', function () {
     $event = new LlmToolCalled(
         spanId: 'span-job-001',

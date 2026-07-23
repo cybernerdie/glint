@@ -34,6 +34,17 @@ it('tag updates metadata on the span record', function (): void {
     expect($row->metadata['tags']['env'])->toBe('prod');
 });
 
+it('redacts span tag values', function (): void {
+    config()->set('glint.privacy.redact_patterns', ['/secret-token-\w+/']);
+    [$span, $spanId] = makeActiveSpan();
+
+    $span->tag('token', 'secret-token-abc123');
+
+    $row = GlintSpan::where('id', $spanId)->first();
+
+    expect($row->metadata['tags']['token'])->toBe('[REDACTED]');
+});
+
 it('tag appends to existing tags', function (): void {
     [$span, $spanId] = makeActiveSpan();
 

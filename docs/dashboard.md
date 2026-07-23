@@ -12,9 +12,30 @@ The Glint dashboard is available at `/glint` (configurable via `GLINT_PATH`).
 
 **Generations** (`/glint/generations`) — All LLM calls. Filterable by provider, model, and status. Shows tokens, cost, latency, and finish reason.
 
-**Generation detail** (`/glint/generations/{id}`) — Full detail for a single generation including prompt and completion (when `GLINT_STORE_BODIES=true`).
+**Generation detail** (`/glint/generations/{id}`) — Full detail for a single generation including prompt and completion, unless body storage is disabled with `GLINT_STORE_BODIES=false`.
 
 **Costs** (`/glint/costs`) — Cost breakdown by provider and model over time.
+
+**Users** (`/glint/users`) — Per-user consumption summaries when traces include a `user_id`.
+
+**Latency** (`/glint/analytics/latency`) — p50, p90, p95, and p99 latency by named trace and model.
+
+**Alerts** (`/glint/alerts`) — Create and manage threshold-based alert rules.
+
+## Current scope and limits
+
+The dashboard is intended to give Laravel teams a first-party view of LLM traffic, cost, latency, errors, traces, generations, users, and alerts.
+
+It does not currently include:
+
+- Saved filters.
+- CSV or JSON export buttons.
+- Per-user, per-team, or per-tenant budget workflows.
+- Alert history analytics beyond the stored alert events.
+- Unknown pricing warnings inside the UI.
+- OpenTelemetry, Prometheus, Datadog, Honeycomb, Grafana, or warehouse export screens.
+
+For external export options, see [Exporting and external observability](exporting.md).
 
 ## Access control
 
@@ -61,13 +82,3 @@ php artisan vendor:publish --tag=glint-views
 ```
 
 Views are published to `resources/views/vendor/glint/`.
-
-## Metrics API
-
-A lightweight JSON endpoint is available for external monitoring tools:
-
-```
-GET /glint/api/metrics
-```
-
-Returns today's aggregate stats: total requests, error rate, total cost, average latency. Rate-limited to 60 requests per minute.

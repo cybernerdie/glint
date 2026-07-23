@@ -3,78 +3,77 @@
 [![Tests](https://github.com/cybernerdie/laravel-glint/actions/workflows/tests.yml/badge.svg)](https://github.com/cybernerdie/laravel-glint/actions/workflows/tests.yml)
 [![PHPStan](https://github.com/cybernerdie/laravel-glint/actions/workflows/phpstan.yml/badge.svg)](https://github.com/cybernerdie/laravel-glint/actions/workflows/phpstan.yml)
 [![Code Style](https://github.com/cybernerdie/laravel-glint/actions/workflows/pint.yml/badge.svg)](https://github.com/cybernerdie/laravel-glint/actions/workflows/pint.yml)
-[![Latest Release](https://img.shields.io/github/v/release/cybernerdie/laravel-glint)](https://github.com/cybernerdie/laravel-glint/releases)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE.md)
 
-Built-in LLM observability for Laravel. No external services. No third-party accounts. No data leaving your infrastructure.
+Laravel Glint is an LLM observability package for Laravel applications. It records LLM calls in your application database and provides a local dashboard for traces, generations, cost, latency, errors, users, and alerts.
 
-Laravel Glint automatically instruments your LLM calls — tracking every request, token count, cost, latency, and error — and presents them in a built-in dashboard modelled after Telescope and Horizon.
+Glint is designed for teams that want Laravel-native observability without sending prompts, completions, or usage data to a third-party service.
 
-```php
-use Cybernerdie\Glint\Facades\Glint;
+## Requirements
 
-$result = Glint::trace('chat.pipeline', function ($trace) use ($prompt) {
-    $trace->tag('user_id', auth()->id());
+- PHP 8.3+
+- Laravel 11, 12, or 13
+- A configured queue worker when using the default `queue` recording mode
 
-    return $trace->generation(
-        name: 'summarise',
-        callback: fn ($gen) => $gen->finish($response->text, $promptTokens, $completionTokens),
-        provider: 'openai',
-        model: 'gpt-4o',
-    );
-});
-```
+## Supported instrumentation
 
-Or let auto-instrumentation handle it — zero code required for [Prism](https://github.com/echolabsdev/prism) and any LLM SDK that uses Laravel's HTTP client.
+Glint can record LLM calls through:
+
+- Laravel HTTP client requests to configured LLM hosts
+- [Prism](https://github.com/echolabsdev/prism)
+- [Laravel AI](https://github.com/laravel/ai)
+- [Neuron AI](https://docs.neuron-ai.dev/)
+- Manual tracing with the `Glint` facade
+
+SDKs or transports that do not use one of the supported instrumentation paths should be wrapped with manual tracing.
 
 ## Features
 
-- **Auto-instrumentation** — zero-code tracing for Prism and any SDK built on Laravel's HTTP client
-- **Built-in dashboard** — traces, generations, and cost breakdowns; no external service required
-- **Cost tracking** — token usage and USD cost calculated per generation from a published pricing registry
-- **Alert system** — define cost, error rate, latency, and token spike thresholds; receive `GlintAlertTriggered` events
-- **Sampling & filtering** — record a fraction of requests; filter programmatically with `Glint::filter()`
-- **Testing fakes** — `Glint::fake()` for in-memory assertions; no database or queue required in tests
-- **Octane-compatible** — `TraceContext` is a scoped binding, safe for long-running processes
-- **Laravel Pulse card** — optional cost and request summary card for your Pulse dashboard
-
-## Why Glint?
-
-- **Data sovereignty** — prompts, completions, and costs stay in your own database. Nothing is sent to a third-party SaaS, so there are no per-request fees and no compliance review for shipping customer data off-site.
-- **Zero per-call pricing** — unlike hosted LLM-observability services, Glint costs nothing per request; it scales with your database, which you already run.
-- **Familiar operation** — installs, authorizes, and prunes the same way as Telescope and Horizon, so it fits an existing Laravel operational playbook with no new concepts.
+- Local dashboard for traces, generations, costs, users, latency, and alerts
+- Automatic instrumentation for supported drivers
+- Manual tracing API for custom or unsupported LLM clients
+- Token and cost tracking from a published pricing registry
+- App-level pricing overrides for private models or provider price changes
+- Alert rules for cost, error rate, latency, and token usage
+- Privacy redaction before data is stored
+- Retention and pruning commands
+- Queue and sync recording modes
+- `Glint::fake()` testing utilities
+- Optional Laravel Pulse card
 
 ## Installation
 
-Requires PHP 8.3+, Laravel 11/12/13, and a queue driver for the default async mode.
+Install the package and run the installer:
 
 ```bash
 composer require cybernerdie/laravel-glint
 php artisan glint:install
 ```
 
-`glint:install` publishes the config, pricing registry, and migrations, runs them, and registers the application service provider automatically.
+The installer publishes the config, pricing registry, migrations, and application service provider, then runs the migrations.
 
-**Enable recording** in `.env`:
+Enable recording:
 
 ```env
 GLINT_ENABLED=true
-GLINT_DRIVERS=http     # or prism — see the Drivers doc
+GLINT_DRIVERS=http
 ```
 
-Glint is disabled by default so it has zero impact on environments where you haven't opted in.
+Visit `/glint` to open the dashboard.
 
-**Start a queue worker** (Glint dispatches a small job per LLM call in the default `queue` mode):
+By default, Glint records asynchronously through Laravel's queue. If your application already runs queue workers, no separate worker is required. To isolate Glint recording jobs, set a dedicated queue and run a worker for it:
+
+```env
+GLINT_QUEUE=glint
+```
 
 ```bash
 php artisan queue:work --queue=glint
 ```
 
-Visit `/glint` (or the path set in `GLINT_PATH`) to see your LLM calls.
+## HTTP request traces
 
-### Optional: trace context per HTTP request
-
-Register `GlintMiddleware` globally to group every LLM call under the HTTP request that triggered it:
+LLM generations are recorded without middleware. To group generations under the HTTP request that triggered them, register `GlintMiddleware` globally:
 
 ```php
 // bootstrap/app.php
@@ -83,30 +82,77 @@ Register `GlintMiddleware` globally to group every LLM call under the HTTP reque
 })
 ```
 
-Without this, individual generations are still recorded — you just won't see which request triggered which call.
+## Manual tracing
+
+Use manual tracing when auto-instrumentation cannot see a call or when you want to add application-specific context:
+
+```php
+use Cybernerdie\Glint\Facades\Glint;
+
+$trace = Glint::trace('chat.pipeline', [
+    'user_id' => (string) auth()->id(),
+]);
+
+try {
+    $generation = Glint::generation('summarise', 'openai', 'gpt-4o');
+    $generation
+        ->prompt($prompt)
+        ->options(temperature: 0.7, maxTokens: 1024, topP: 0.9);
+
+    $response = $client->chat($prompt);
+
+    $generation->finish(
+        completion: $response->text,
+        promptTokens: $response->promptTokens,
+        completionTokens: $response->completionTokens,
+    );
+} catch (\Throwable $e) {
+    isset($generation) && $generation->fail($e);
+
+    throw $e;
+} finally {
+    $trace->end();
+}
+```
+
+## Configuration
+
+The main configuration file is published to `config/glint.php`.
+
+Common options:
+
+- `GLINT_ENABLED` — enable or disable recording
+- `GLINT_DRIVERS` — comma-separated instrumentation drivers
+- `GLINT_MODE` — `queue` or `sync`
+- `GLINT_QUEUE` — queue name for recording jobs
+- `GLINT_STORE_BODIES` — store prompts and completions; set `false` for metadata-only recording
+- `GLINT_STORE_IP` — opt in to storing requester IP addresses
+- `GLINT_RETENTION_TRACES` — raw trace/generation retention
+- `GLINT_RETENTION_AGGREGATES` — aggregate retention
+- `GLINT_RETENTION_ALERTS` — alert event retention
+
+See [Configuration](docs/configuration.md) for the full reference.
 
 ## Documentation
 
-Full documentation in the [`docs/`](docs/) directory:
+- [Configuration](docs/configuration.md)
+- [Drivers](docs/drivers.md)
+- [Auto-Instrumentation](docs/auto-instrumentation.md)
+- [Manual Tracing](docs/manual-tracing.md)
+- [Background Jobs](docs/background-jobs.md)
+- [Dashboard](docs/dashboard.md)
+- [Alerts](docs/alerts.md)
+- [Exporting](docs/exporting.md)
+- [Testing](docs/testing.md)
+- [Privacy & Redaction](docs/privacy.md)
+- [Laravel Pulse Integration](docs/pulse.md)
 
-- [Configuration](docs/configuration.md) — all env vars and config keys
-- [Drivers](docs/drivers.md) — choosing and combining instrumentation drivers
-- [Auto-Instrumentation](docs/auto-instrumentation.md) — zero-code setup for Prism and HTTP
-- [Manual Tracing](docs/manual-tracing.md) — `Glint::trace()`, spans, and generations
-- [Background Jobs](docs/background-jobs.md) — queue and console compatibility
-- [Dashboard](docs/dashboard.md) — access control and what each page shows
-- [Alerts](docs/alerts.md) — alert types, scopes, and receiving `GlintAlertTriggered`
-- [Testing](docs/testing.md) — `Glint::fake()` and all assertion methods
-- [Privacy & Redaction](docs/privacy.md) — redaction patterns and body storage
-- [Laravel Pulse Integration](docs/pulse.md) — optional Pulse card setup
-
-## Contributing
-
-Contributions are welcome. Please open an issue first to discuss what you would like to change.
+## Testing
 
 ```bash
-composer test   # Run the test suite
-composer pint   # Fix code style
+composer test
+composer stan
+composer pint
 ```
 
 ## License

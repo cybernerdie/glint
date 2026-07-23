@@ -8,6 +8,7 @@ use Cybernerdie\Glint\Events\LlmCallFailed;
 use Cybernerdie\Glint\Events\LlmCallFinished;
 use Cybernerdie\Glint\Events\LlmCallStarted;
 use Cybernerdie\Glint\Events\LlmToolCalled;
+use Cybernerdie\Glint\Models\GlintGeneration;
 use Cybernerdie\Glint\Recorders\GlintRecorder;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -34,12 +35,31 @@ final class RecordLlmCallJob implements ShouldQueue
 
     public function handle(GlintRecorder $recorder): void
     {
+        if ($this->shouldWaitForStartedEvent()) {
+            $this->release(1);
+
+            return;
+        }
+
         match (true) {
             $this->event instanceof LlmCallStarted => $recorder->handleLlmCallStarted($this->event),
             $this->event instanceof LlmCallFinished => $recorder->handleLlmCallFinished($this->event),
             $this->event instanceof LlmToolCalled => $recorder->handleLlmToolCalled($this->event),
             $this->event instanceof LlmCallFailed => $recorder->handleLlmCallFailed($this->event),
         };
+    }
+
+    private function shouldWaitForStartedEvent(): bool
+    {
+        if (! $this->event instanceof LlmCallFinished && ! $this->event instanceof LlmCallFailed) {
+            return false;
+        }
+
+        if ($this->attempts() >= $this->tries) {
+            return false;
+        }
+
+        return ! GlintGeneration::where('id', $this->event->generationId)->exists();
     }
 
     public function failed(\Throwable $e): void

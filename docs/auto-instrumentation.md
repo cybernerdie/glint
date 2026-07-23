@@ -1,6 +1,6 @@
 # Auto-Instrumentation
 
-Auto-instrumentation means Glint captures LLM calls **without any changes to your application code**. Install the package, set `GLINT_ENABLED=true`, choose a driver, and every matching LLM call is recorded automatically.
+Auto-instrumentation means Glint captures supported LLM calls **without changes to the call site**. Install the package, set `GLINT_ENABLED=true`, choose a driver, and matching LLM calls are recorded automatically.
 
 ## How it works
 
@@ -21,7 +21,7 @@ Each driver hooks into framework-level events or wraps the SDK's entry point. Wh
 |--------|---------|-------------|
 | `http` | *(built-in)* | Universal fallback — works with any SDK that uses Laravel's HTTP client |
 | `prism` | `echolabsdev/prism` | You're using the Prism SDK |
-| `laravel-ai` | `illuminate/ai` (Laravel 12+) | You're using Laravel's built-in AI layer |
+| `laravel-ai` | `laravel/ai` | You're using Laravel's AI layer |
 | `neuron-ai` | `useiconic/neuron-ai` | You're using the NeuronAI agent framework |
 
 Set one or more drivers via `GLINT_DRIVERS` (comma-separated):
@@ -33,6 +33,8 @@ GLINT_DRIVERS=http,prism
 ```
 
 See [Drivers](drivers.md) for the full reference on each driver and how to add a custom one.
+
+Auto-instrumentation is driver-specific. If your SDK uses its own Guzzle, PSR-18, cURL, or provider-managed transport, Glint may not see the call automatically. Use [manual tracing](manual-tracing.md) for unsupported clients.
 
 ## HTTP request context (optional)
 

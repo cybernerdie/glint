@@ -41,6 +41,17 @@ it('tag updates metadata on the generation record', function (): void {
     expect($row->metadata['tags']['env'])->toBe('staging');
 });
 
+it('redacts generation tag values', function (): void {
+    config()->set('glint.privacy.redact_patterns', ['/secret-token-\w+/']);
+    [$generation, $genId] = makeActiveGeneration();
+
+    $generation->tag('token', 'secret-token-abc123');
+
+    $row = GlintGeneration::where('id', $genId)->first();
+
+    expect($row->metadata['tags']['token'])->toBe('[REDACTED]');
+});
+
 it('tag appends to existing tags', function (): void {
     [$generation, $genId] = makeActiveGeneration();
 
@@ -88,6 +99,67 @@ it('tags returns self on empty array', function (): void {
     expect($generation->tags([]))->toBe($generation);
 });
 
+it('prompt updates the generation prompt', function (): void {
+    [$generation, $genId] = makeActiveGeneration();
+
+    $result = $generation->prompt('What is Laravel Glint?');
+
+    expect($result)->toBe($generation);
+
+    $row = GlintGeneration::where('id', $genId)->first();
+    expect($row->prompt)->toBe([
+        [
+            'role' => 'user',
+            'content' => 'What is Laravel Glint?',
+        ],
+    ]);
+});
+
+it('redacts manually recorded prompts', function (): void {
+    config()->set('glint.privacy.redact_patterns', ['/secret-token-\w+/']);
+    [$generation, $genId] = makeActiveGeneration();
+
+    $generation->prompt('Use secret-token-abc123');
+
+    expect(GlintGeneration::where('id', $genId)->first()->prompt)->toBe([
+        [
+            'role' => 'user',
+            'content' => 'Use [REDACTED]',
+        ],
+    ]);
+});
+
+it('options updates manually recorded generation options', function (): void {
+    [$generation, $genId] = makeActiveGeneration();
+
+    $result = $generation->options(
+        temperature: 0.7,
+        maxTokens: 1024,
+        topP: 0.95,
+        streaming: true,
+    );
+
+    expect($result)->toBe($generation);
+
+    $row = GlintGeneration::where('id', $genId)->first();
+    expect((float) $row->temperature)->toBe(0.7)
+        ->and((int) $row->max_tokens)->toBe(1024)
+        ->and((float) $row->top_p)->toBe(0.95)
+        ->and($row->is_streaming)->toBeTrue();
+});
+
+it('options only updates values that were provided', function (): void {
+    [$generation, $genId] = makeActiveGeneration();
+
+    $generation->options(maxTokens: 2048);
+
+    $row = GlintGeneration::where('id', $genId)->first();
+    expect($row->temperature)->toBeNull()
+        ->and((int) $row->max_tokens)->toBe(2048)
+        ->and($row->top_p)->toBeNull()
+        ->and($row->is_streaming)->toBeFalse();
+});
+
 it('finish updates generation record with token counts and status', function (): void {
     [$generation, $genId] = makeActiveGeneration();
 
@@ -102,6 +174,15 @@ it('finish updates generation record with token counts and status', function ():
         ->and($row->finish_reason)->toBe('stop')
         ->and($row->ended_at)->not->toBeNull()
         ->and($row->duration_ms)->toBeGreaterThanOrEqual(0);
+});
+
+it('redacts completion when manually finishing a generation', function (): void {
+    config()->set('glint.privacy.redact_patterns', ['/secret-token-\w+/']);
+    [$generation, $genId] = makeActiveGeneration();
+
+    $generation->finish('The answer secret-token-abc123', 100, 50, 'stop');
+
+    expect(GlintGeneration::where('id', $genId)->first()->completion)->toBe('The answer [REDACTED]');
 });
 
 it('finish calculates cost for known models', function (): void {
@@ -123,4 +204,13 @@ it('fail updates generation record with error status', function (): void {
         ->and($row->error_message)->toBe('Provider timeout')
         ->and($row->ended_at)->not->toBeNull()
         ->and($row->duration_ms)->toBeGreaterThanOrEqual(0);
+});
+
+it('redacts error messages when manually failing a generation', function (): void {
+    config()->set('glint.privacy.redact_patterns', ['/secret-token-\w+/']);
+    [$generation, $genId] = makeActiveGeneration();
+
+    $generation->fail(new RuntimeException('Provider leaked secret-token-abc123'));
+
+    expect(GlintGeneration::where('id', $genId)->first()->error_message)->toBe('Provider leaked [REDACTED]');
 });

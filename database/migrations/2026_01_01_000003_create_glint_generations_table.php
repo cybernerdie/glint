@@ -17,6 +17,7 @@ return new class extends Migration
             $table->string('name')->default('');
             $table->string('provider', 100);
             $table->string('model', 255);
+            $table->string('dedupe_key', 64)->nullable();
             $table->longText('prompt')->nullable();
             $table->longText('completion')->nullable();
             $table->unsignedInteger('prompt_tokens')->nullable();
@@ -38,6 +39,7 @@ return new class extends Migration
 
             $table->index(['trace_id', 'started_at']);
             $table->index(['provider', 'model', 'started_at']);
+            $table->index('dedupe_key');
             $table->index('status');
             $table->index('started_at');
             $table->index(['started_at', 'status']);

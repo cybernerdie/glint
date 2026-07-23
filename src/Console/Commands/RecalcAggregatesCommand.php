@@ -149,8 +149,8 @@ final class RecalcAggregatesCommand extends Command
                     'period_at' => $bucket['periodAt'],
                     'provider' => $bucket['provider'],
                     'model' => $bucket['model'],
-                    'user_id' => null,
-                    'team_id' => null,
+                    'user_id' => GlintAggregate::GlobalDimension,
+                    'team_id' => GlintAggregate::GlobalDimension,
                 ],
                 [
                     'total_requests' => $bucket['total'],

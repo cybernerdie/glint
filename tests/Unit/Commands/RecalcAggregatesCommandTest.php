@@ -29,6 +29,8 @@ it('creates aggregate records from generation data', function () {
     $agg = GlintAggregate::first();
     expect($agg->provider)->toBe('openai')
         ->and($agg->model)->toBe('gpt-4o')
+        ->and($agg->user_id)->toBe(GlintAggregate::GlobalDimension)
+        ->and($agg->team_id)->toBe(GlintAggregate::GlobalDimension)
         ->and($agg->total_requests)->toBe(1)
         ->and((int) $agg->prompt_tokens)->toBe(100)
         ->and((int) $agg->completion_tokens)->toBe(50);

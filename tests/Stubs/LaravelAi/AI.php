@@ -2,6 +2,6 @@
 
 declare(strict_types=1);
 
-namespace Illuminate\AI;
+namespace Laravel\Ai;
 
-class AI {}
+class Ai {}

@@ -23,6 +23,20 @@ final class FakeGeneration implements GenerationInterface
         return $this;
     }
 
+    public function prompt(string $prompt): static
+    {
+        return $this;
+    }
+
+    public function options(
+        ?float $temperature = null,
+        ?int $maxTokens = null,
+        ?float $topP = null,
+        ?bool $streaming = null,
+    ): static {
+        return $this;
+    }
+
     public function finish(string $completion, int $promptTokens, int $completionTokens, string $finishReason = 'stop'): void
     {
         event(new LlmCallFinished(

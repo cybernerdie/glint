@@ -9,8 +9,8 @@ use Cybernerdie\Glint\Events\GlintAlertTriggered;
 use Cybernerdie\Glint\Models\GlintAggregate;
 use Cybernerdie\Glint\Models\GlintAlertEvent;
 use Cybernerdie\Glint\Models\GlintAlertRule;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
-use Illuminate\Support\Facades\Schema;
 
 beforeEach(function () {
     $this->dispatcher = new AlertDispatcher;
@@ -230,14 +230,18 @@ it('dispatches GlintAlertTriggered event when threshold is crossed', function ()
 });
 
 it('swallows per-rule evaluation errors so one bad rule cannot break the run', function () {
-    GlintAlertRule::factory()->create([
-        'threshold_config' => ['threshold' => 1.0, 'period' => 'day'],
-        'channels' => ['log'],
+    DB::table('glint_alert_rules')->insert([
+        'name' => 'Invalid rule',
+        'type' => 'invalid_type',
+        'threshold_config' => json_encode(['threshold' => 1.0, 'period' => 'day']),
+        'channels' => json_encode(['log']),
+        'cooldown_minutes' => 60,
+        'enabled' => true,
+        'created_at' => now(),
+        'updated_at' => now(),
     ]);
 
     GlintAggregate::factory()->create(['total_cost_usd' => 15.00]);
-
-    Schema::drop('glint_alert_events');
 
     expect(fn () => $this->dispatcher->evaluate())->not->toThrow(Throwable::class);
 });

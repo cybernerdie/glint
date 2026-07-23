@@ -9,15 +9,17 @@ A driver is the mechanism that detects outgoing LLM calls and fires the internal
 | `http` | *(built-in)* | ✅ Ready |
 | `prism` | `echolabsdev/prism` | ✅ Ready |
 | `neuron-ai` | `useiconic/neuron-ai` | ✅ Ready |
-| `laravel-ai` | `illuminate/ai` (Laravel 12+) | ✅ Ready |
+| `laravel-ai` | `laravel/ai` | ✅ Ready |
 
 ---
 
-## `http` — Universal driver
+## `http` — Laravel HTTP client driver
 
-Hooks into Laravel's HTTP client events (`RequestSending`, `ResponseReceived`). Any AI SDK that uses `Http::post()` internally is automatically captured — including `laravel/ai`, most OpenAI wrappers, and any custom HTTP integration.
+Hooks into Laravel's HTTP client events (`RequestSending`, `ResponseReceived`). Any LLM call that uses Laravel's HTTP client internally is automatically captured, including custom integrations built on the `Http` facade.
 
-**Use this if you are unsure which driver to pick.** It works with every SDK.
+Use this when your application sends LLM requests through Laravel's `Http` facade/client, or through a package that internally uses Laravel's HTTP client.
+
+This driver does not see HTTP traffic sent through unrelated clients such as raw Guzzle clients, PSR-18 clients, cURL, or official SDKs that bring their own transport layer. For those paths, use a native Glint driver when one exists, or wrap the call with [manual tracing](manual-tracing.md).
 
 ```env
 GLINT_DRIVERS=http
@@ -70,7 +72,9 @@ You can run multiple drivers simultaneously. For example, if your app uses both 
 GLINT_DRIVERS=http,prism
 ```
 
-Glint deduplicates by `generationId` so a single LLM call is never recorded twice even if two drivers both see it.
+Glint emits a deterministic request fingerprint from driver metadata and uses it to deduplicate overlapping observations while the call is in flight. This prevents a single LLM call from being recorded twice when, for example, both `http` and `prism` see the same request.
+
+Deduplication is intentionally scoped to pending calls. If your application sends the same prompt/model again as a separate later request, Glint records it as a separate generation.
 
 ---
 
@@ -78,7 +82,7 @@ Glint deduplicates by `generationId` so a single LLM call is never recorded twic
 
 Listens to `laravel/ai`'s native events (`PromptingAgent`, `AgentPrompted`, `StreamingAgent`, `AgentStreamed`, `InvokingTool`, `ToolInvoked`). Captures structured token counts, tool call details, and completion text directly from the SDK — no HTTP body parsing required.
 
-Requires `illuminate/ai` (shipped with Laravel 12+).
+Requires `laravel/ai`.
 
 ```env
 GLINT_DRIVERS=laravel-ai
@@ -104,3 +108,19 @@ GLINT_DRIVERS=neuron-ai
 
 Provider name and model are resolved via reflection on the agent's internal provider object (e.g. `OpenAI` → `openai`).
 
+---
+
+## Unsupported SDKs and custom clients
+
+Glint currently ships native drivers for Laravel HTTP client, Prism, Laravel AI, and NeuronAI. Calls made through other transports are not automatically captured unless the SDK itself uses Laravel's HTTP client.
+
+Common examples that may need manual tracing or a future native driver:
+
+- official provider SDKs that use their own PSR/Guzzle transport;
+- direct Guzzle or PSR-18 clients;
+- custom cURL integrations;
+- streaming clients where token usage is only known after the final stream event.
+
+For these cases, use `Glint::trace()` / `Glint::generation()` around the call so the dashboard still receives tokens, cost, latency, and error status. See [Manual Tracing](manual-tracing.md).
+
+Native OpenAI/Anthropic/Guzzle/PSR-18 drivers are roadmap items, not required for the current release.

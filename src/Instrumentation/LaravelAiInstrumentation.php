@@ -9,13 +9,7 @@ use Cybernerdie\Glint\Contracts\InstrumentationDriver;
 use Cybernerdie\Glint\Events\LlmCallFinished;
 use Cybernerdie\Glint\Events\LlmCallStarted;
 use Cybernerdie\Glint\Events\LlmToolCalled;
-use Illuminate\AI\AI;
-use Illuminate\AI\Events\AgentPrompted;
-use Illuminate\AI\Events\AgentStreamed;
-use Illuminate\AI\Events\InvokingTool;
-use Illuminate\AI\Events\PromptingAgent;
-use Illuminate\AI\Events\StreamingAgent;
-use Illuminate\AI\Events\ToolInvoked;
+use Cybernerdie\Glint\Support\GenerationFingerprint;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Event;
@@ -27,6 +21,31 @@ use Illuminate\Support\Str;
  */
 final class LaravelAiInstrumentation implements InstrumentationDriver
 {
+    private const AiClasses = [
+        'Laravel\\Ai\\Ai',
+    ];
+
+    private const EventClassPairs = [
+        'prompting' => [
+            'Laravel\\Ai\\Events\\PromptingAgent',
+        ],
+        'streaming' => [
+            'Laravel\\Ai\\Events\\StreamingAgent',
+        ],
+        'prompted' => [
+            'Laravel\\Ai\\Events\\AgentPrompted',
+        ],
+        'streamed' => [
+            'Laravel\\Ai\\Events\\AgentStreamed',
+        ],
+        'invokingTool' => [
+            'Laravel\\Ai\\Events\\InvokingTool',
+        ],
+        'toolInvoked' => [
+            'Laravel\\Ai\\Events\\ToolInvoked',
+        ],
+    ];
+
     /** @var array<string, PendingGeneration> */
     private array $pending = [];
 
@@ -37,33 +56,84 @@ final class LaravelAiInstrumentation implements InstrumentationDriver
 
     public function isAvailable(): bool
     {
-        return class_exists(AI::class);
+        foreach (self::AiClasses as $class) {
+            if (class_exists($class)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function register(): void
     {
-        Event::listen(PromptingAgent::class, fn (PromptingAgent $e) => app(self::class)->onPrompting($e));
-        Event::listen(StreamingAgent::class, fn (StreamingAgent $e) => app(self::class)->onPrompting($e));
-        Event::listen(AgentPrompted::class, fn (AgentPrompted $e) => app(self::class)->onAgentPrompted($e));
-        Event::listen(AgentStreamed::class, fn (AgentStreamed $e) => app(self::class)->onAgentPrompted($e));
-        Event::listen(InvokingTool::class, fn (InvokingTool $e) => app(self::class)->onInvokingTool($e));
-        Event::listen(ToolInvoked::class, fn (ToolInvoked $e) => app(self::class)->onToolInvoked($e));
+        foreach (self::EventClassPairs['prompting'] as $eventClass) {
+            if (class_exists($eventClass)) {
+                Event::listen($eventClass, fn (object $e) => app(self::class)->onPrompting($e));
+            }
+        }
+
+        foreach (self::EventClassPairs['streaming'] as $eventClass) {
+            if (class_exists($eventClass)) {
+                Event::listen($eventClass, fn (object $e) => app(self::class)->onPrompting($e));
+            }
+        }
+
+        foreach (self::EventClassPairs['prompted'] as $eventClass) {
+            if (class_exists($eventClass)) {
+                Event::listen($eventClass, fn (object $e) => app(self::class)->onAgentPrompted($e));
+            }
+        }
+
+        foreach (self::EventClassPairs['streamed'] as $eventClass) {
+            if (class_exists($eventClass)) {
+                Event::listen($eventClass, fn (object $e) => app(self::class)->onAgentPrompted($e));
+            }
+        }
+
+        foreach (self::EventClassPairs['invokingTool'] as $eventClass) {
+            if (class_exists($eventClass)) {
+                Event::listen($eventClass, fn (object $e) => app(self::class)->onInvokingTool($e));
+            }
+        }
+
+        foreach (self::EventClassPairs['toolInvoked'] as $eventClass) {
+            if (class_exists($eventClass)) {
+                Event::listen($eventClass, fn (object $e) => app(self::class)->onToolInvoked($e));
+            }
+        }
     }
 
-    public function onPrompting(PromptingAgent|StreamingAgent $event): void
+    public function onPrompting(object $event): void
     {
+        $prompt = $this->objectValue($event, 'prompt');
+        $invocationId = $this->stringValue($this->objectValue($event, 'invocationId'));
+
+        if (! is_object($prompt) || $invocationId === null) {
+            return;
+        }
+
         $generationId = (string) Str::ulid();
-        $provider = $this->resolveProvider($event->prompt->provider());
-        $model = is_string($event->prompt->model) && $event->prompt->model !== ''
-            ? $event->prompt->model
+        $provider = $this->resolveProvider($this->providerHint($prompt));
+        $modelRaw = $this->objectValue($prompt, 'model');
+        $model = is_string($modelRaw) && $modelRaw !== ''
+            ? $modelRaw
             : 'unknown';
+        $promptText = $this->stringValue($this->objectValue($prompt, 'prompt')) ?? '';
 
-        $storeBody = Config::boolean('glint.recording.store_bodies', false);
-        $messages = $storeBody
-            ? [['role' => 'user', 'content' => $event->prompt->prompt]]
-            : null;
+        $storeBody = Config::boolean('glint.recording.store_bodies', true);
+        $messages = [['role' => 'user', 'content' => $promptText]];
+        $isStreaming = $this->isStreamingEvent($event);
+        $dedupeKey = GenerationFingerprint::make(
+            provider: $provider,
+            model: $model,
+            messages: $messages,
+            temperature: null,
+            maxTokens: null,
+            isStreaming: $isStreaming,
+        );
 
-        $this->pending[$event->invocationId] = [
+        $this->pending[$invocationId] = [
             'generationId' => $generationId,
             'startedAt' => now(),
             'provider' => $provider,
@@ -75,35 +145,47 @@ final class LaravelAiInstrumentation implements InstrumentationDriver
             generationId: $generationId,
             provider: $provider,
             model: $model,
-            messages: $messages,
+            messages: $storeBody ? $messages : null,
             temperature: null,
             maxTokens: null,
-            isStreaming: $event instanceof StreamingAgent,
+            isStreaming: $isStreaming,
             traceId: $this->context->traceId(),
             parentSpanId: $this->context->activeSpanId(),
-            name: $this->resolveAgentName($event->prompt->agent),
+            metadata: [
+                'glint_driver' => 'laravel-ai',
+                'glint_dedupe_key' => $dedupeKey,
+            ],
+            name: $this->resolveAgentName($this->objectValue($prompt, 'agent')),
         ));
     }
 
-    public function onAgentPrompted(AgentPrompted|AgentStreamed $event): void
+    public function onAgentPrompted(object $event): void
     {
-        $pending = $this->pending[$event->invocationId] ?? null;
+        $invocationId = $this->stringValue($this->objectValue($event, 'invocationId'));
+
+        if ($invocationId === null) {
+            return;
+        }
+
+        $pending = $this->pending[$invocationId] ?? null;
 
         if ($pending === null) {
             return;
         }
 
-        unset($this->pending[$event->invocationId]);
+        unset($this->pending[$invocationId]);
 
-        $usage = $event->response->usage;
-        $promptTokens = $usage !== null ? $usage->promptTokens : 0;
-        $completionTokens = $usage !== null ? $usage->completionTokens : 0;
+        $response = $this->objectValue($event, 'response');
+        $usage = is_object($response) ? $this->objectValue($response, 'usage') : null;
+        $promptTokens = is_object($usage) ? $this->intValue($this->objectValue($usage, 'promptTokens')) : 0;
+        $completionTokens = is_object($usage) ? $this->intValue($this->objectValue($usage, 'completionTokens')) : 0;
+        $completion = is_object($response) ? $this->stringValue($this->objectValue($response, 'text')) : null;
 
-        $storeBody = Config::boolean('glint.recording.store_bodies', false);
+        $storeBody = Config::boolean('glint.recording.store_bodies', true);
 
         event(new LlmCallFinished(
             generationId: $pending['generationId'],
-            completion: $storeBody ? $event->response->text : null,
+            completion: $storeBody ? $completion : null,
             promptTokens: $promptTokens,
             completionTokens: $completionTokens,
             finishReason: 'stop',
@@ -111,25 +193,39 @@ final class LaravelAiInstrumentation implements InstrumentationDriver
         ));
     }
 
-    public function onInvokingTool(InvokingTool $event): void
+    public function onInvokingTool(object $event): void
     {
-        $this->toolStartTimes[$event->toolInvocationId] = [
+        $toolInvocationId = $this->stringValue($this->objectValue($event, 'toolInvocationId'));
+        $toolName = $this->stringValue($this->objectValue($event, 'tool'));
+        $invocationId = $this->stringValue($this->objectValue($event, 'invocationId'));
+
+        if ($toolInvocationId === null || $toolName === null || $invocationId === null) {
+            return;
+        }
+
+        $this->toolStartTimes[$toolInvocationId] = [
             'spanId' => (string) Str::ulid(),
             'startedAt' => now(),
-            'toolName' => $event->tool,
-            'invocationId' => $event->invocationId,
+            'toolName' => $toolName,
+            'invocationId' => $invocationId,
         ];
     }
 
-    public function onToolInvoked(ToolInvoked $event): void
+    public function onToolInvoked(object $event): void
     {
-        $toolData = $this->toolStartTimes[$event->toolInvocationId] ?? null;
+        $toolInvocationId = $this->stringValue($this->objectValue($event, 'toolInvocationId'));
+
+        if ($toolInvocationId === null) {
+            return;
+        }
+
+        $toolData = $this->toolStartTimes[$toolInvocationId] ?? null;
 
         if ($toolData === null) {
             return;
         }
 
-        unset($this->toolStartTimes[$event->toolInvocationId]);
+        unset($this->toolStartTimes[$toolInvocationId]);
 
         $pending = $this->pending[$toolData['invocationId']] ?? null;
 
@@ -144,8 +240,8 @@ final class LaravelAiInstrumentation implements InstrumentationDriver
             traceId: $traceId,
             parentSpanId: $parentSpanId,
             toolName: $toolData['toolName'],
-            arguments: $event->arguments,
-            result: $event->result,
+            arguments: $this->arrayValue($this->objectValue($event, 'arguments')),
+            result: $this->objectValue($event, 'result'),
             durationMs: (int) $toolData['startedAt']->diffInMilliseconds(now()),
         ));
     }
@@ -154,12 +250,16 @@ final class LaravelAiInstrumentation implements InstrumentationDriver
      * Normalise a provider hint to a lowercase slug.
      *
      * Accepts:
-     * - a FQCN like "Illuminate\AI\Providers\OpenAiProvider"
+     * - a FQCN like "Laravel\Ai\Providers\OpenAiProvider"
      * - a class basename like "OpenAiProvider" or "AnthropicProvider"
      * - a plain string like "openai"
      */
     private function resolveProvider(mixed $hint): string
     {
+        if (is_object($hint)) {
+            $hint = get_class($hint);
+        }
+
         if (! is_string($hint) || $hint === '') {
             return 'unknown';
         }
@@ -184,5 +284,64 @@ final class LaravelAiInstrumentation implements InstrumentationDriver
         }
 
         return '';
+    }
+
+    private function isStreamingEvent(object $event): bool
+    {
+        foreach (self::EventClassPairs['streaming'] as $eventClass) {
+            if (is_a($event, $eventClass)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function providerHint(object $prompt): mixed
+    {
+        if (method_exists($prompt, 'provider')) {
+            return $prompt->provider();
+        }
+
+        return $this->objectValue($prompt, 'provider');
+    }
+
+    private function objectValue(object $object, string $property): mixed
+    {
+        return get_object_vars($object)[$property] ?? null;
+    }
+
+    private function stringValue(mixed $value): ?string
+    {
+        if (is_string($value) && $value !== '') {
+            return $value;
+        }
+
+        return null;
+    }
+
+    private function intValue(mixed $value): int
+    {
+        return is_numeric($value) ? (int) $value : 0;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function arrayValue(mixed $value): array
+    {
+        if (! is_array($value)) {
+            return [];
+        }
+
+        $result = [];
+
+        foreach ($value as $key => $item) {
+            if (is_string($key)) {
+                $result[$key] = $item;
+            }
+        }
+
+        return $result;
     }
 }

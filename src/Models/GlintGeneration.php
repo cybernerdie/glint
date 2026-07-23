@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\Config;
  * @property string|null $name
  * @property string $provider
  * @property string $model
+ * @property string|null $dedupe_key
  * @property array<int, mixed>|null $prompt
  * @property string|null $completion
  * @property RecordStatus $status
@@ -30,6 +31,10 @@ use Illuminate\Support\Facades\Config;
  * @property int|null $completion_tokens
  * @property int|null $total_tokens
  * @property string|null $cost_usd
+ * @property string|null $temperature
+ * @property int|null $max_tokens
+ * @property string|null $top_p
+ * @property bool $is_streaming
  * @property string|null $finish_reason
  * @property string|null $error_message
  * @property int|null $duration_ms
@@ -55,7 +60,7 @@ class GlintGeneration extends Model implements HasPrunable
 
     protected $fillable = [
         'id', 'trace_id', 'parent_span_id', 'name',
-        'provider', 'model', 'prompt', 'completion', 'status',
+        'provider', 'model', 'dedupe_key', 'prompt', 'completion', 'status',
         'prompt_tokens', 'completion_tokens', 'total_tokens',
         'cost_usd', 'temperature', 'max_tokens', 'top_p',
         'finish_reason', 'is_streaming', 'error_message',

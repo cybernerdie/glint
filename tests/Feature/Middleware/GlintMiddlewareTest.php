@@ -67,6 +67,18 @@ it('stores the response body when store_bodies = true', function () {
     expect($trace->output)->toBe('response body here');
 });
 
+it('redacts the response body when store_bodies = true', function () {
+    config()->set('glint.privacy.redact_patterns', ['/secret-token-\w+/']);
+
+    Route::get('/glint-redacted-body', fn () => response('response secret-token-abc123'))->middleware('glint');
+
+    $this->get('/glint-redacted-body');
+
+    $trace = GlintTrace::first();
+
+    expect($trace->output)->toBe('response [REDACTED]');
+});
+
 it('does not store the response body when store_bodies = false', function () {
     config()->set('glint.recording.store_bodies', false);
 

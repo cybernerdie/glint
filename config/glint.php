@@ -60,8 +60,8 @@ return [
     |
     | The active auto-instrumentation drivers. Supported values: "prism",
     | "laravel-ai", "neuron-ai", "http", or the fully-qualified class name of
-    | a custom driver. The "http" driver is a universal fallback that captures
-    | outgoing HTTP requests to any host listed in llm_hosts below.
+    | a custom driver. The "http" driver captures outgoing Laravel HTTP
+    | client requests to any host listed in llm_hosts below.
     |
     */
     'drivers' => array_values(array_filter(
@@ -76,13 +76,14 @@ return [
     |
     | Controls how and what Glint records. Use "queue" mode (recommended) to
     | dispatch a background job for each LLM call, or "sync" to write inline.
-    | Store bodies only when needed, and redact sensitive data via the privacy
-    | settings below.
+    | Prompt and completion bodies are stored by default for useful trace
+    | inspection. Disable body storage when your privacy policy requires
+    | metadata-only observability.
     |
     */
     'recording' => [
         'mode' => env('GLINT_MODE', 'queue'),
-        'store_bodies' => env('GLINT_STORE_BODIES', false),
+        'store_bodies' => filter_var(env('GLINT_STORE_BODIES', true), FILTER_VALIDATE_BOOLEAN),
         'max_completion_chars' => (int) env('GLINT_MAX_COMPLETION_CHARS', 65535),
     ],
 
@@ -122,9 +123,25 @@ return [
     |
     | The path to the JSON file that maps model names to per-token costs.
     | This file is published to your config directory during `glint:install`.
+    | Use pricing_overrides for private models or provider price changes.
     |
     */
     'pricing_path' => env('GLINT_PRICING_PATH', config_path('glint_pricing.json')),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Pricing Overrides
+    |--------------------------------------------------------------------------
+    |
+    | Override or add prices without editing the published pricing registry.
+    | Prices are USD per 1 million tokens.
+    |
+    */
+    'pricing_overrides' => [
+        // 'openai' => [
+        //     'gpt-4o' => ['input' => 2.50, 'output' => 10.00],
+        // ],
+    ],
 
     /*
     |--------------------------------------------------------------------------

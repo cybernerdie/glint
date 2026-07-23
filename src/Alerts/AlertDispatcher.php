@@ -57,6 +57,10 @@ final class AlertDispatcher
                 $query->where('provider', $pair['provider']);
             }
 
+            $query
+                ->where('user_id', GlintAggregate::GlobalDimension)
+                ->where('team_id', GlintAggregate::GlobalDimension);
+
             // Ignore stale aggregates so an idle window never trips a threshold.
             $window = match ($pair['period']) {
                 'hour' => now()->subHours(2),

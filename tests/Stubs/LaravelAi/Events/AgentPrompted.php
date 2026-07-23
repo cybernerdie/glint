@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Illuminate\AI\Events;
+namespace Laravel\Ai\Events;
 
-use Illuminate\AI\AgentPrompt;
-use Illuminate\AI\AgentResponse;
+use Laravel\Ai\AgentPrompt;
+use Laravel\Ai\AgentResponse;
 
 class AgentPrompted
 {

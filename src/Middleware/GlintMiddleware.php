@@ -8,6 +8,7 @@ use Closure;
 use Cybernerdie\Glint\Context\TraceContext;
 use Cybernerdie\Glint\Enums\RecordStatus;
 use Cybernerdie\Glint\Models\GlintTrace;
+use Cybernerdie\Glint\Support\Redactor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Str;
@@ -17,6 +18,7 @@ final readonly class GlintMiddleware
 {
     public function __construct(
         private TraceContext $context,
+        private Redactor $redactor,
     ) {}
 
     /**
@@ -46,7 +48,7 @@ final readonly class GlintMiddleware
             'metadata' => [
                 'method' => $request->method(),
                 'path' => substr($request->path(), 0, 2048),
-                'ip' => Config::boolean('glint.privacy.store_ip', true) ? $request->ip() : null,
+                'ip' => Config::boolean('glint.privacy.store_ip', false) ? $request->ip() : null,
                 'user_agent' => $this->sanitizeUserAgent($request->userAgent()),
                 'env' => app()->environment(),
             ],
@@ -65,8 +67,8 @@ final readonly class GlintMiddleware
                 'status' => $status,
                 'ended_at' => now(),
                 'duration_ms' => (int) $startedAt->diffInMilliseconds(now()),
-                'output' => Config::boolean('glint.recording.store_bodies', false)
-                    ? substr($response->getContent() ?: '', 0, 10000)
+                'output' => Config::boolean('glint.recording.store_bodies', true)
+                    ? substr($this->redactor->string($response->getContent() ?: '') ?? '', 0, 10000)
                     : null,
             ]));
 
@@ -83,31 +85,8 @@ final readonly class GlintMiddleware
         }
 
         $cleaned = preg_replace('/[\x00-\x1F\x7F]/', '', $userAgent) ?? '';
-        $cleaned = $this->applyRedactionPatterns($cleaned);
+        $cleaned = $this->redactor->string($cleaned) ?? '';
 
         return substr($cleaned, 0, 512);
-    }
-
-    private function applyRedactionPatterns(string $value): string
-    {
-        $patterns = (array) Config::get('glint.privacy.redact_patterns', []);
-
-        foreach ($patterns as $pattern) {
-            if (! is_string($pattern)) {
-                continue;
-            }
-
-            $result = @preg_replace($pattern, '[REDACTED]', $value);
-
-            if ($result === null || preg_last_error() !== PREG_NO_ERROR) {
-                logger()->debug('[Glint] Invalid redact_pattern skipped: '.$pattern);
-
-                continue;
-            }
-
-            $value = $result;
-        }
-
-        return $value;
     }
 }

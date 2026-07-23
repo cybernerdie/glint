@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Illuminate\AI\Events;
+namespace Laravel\Ai\Events;
 
 class ToolInvoked extends InvokingTool
 {

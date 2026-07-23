@@ -185,6 +185,24 @@
                                 <span class="llm-stat-val">{{ $gen->temperature }}</span>
                             </div>
                         @endif
+                        @if($gen->max_tokens !== null)
+                            <div>
+                                <span class="llm-stat-label">Max tokens</span>
+                                <span class="llm-stat-val">{{ number_format($gen->max_tokens) }}</span>
+                            </div>
+                        @endif
+                        @if($gen->top_p !== null)
+                            <div>
+                                <span class="llm-stat-label">Top P</span>
+                                <span class="llm-stat-val">{{ $gen->top_p }}</span>
+                            </div>
+                        @endif
+                        @if($gen->is_streaming)
+                            <div>
+                                <span class="llm-stat-label">Streaming</span>
+                                <span class="llm-stat-val">Yes</span>
+                            </div>
+                        @endif
                         @if($gen->finish_reason)
                             <div>
                                 <span class="llm-stat-label">Finish reason</span>
@@ -192,6 +210,13 @@
                             </div>
                         @endif
                     </div>
+
+                    @if(!empty($gen->metadata))
+                        <div class="llm-msg-section" style="border-top:1px solid var(--border)">
+                            <div class="llm-msg-label">Metadata</div>
+                            <div class="llm-msg-content" style="padding:12px 16px">{{ json_encode($gen->metadata, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) }}</div>
+                        </div>
+                    @endif
                 </div>
             </div>
         @endforeach

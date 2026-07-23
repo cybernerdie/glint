@@ -10,7 +10,7 @@
 
 Please **do not** open a public GitHub issue for security vulnerabilities.
 
-Instead, email **veecthorpaul@gmail.com** with:
+Instead, email **cybernerdie@gmail.com** with:
 
 - A description of the vulnerability
 - Steps to reproduce

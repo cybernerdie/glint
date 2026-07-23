@@ -14,6 +14,7 @@ use Cybernerdie\Glint\Models\GlintGeneration;
 use Cybernerdie\Glint\Models\GlintSpan;
 use Cybernerdie\Glint\Models\GlintTrace;
 use Cybernerdie\Glint\Pricing\PricingRegistry;
+use Cybernerdie\Glint\Support\Redactor;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -143,7 +144,7 @@ final class ActiveTrace implements TraceInterface
                 $metadata = (array) ($trace->metadata ?? []);
                 /** @var array<string, mixed> $tags */
                 $tags = is_array($metadata['tags'] ?? null) ? $metadata['tags'] : [];
-                $tags[$key] = $value;
+                $tags[$key] = $this->redactor()->string($value);
                 $metadata['tags'] = $tags;
 
                 $trace->update(['metadata' => $metadata]);
@@ -174,7 +175,9 @@ final class ActiveTrace implements TraceInterface
                 $metadata = (array) ($trace->metadata ?? []);
                 /** @var array<string, mixed> $existing */
                 $existing = is_array($metadata['tags'] ?? null) ? $metadata['tags'] : [];
-                $metadata['tags'] = array_merge($existing, $tags);
+                /** @var array<string, string> $redactedTags */
+                $redactedTags = $this->redactor()->metadata($tags) ?? [];
+                $metadata['tags'] = array_merge($existing, $redactedTags);
 
                 $trace->update(['metadata' => $metadata]);
             });
@@ -200,5 +203,10 @@ final class ActiveTrace implements TraceInterface
     public function traceId(): string
     {
         return $this->traceId;
+    }
+
+    private function redactor(): Redactor
+    {
+        return app(Redactor::class);
     }
 }

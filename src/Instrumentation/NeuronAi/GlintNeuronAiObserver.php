@@ -9,6 +9,7 @@ use Cybernerdie\Glint\Events\LlmCallFailed;
 use Cybernerdie\Glint\Events\LlmCallFinished;
 use Cybernerdie\Glint\Events\LlmCallStarted;
 use Cybernerdie\Glint\Events\LlmToolCalled;
+use Cybernerdie\Glint\Support\GenerationFingerprint;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Str;
@@ -73,15 +74,26 @@ final class GlintNeuronAiObserver implements ObserverInterface
         $generationId = (string) Str::ulid();
         [$provider, $model] = $this->resolveProviderAndModel($source);
 
-        $storeBody = Config::boolean('glint.recording.store_bodies', false);
+        $storeBody = Config::boolean('glint.recording.store_bodies', true);
         $messages = null;
+        $dedupeMessages = null;
 
-        if ($storeBody && $data instanceof InferenceStart) {
+        if ($data instanceof InferenceStart) {
             $content = $data->message->getContent();
             if ($content !== null) {
-                $messages = [['role' => 'user', 'content' => $content]];
+                $dedupeMessages = [['role' => 'user', 'content' => $content]];
+                $messages = $storeBody ? $dedupeMessages : null;
             }
         }
+
+        $dedupeKey = GenerationFingerprint::make(
+            provider: $provider,
+            model: $model,
+            messages: $dedupeMessages,
+            temperature: null,
+            maxTokens: null,
+            isStreaming: false,
+        );
 
         $this->pending[$invocationKey] = [
             'generationId' => $generationId,
@@ -102,6 +114,10 @@ final class GlintNeuronAiObserver implements ObserverInterface
             isStreaming: false,
             traceId: $this->context->traceId(),
             parentSpanId: $this->context->activeSpanId(),
+            metadata: [
+                'glint_driver' => 'neuron-ai',
+                'glint_dedupe_key' => $dedupeKey,
+            ],
             name: class_basename($source),
         ));
     }
@@ -128,7 +144,7 @@ final class GlintNeuronAiObserver implements ObserverInterface
                 $completionTokens = $usage->outputTokens;
             }
 
-            if (Config::boolean('glint.recording.store_bodies', false)) {
+            if (Config::boolean('glint.recording.store_bodies', true)) {
                 $completion = $data->response->getContent();
             }
         }

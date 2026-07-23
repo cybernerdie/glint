@@ -22,5 +22,6 @@ final readonly class LlmCallStarted
         public ?string $parentSpanId = null,
         public array $metadata = [],
         public string $name = '',
+        public ?float $topP = null,
     ) {}
 }

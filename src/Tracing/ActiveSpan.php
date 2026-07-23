@@ -9,6 +9,7 @@ use Cybernerdie\Glint\Concerns\ProtectsWrites;
 use Cybernerdie\Glint\Contracts\SpanInterface;
 use Cybernerdie\Glint\Enums\RecordStatus;
 use Cybernerdie\Glint\Models\GlintSpan;
+use Cybernerdie\Glint\Support\Redactor;
 use Illuminate\Support\Facades\DB;
 
 final class ActiveSpan implements SpanInterface
@@ -41,7 +42,7 @@ final class ActiveSpan implements SpanInterface
                 $metadata = (array) ($span->metadata ?? []);
                 /** @var array<string, mixed> $tags */
                 $tags = is_array($metadata['tags'] ?? null) ? $metadata['tags'] : [];
-                $tags[$key] = $value;
+                $tags[$key] = $this->redactor()->string($value);
                 $metadata['tags'] = $tags;
 
                 $span->update(['metadata' => $metadata]);
@@ -75,7 +76,9 @@ final class ActiveSpan implements SpanInterface
                 $metadata = (array) ($span->metadata ?? []);
                 /** @var array<string, mixed> $existing */
                 $existing = is_array($metadata['tags'] ?? null) ? $metadata['tags'] : [];
-                $metadata['tags'] = array_merge($existing, $tags);
+                /** @var array<string, string> $redactedTags */
+                $redactedTags = $this->redactor()->metadata($tags) ?? [];
+                $metadata['tags'] = array_merge($existing, $redactedTags);
 
                 $span->update(['metadata' => $metadata]);
             });
@@ -99,5 +102,10 @@ final class ActiveSpan implements SpanInterface
     public function spanId(): string
     {
         return $this->spanId;
+    }
+
+    private function redactor(): Redactor
+    {
+        return app(Redactor::class);
     }
 }
