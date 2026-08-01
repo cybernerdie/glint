@@ -12,11 +12,6 @@ use Cybernerdie\Glint\Facades\Glint;
 $fake = Glint::fake();
 ```
 
-`Glint::fake()` does three things:
-1. Replaces the `GlintRecorder` listeners with in-memory `RecordingStore` listeners
-2. Swaps the container binding so all code resolving `Glint` gets the fake
-3. Flushes any registered filters so tests start clean
-
 ## Assertions
 
 ```php

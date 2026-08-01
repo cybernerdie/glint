@@ -24,7 +24,7 @@ it('shows total traces count', function () {
 });
 
 it('calculates error rate when there are error generations', function () {
-    $traceId = Str::uuid()->toString();
+    $traceId = Str::ulid()->toString();
 
     GlintGeneration::factory()->create(['trace_id' => $traceId]);
     GlintGeneration::factory()->failed()->create(['trace_id' => $traceId]);

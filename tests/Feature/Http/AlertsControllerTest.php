@@ -187,7 +187,7 @@ it('returns 200 on alerts edit', function () {
 });
 
 it('returns 404 when editing a non-existent rule', function () {
-    $this->get(route('glint.alerts.edit', 'non-existent-99999'))
+    $this->get(route('glint.alerts.edit', 999999999))
         ->assertStatus(404);
 });
 
@@ -253,7 +253,7 @@ it('toggles alert rule from disabled to enabled', function () {
 });
 
 it('returns 404 when toggling a non-existent rule', function () {
-    $this->post(route('glint.alerts.toggle', 'non-existent-99999'))
+    $this->post(route('glint.alerts.toggle', 999999999))
         ->assertStatus(404);
 });
 
@@ -267,6 +267,6 @@ it('deletes an alert rule and redirects', function () {
 });
 
 it('returns 404 when destroying a non-existent rule', function () {
-    $this->delete(route('glint.alerts.destroy', 'non-existent-99999'))
+    $this->delete(route('glint.alerts.destroy', 999999999))
         ->assertStatus(404);
 });

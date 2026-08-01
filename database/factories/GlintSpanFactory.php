@@ -20,7 +20,7 @@ final class GlintSpanFactory extends Factory
     public function definition(): array
     {
         return [
-            'trace_id' => Str::uuid()->toString(),
+            'trace_id' => Str::ulid()->toString(),
             'name' => 'Test Span',
             'type' => SpanType::Span,
             'status' => RecordStatus::Success,

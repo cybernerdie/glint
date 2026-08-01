@@ -16,7 +16,7 @@ use Illuminate\Support\Str;
 
 function makeActiveTrace(?string $traceId = null): array
 {
-    $traceId ??= Str::uuid()->toString();
+    $traceId ??= Str::ulid()->toString();
     GlintTrace::factory()->pending()->create(['id' => $traceId, 'name' => 'test-trace']);
     $context = app(TraceContext::class);
     $context->openTrace($traceId);
@@ -61,11 +61,11 @@ it('tag appends to existing tags', function (): void {
     $trace->tag('second', 'b');
 
     $row = GlintTrace::where('id', $traceId)->first();
-    expect($row->metadata['tags'])->toBe(['first' => 'a', 'second' => 'b']);
+    expect($row->metadata['tags'])->toEqual(['first' => 'a', 'second' => 'b']);
 });
 
 it('tag returns self when trace row does not exist', function (): void {
-    $fakeId = Str::uuid()->toString();
+    $fakeId = Str::ulid()->toString();
     $context = app(TraceContext::class);
     $context->openTrace($fakeId);
     $pricing = app(PricingRegistry::class);
@@ -177,7 +177,7 @@ it('tags writes multiple tags in one round-trip', function (): void {
     expect($result)->toBe($trace);
 
     $row = GlintTrace::where('id', $traceId)->first();
-    expect($row->metadata['tags'])->toBe(['env' => 'testing', 'version' => '2']);
+    expect($row->metadata['tags'])->toEqual(['env' => 'testing', 'version' => '2']);
 });
 
 it('tags merges with existing tags', function (): void {
@@ -187,7 +187,7 @@ it('tags merges with existing tags', function (): void {
     $trace->tags(['new1' => 'a', 'new2' => 'b']);
 
     $row = GlintTrace::where('id', $traceId)->first();
-    expect($row->metadata['tags'])->toBe(['existing' => 'yes', 'new1' => 'a', 'new2' => 'b']);
+    expect($row->metadata['tags'])->toEqual(['existing' => 'yes', 'new1' => 'a', 'new2' => 'b']);
 });
 
 it('tags returns self on empty array without querying', function (): void {
@@ -224,7 +224,7 @@ it('generation sets parent_span_id on the generation row', function (): void {
 });
 
 it('tags() returns self when trace row does not exist', function (): void {
-    $fakeId = Str::uuid()->toString();
+    $fakeId = Str::ulid()->toString();
     $context = app(TraceContext::class);
     $context->openTrace($fakeId);
     $pricing = app(PricingRegistry::class);
@@ -236,7 +236,7 @@ it('tags() returns self when trace row does not exist', function (): void {
 });
 
 it('ActiveSpan tags() returns self when span row does not exist', function (): void {
-    $fakeSpanId = Str::uuid()->toString();
+    $fakeSpanId = Str::ulid()->toString();
     $span = new ActiveSpan($fakeSpanId, Carbon::now());
 
     $result = $span->tags(['env' => 'testing']);
@@ -245,7 +245,7 @@ it('ActiveSpan tags() returns self when span row does not exist', function (): v
 });
 
 it('ActiveGeneration tags() returns self when generation row does not exist', function (): void {
-    $fakeGenId = Str::uuid()->toString();
+    $fakeGenId = Str::ulid()->toString();
     $pricing = app(PricingRegistry::class);
     $gen = new ActiveGeneration($fakeGenId, $pricing, 'openai', 'gpt-4o', Carbon::now());
 

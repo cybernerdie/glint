@@ -80,5 +80,4 @@ it('shows a skipped warning when a model prune throws an exception', function ()
         ->expectsOutputToContain('skipped')
         ->assertSuccessful();
 
-    DB::statement('CREATE TABLE glint_traces (id TEXT PRIMARY KEY, name TEXT NOT NULL, status TEXT NOT NULL DEFAULT \'pending\', metadata TEXT, started_at DATETIME NOT NULL, ended_at DATETIME, duration_ms INTEGER, created_at DATETIME, updated_at DATETIME)');
 });

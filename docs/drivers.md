@@ -72,10 +72,6 @@ You can run multiple drivers simultaneously. For example, if your app uses both 
 GLINT_DRIVERS=http,prism
 ```
 
-Glint emits a deterministic request fingerprint from driver metadata and uses it to deduplicate overlapping observations while the call is in flight. This prevents a single LLM call from being recorded twice when, for example, both `http` and `prism` see the same request.
-
-Deduplication is intentionally scoped to pending calls. If your application sends the same prompt/model again as a separate later request, Glint records it as a separate generation.
-
 ---
 
 ## `laravel-ai` — Laravel AI driver

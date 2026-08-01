@@ -69,13 +69,3 @@ Glint::trace('checkout', function ($trace): void {
 
 For queued jobs, include job IDs, tenant IDs, team IDs, or deployment metadata when creating traces, spans, or generations.
 
-## Deferred export targets
-
-The following are intentionally deferred until there is a concrete target format and consumer:
-
-- OpenTelemetry span export.
-- Prometheus-compatible metrics endpoint.
-- Datadog, Honeycomb, Grafana, or log exporter packages.
-- First-party warehouse connectors.
-
-This keeps the package's public surface small while still allowing applications to build their own export path from events and stored data.

@@ -37,6 +37,13 @@ jobs:
           extensions: dom, curl, libxml, mbstring, zip, pdo, sqlite, pdo_sqlite
           coverage: none
 
+      - name: Cache composer packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-${{ matrix.php }}-${{ matrix.laravel }}-${{ hashFiles('**/composer.json') }}
+          restore-keys: composer-${{ matrix.php }}-${{ matrix.laravel }}-
+
       - name: Install dependencies
         run: |
           composer config --global policy.advisories.block false
@@ -48,6 +55,9 @@ jobs:
 
   database-compatibility:
     runs-on: ubuntu-latest
+    container:
+      image: shivammathur/node:jammy
+      options: --user root
 
     strategy:
       fail-fast: false
@@ -55,15 +65,13 @@ jobs:
         database: [mysql, pgsql]
         include:
           - database: mysql
-            service: mysql
-            host: 127.0.0.1
+            host: mysql
             port: 3306
             username: glint
             password: glint
             db: glint_test
           - database: pgsql
-            service: postgres
-            host: 127.0.0.1
+            host: postgres
             port: 5432
             username: glint
             password: glint
@@ -79,8 +87,6 @@ jobs:
           MYSQL_USER: glint
           MYSQL_PASSWORD: glint
           MYSQL_ROOT_PASSWORD: glint
-        ports:
-          - 3306:3306
         options: >-
           --health-cmd="mysqladmin ping -h 127.0.0.1 -uglint -pglint"
           --health-interval=10s
@@ -92,8 +98,6 @@ jobs:
           POSTGRES_DB: glint_test
           POSTGRES_USER: glint
           POSTGRES_PASSWORD: glint
-        ports:
-          - 5432:5432
         options: >-
           --health-cmd="pg_isready -U glint -d glint_test"
           --health-interval=10s
@@ -107,9 +111,16 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: 8.4
+          php-version: '8.4'
           extensions: dom, curl, libxml, mbstring, zip, pdo, pdo_mysql, pdo_pgsql
           coverage: none
+
+      - name: Cache composer packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-8.4-stable-${{ hashFiles('**/composer.json') }}
+          restore-keys: composer-8.4-stable-
 
       - name: Install dependencies
         run: composer update --prefer-stable --prefer-dist --no-interaction

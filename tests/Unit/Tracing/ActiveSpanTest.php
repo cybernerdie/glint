@@ -10,7 +10,7 @@ use Illuminate\Support\Str;
 
 function makeActiveSpan(?string $spanId = null): array
 {
-    $spanId ??= Str::uuid()->toString();
+    $spanId ??= Str::ulid()->toString();
     GlintSpan::factory()->pending()->create(['id' => $spanId, 'name' => 'test-span']);
     $span = new ActiveSpan($spanId, Carbon::now());
 
@@ -52,11 +52,11 @@ it('tag appends to existing tags', function (): void {
     $span->tag('b', '2');
 
     $row = GlintSpan::where('id', $spanId)->first();
-    expect($row->metadata['tags'])->toBe(['a' => '1', 'b' => '2']);
+    expect($row->metadata['tags'])->toEqual(['a' => '1', 'b' => '2']);
 });
 
 it('tag returns self when span row does not exist', function (): void {
-    $fakeId = Str::uuid()->toString();
+    $fakeId = Str::ulid()->toString();
     $span = new ActiveSpan($fakeId, Carbon::now());
 
     $result = $span->tag('key', 'value');
@@ -72,7 +72,7 @@ it('tags writes multiple tags in one round-trip', function (): void {
     expect($result)->toBe($span);
 
     $row = GlintSpan::where('id', $spanId)->first();
-    expect($row->metadata['tags'])->toBe(['region' => 'eu', 'tier' => 'free']);
+    expect($row->metadata['tags'])->toEqual(['region' => 'eu', 'tier' => 'free']);
 });
 
 it('tags merges with existing tags on span', function (): void {
@@ -82,7 +82,7 @@ it('tags merges with existing tags on span', function (): void {
     $span->tags(['second' => 'b', 'third' => 'c']);
 
     $row = GlintSpan::where('id', $spanId)->first();
-    expect($row->metadata['tags'])->toBe(['first' => 'a', 'second' => 'b', 'third' => 'c']);
+    expect($row->metadata['tags'])->toEqual(['first' => 'a', 'second' => 'b', 'third' => 'c']);
 });
 
 it('tags returns self on empty array', function (): void {

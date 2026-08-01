@@ -19,7 +19,7 @@ final class GlintGenerationFactory extends Factory
     public function definition(): array
     {
         return [
-            'trace_id' => Str::uuid()->toString(),
+            'trace_id' => Str::ulid()->toString(),
             'name' => 'Test Generation',
             'provider' => 'openai',
             'model' => 'gpt-4o',

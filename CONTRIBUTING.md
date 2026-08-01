@@ -8,7 +8,7 @@ Thank you for considering a contribution to Laravel Glint!
 - Run the full test suite before opening a PR: `composer test`
 - Ensure PHPStan passes: `composer stan`
 - Ensure code style passes: `composer pint`
-- Write tests for any new behaviour. Aim to keep coverage above 80%.
+- Write tests for any new behaviour.
 - Keep PRs focused — one feature or fix per PR.
 
 ## Pricing Registry PRs

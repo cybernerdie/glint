@@ -22,21 +22,6 @@ The Glint dashboard is available at `/glint` (configurable via `GLINT_PATH`).
 
 **Alerts** (`/glint/alerts`) — Create and manage threshold-based alert rules.
 
-## Current scope and limits
-
-The dashboard gives Laravel teams an application-local view of LLM traffic, cost, latency, errors, traces, generations, users, and alerts.
-
-It does not currently include:
-
-- Saved filters.
-- CSV or JSON export buttons.
-- Per-user, per-team, or per-tenant budget workflows.
-- Alert history analytics beyond the stored alert events.
-- Unknown pricing warnings inside the UI.
-- OpenTelemetry, Prometheus, Datadog, Honeycomb, Grafana, or warehouse export screens.
-
-For external export options, see [Exporting and external observability](exporting.md).
-
 ## Access control
 
 The dashboard is protected by the `viewGlint` gate, which is defined in the published `app/Providers/GlintServiceProvider.php`:

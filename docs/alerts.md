@@ -80,6 +80,3 @@ Event::listen(GlintAlertTriggered::class, function (GlintAlertTriggered $event) 
 });
 ```
 
-## Cooldown
-
-Once an alert fires, the same rule will not fire again until the cooldown window has elapsed — even if the metric stays above the threshold. This prevents repeated notifications during a sustained spike.

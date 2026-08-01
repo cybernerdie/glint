@@ -13,7 +13,7 @@ use Illuminate\Support\Str;
 
 function makeActiveGeneration(?string $genId = null, string $provider = 'openai', string $model = 'gpt-4o'): array
 {
-    $genId ??= Str::uuid()->toString();
+    $genId ??= Str::ulid()->toString();
     GlintGeneration::factory()->pending()->create([
         'id' => $genId,
         'name' => 'test-generation',
@@ -61,11 +61,11 @@ it('tag appends to existing tags', function (): void {
     $generation->tag('y', '2');
 
     $row = GlintGeneration::where('id', $genId)->first();
-    expect($row->metadata['tags'])->toBe(['x' => '1', 'y' => '2']);
+    expect($row->metadata['tags'])->toEqual(['x' => '1', 'y' => '2']);
 });
 
 it('tag returns self when generation row does not exist', function (): void {
-    $fakeId = Str::uuid()->toString();
+    $fakeId = Str::ulid()->toString();
     $pricing = app(PricingRegistry::class);
     $generation = new ActiveGeneration($fakeId, $pricing, 'openai', 'gpt-4o', Carbon::now());
 
@@ -82,7 +82,7 @@ it('tags writes multiple tags in one round-trip', function (): void {
     expect($result)->toBe($generation);
 
     $row = GlintGeneration::where('id', $genId)->first();
-    expect($row->metadata['tags'])->toBe(['lang' => 'en', 'model_version' => 'v2']);
+    expect($row->metadata['tags'])->toEqual(['lang' => 'en', 'model_version' => 'v2']);
 });
 
 it('tags merges with existing tags on generation', function (): void {
@@ -92,7 +92,7 @@ it('tags merges with existing tags on generation', function (): void {
     $generation->tags(['second' => 'b', 'third' => 'c']);
 
     $row = GlintGeneration::where('id', $genId)->first();
-    expect($row->metadata['tags'])->toBe(['first' => 'a', 'second' => 'b', 'third' => 'c']);
+    expect($row->metadata['tags'])->toEqual(['first' => 'a', 'second' => 'b', 'third' => 'c']);
 });
 
 it('tags returns self on empty array', function (): void {
@@ -109,7 +109,7 @@ it('prompt updates the generation prompt', function (): void {
     expect($result)->toBe($generation);
 
     $row = GlintGeneration::where('id', $genId)->first();
-    expect($row->prompt)->toBe([
+    expect($row->prompt)->toEqual([
         [
             'role' => 'user',
             'content' => 'What is Laravel Glint?',
@@ -123,7 +123,7 @@ it('redacts manually recorded prompts', function (): void {
 
     $generation->prompt('Use secret-token-abc123');
 
-    expect(GlintGeneration::where('id', $genId)->first()->prompt)->toBe([
+    expect(GlintGeneration::where('id', $genId)->first()->prompt)->toEqual([
         [
             'role' => 'user',
             'content' => 'Use [REDACTED]',
@@ -191,7 +191,7 @@ it('finish updates aggregate buckets for manual generations', function (): void 
         ->values()
         ->toArray();
 
-    expect($periods)->toBe(['day', 'hour', 'month', 'week']);
+    expect($periods)->toEqual(['day', 'hour', 'month', 'week']);
 
     $hour = DB::table('glint_aggregates')
         ->where('provider', 'openai')
@@ -272,7 +272,7 @@ it('fail updates aggregate buckets for manual generations', function (): void {
         ->values()
         ->toArray();
 
-    expect($periods)->toBe(['day', 'hour', 'month', 'week']);
+    expect($periods)->toEqual(['day', 'hour', 'month', 'week']);
 
     $hour = DB::table('glint_aggregates')
         ->where('provider', 'anthropic')

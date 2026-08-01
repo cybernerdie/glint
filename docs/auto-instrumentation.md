@@ -2,19 +2,6 @@
 
 Auto-instrumentation records supported LLM calls without changing the call site. Install the package, set `GLINT_ENABLED=true`, choose a driver, and matching calls are recorded.
 
-## How it works
-
-Each driver hooks into framework-level events or wraps the SDK's entry point. When an LLM call is detected, the driver fires these internal Glint events:
-
-| Event | When |
-|-------|------|
-| `LlmCallStarted` | Request is about to be sent |
-| `LlmCallFinished` | Successful response received |
-| `LlmCallFailed` | HTTP error or connection failure |
-| `LlmToolCalled` | Tool/function call returned a result |
-
-`GlintRecorder` listens to these events and writes to the database (or `RecordLlmCallJob` does it asynchronously in `queue` mode).
-
 ## Available drivers
 
 | Driver | Package | When to use |

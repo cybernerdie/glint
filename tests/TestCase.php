@@ -6,6 +6,7 @@ namespace Tests;
 
 use Cybernerdie\Glint\GlintManager;
 use Cybernerdie\Glint\GlintServiceProvider;
+use Illuminate\Support\Facades\DB;
 use Orchestra\Testbench\TestCase as Orchestra;
 
 class TestCase extends Orchestra
@@ -15,6 +16,17 @@ class TestCase extends Orchestra
         parent::setUp();
 
         GlintManager::flushFilters();
+    }
+
+    protected function tearDown(): void
+    {
+        $driver = env('DB_CONNECTION', 'sqlite');
+
+        if ($driver === 'pgsql' || $driver === 'mysql') {
+            DB::purge();
+        }
+
+        parent::tearDown();
     }
 
     protected function getPackageProviders($app): array
@@ -45,20 +57,6 @@ class TestCase extends Orchestra
     protected function defineDatabaseMigrations(): void
     {
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    protected function migrateFreshUsing()
-    {
-        return [
-            '--drop-views' => false,
-            '--drop-types' => false,
-            '--seed' => false,
-            '--path' => __DIR__.'/../database/migrations',
-            '--realpath' => true,
-        ];
     }
 
     /**
