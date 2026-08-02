@@ -1872,7 +1872,7 @@
                 @include('glint::partials.logo')
             </div>
             <div>
-                <div class="brand-name">Laravel Glint</div>
+                <div class="brand-name">Glint</div>
                 <div class="brand-tagline">LLM Observability</div>
             </div>
             <button type="button" class="nav-toggle" aria-label="Toggle navigation"
@@ -1963,7 +1963,7 @@
 
         <div class="sidebar-footer">
             <div class="sidebar-version">
-                v{{ \Composer\InstalledVersions::getPrettyVersion('cybernerdie/laravel-glint') ?? 'dev' }}
+                v{{ \Composer\InstalledVersions::getPrettyVersion('cybernerdie/glint') ?? 'dev' }}
             </div>
         </div>
     </aside>

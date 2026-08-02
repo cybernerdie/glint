@@ -11,11 +11,11 @@ final class InstallCommand extends Command
 {
     protected $signature = 'glint:install';
 
-    protected $description = 'Install Laravel Glint';
+    protected $description = 'Install Glint';
 
     public function handle(): int
     {
-        $this->components->info('Installing Laravel Glint...');
+        $this->components->info('Installing Glint...');
 
         $configExists = file_exists(config_path('glint.php'));
         $overwriteConfig = ! $configExists || $this->confirm('config/glint.php already exists. Overwrite it?', false);

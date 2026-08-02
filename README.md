@@ -1,11 +1,11 @@
-# Laravel Glint
+# Glint for Laravel
 
-[![Tests](https://github.com/cybernerdie/laravel-glint/actions/workflows/tests.yml/badge.svg)](https://github.com/cybernerdie/laravel-glint/actions/workflows/tests.yml)
-[![PHPStan](https://github.com/cybernerdie/laravel-glint/actions/workflows/phpstan.yml/badge.svg)](https://github.com/cybernerdie/laravel-glint/actions/workflows/phpstan.yml)
-[![Code Style](https://github.com/cybernerdie/laravel-glint/actions/workflows/pint.yml/badge.svg)](https://github.com/cybernerdie/laravel-glint/actions/workflows/pint.yml)
+[![Tests](https://github.com/cybernerdie/glint/actions/workflows/tests.yml/badge.svg)](https://github.com/cybernerdie/glint/actions/workflows/tests.yml)
+[![PHPStan](https://github.com/cybernerdie/glint/actions/workflows/phpstan.yml/badge.svg)](https://github.com/cybernerdie/glint/actions/workflows/phpstan.yml)
+[![Code Style](https://github.com/cybernerdie/glint/actions/workflows/pint.yml/badge.svg)](https://github.com/cybernerdie/glint/actions/workflows/pint.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE.md)
 
-Laravel Glint is an LLM observability package for Laravel applications. It records LLM calls in your application database and provides a local dashboard for traces, generations, cost, latency, errors, users, and alerts.
+Glint is an LLM observability package for Laravel applications. It records LLM calls in your application database and provides a local dashboard for traces, generations, cost, latency, errors, users, and alerts.
 
 Glint is designed for teams that want Laravel-native observability without sending prompts, completions, or usage data to a third-party service.
 
@@ -46,7 +46,7 @@ SDKs or transports that do not use one of the supported instrumentation paths sh
 Install the package and run the installer:
 
 ```bash
-composer require cybernerdie/laravel-glint
+composer require cybernerdie/glint
 php artisan glint:install
 ```
 
@@ -157,4 +157,4 @@ composer pint
 
 ## License
 
-Laravel Glint is open-sourced software licensed under the [MIT license](LICENSE.md).
+Glint is open-sourced software licensed under the [MIT license](LICENSE.md).

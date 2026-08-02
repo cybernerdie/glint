@@ -1,6 +1,6 @@
-# Contributing to Laravel Glint
+# Contributing to Glint
 
-Thank you for considering a contribution to Laravel Glint!
+Thank you for considering a contribution to Glint!
 
 ## Pull Requests
 
@@ -44,7 +44,7 @@ composer pint         # check code style (--test flag, no changes)
 
 ## Reporting Issues
 
-Please use [GitHub Issues](https://github.com/cybernerdie/laravel-glint/issues). Include:
+Please use [GitHub Issues](https://github.com/cybernerdie/glint/issues). Include:
 
 - Laravel and PHP version
 - Glint version

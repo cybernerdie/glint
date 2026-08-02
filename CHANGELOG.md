@@ -1,15 +1,15 @@
 # Changelog
 
-All notable changes to `cybernerdie/laravel-glint` will be documented in this file.
+All notable changes to `cybernerdie/glint` will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-## [1.0.0] - 2026-08-01
+## [1.0.0] - 2026-08-02
 
-Initial release.
+Initial release as `cybernerdie/glint` (renamed from `cybernerdie/laravel-glint`).
 
 ### Added
 
@@ -25,5 +25,5 @@ Initial release.
 - Privacy redaction for prompts, completions, and metadata before storage
 - Laravel Octane compatibility
 
-[Unreleased]: https://github.com/cybernerdie/laravel-glint/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/cybernerdie/laravel-glint/releases/tag/v1.0.0
+[Unreleased]: https://github.com/cybernerdie/glint/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/cybernerdie/glint/releases/tag/v1.0.0

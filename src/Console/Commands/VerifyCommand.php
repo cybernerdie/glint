@@ -17,7 +17,7 @@ final class VerifyCommand extends Command
 
     public function handle(PricingRegistry $pricing): int
     {
-        $this->components->info('Verifying Laravel Glint installation...');
+        $this->components->info('Verifying Glint installation...');
         $this->newLine();
 
         $issues = 0;

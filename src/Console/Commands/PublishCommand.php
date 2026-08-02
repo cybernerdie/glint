@@ -17,7 +17,7 @@ final class PublishCommand extends Command
                             {--force : Overwrite existing files}
                             {--all : Publish all assets}';
 
-    protected $description = 'Publish Laravel Glint assets and views';
+    protected $description = 'Publish Glint assets and views';
 
     public function handle(): int
     {

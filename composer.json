@@ -1,8 +1,16 @@
 {
-    "name": "cybernerdie/laravel-glint",
+    "name": "cybernerdie/glint",
     "description": "Laravel-native LLM observability with local traces, generations, cost tracking, latency, errors, and alerts.",
-    "keywords": ["laravel", "llm", "observability", "ai", "tracing", "openai", "anthropic"],
-    "homepage": "https://github.com/cybernerdie/laravel-glint",
+    "keywords": [
+        "laravel",
+        "llm",
+        "observability",
+        "ai",
+        "tracing",
+        "openai",
+        "anthropic"
+    ],
+    "homepage": "https://github.com/cybernerdie/glint",
     "type": "library",
     "license": "MIT",
     "authors": [
@@ -66,8 +74,8 @@
         }
     },
     "support": {
-        "issues": "https://github.com/cybernerdie/laravel-glint/issues",
-        "source": "https://github.com/cybernerdie/laravel-glint"
+        "issues": "https://github.com/cybernerdie/glint/issues",
+        "source": "https://github.com/cybernerdie/glint"
     },
     "minimum-stability": "stable",
     "prefer-stable": true,
