@@ -1,0 +1,12 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Prism\Prism\Embeddings;
+
+final class Response
+{
+    public function __construct(
+        public array $embeddings = [],
+    ) {}
+}

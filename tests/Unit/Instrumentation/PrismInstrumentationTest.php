@@ -10,9 +10,13 @@ use Cybernerdie\Glint\Instrumentation\Prism\TracingPrismManager;
 use Cybernerdie\Glint\Instrumentation\Prism\TracingProvider;
 use Cybernerdie\Glint\Instrumentation\PrismInstrumentation;
 use Illuminate\Support\Facades\Event;
+use Prism\Prism\Embeddings\Request as EmbeddingsRequest;
+use Prism\Prism\Embeddings\Response as EmbeddingsResponse;
 use Prism\Prism\PrismManager;
 use Prism\Prism\Providers\Anthropic;
 use Prism\Prism\Providers\Provider;
+use Prism\Prism\Structured\Request as StructuredRequest;
+use Prism\Prism\Structured\Response as StructuredResponse;
 use Prism\Prism\Text\Request;
 use Prism\Prism\Text\Response;
 use Tests\Stubs\FinishReasonEnum;
@@ -157,19 +161,19 @@ it('TracingProvider fires both LlmCallStarted and LlmCallFinished in correct ord
     expect($fired)->toBe(['started', 'finished']);
 });
 
-it('TracingProvider passes through non-text calls via __call', function () {
+it('TracingProvider passes through calls to custom driver methods via __call', function () {
     $inner = new class extends Provider
     {
-        public function embeddings(string $text): string
+        public function computeCost(string $text): string
         {
-            return 'embedding-result';
+            return 'cost-result';
         }
     };
 
     $context = new TraceContext;
     $provider = new TracingProvider($inner, $context);
 
-    expect($provider->embeddings('hello'))->toBe('embedding-result');
+    expect($provider->computeCost('hello'))->toBe('cost-result');
 });
 
 it('TracingProvider throws BadMethodCallException for __call to unknown method', function () {
@@ -180,6 +184,68 @@ it('TracingProvider throws BadMethodCallException for __call to unknown method',
 
     expect(fn () => $provider->nonExistentMethod())->toThrow(BadMethodCallException::class);
 });
+
+it('TracingProvider delegates structured() to the inner provider when supported', function () {
+    $response = new StructuredResponse(structured: ['answer' => 42]);
+
+    $inner = new class($response) extends Provider
+    {
+        public function __construct(private readonly StructuredResponse $response) {}
+
+        public function structured(StructuredRequest $request): StructuredResponse
+        {
+            return $this->response;
+        }
+    };
+
+    $context = new TraceContext;
+    $provider = new TracingProvider($inner, $context);
+
+    expect($provider->structured(new StructuredRequest))->toBe($response);
+});
+
+it('TracingProvider delegates embeddings() to the inner provider when supported', function () {
+    $response = new EmbeddingsResponse(embeddings: [0.1, 0.2, 0.3]);
+
+    $inner = new class($response) extends Provider
+    {
+        public function __construct(private readonly EmbeddingsResponse $response) {}
+
+        public function embeddings(EmbeddingsRequest $request): EmbeddingsResponse
+        {
+            return $this->response;
+        }
+    };
+
+    $context = new TraceContext;
+    $provider = new TracingProvider($inner, $context);
+
+    expect($provider->embeddings(new EmbeddingsRequest))->toBe($response);
+});
+
+it('TracingProvider surfaces the wrapped provider name (not itself) for unsupported actions', function (string $method, object $request) {
+    // Regression test: Prism's base Provider class defines concrete
+    // (non-abstract) methods like structured()/embeddings() that throw
+    // "{Action} is not supported by {class}". Because they're concrete,
+    // PHP resolves calls to them directly against TracingProvider unless
+    // explicitly overridden, which previously caused the error to
+    // misreport "TracingProvider" instead of the real wrapped driver
+    // (e.g. "Anthropic").
+    $inner = new Anthropic;
+
+    $context = new TraceContext;
+    $provider = new TracingProvider($inner, $context);
+
+    expect(fn () => $provider->$method($request))
+        ->toThrow(function (Exception $e) {
+            expect($e->getMessage())
+                ->toContain('Anthropic')
+                ->not->toContain('TracingProvider');
+        });
+})->with([
+    'embeddings' => ['embeddings', new EmbeddingsRequest],
+    'structured' => ['structured', new StructuredRequest],
+]);
 
 it('TracingProvider defaults finishReason to stop when finishReason is not a string or BackedEnum', function () {
     Event::fake();

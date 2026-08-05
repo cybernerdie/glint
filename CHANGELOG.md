@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Prism driver: calls to `structured()`, `embeddings()`, `images()`, `moderation()`, `textToSpeech()`, `speechToText()`, and `stream()` on a traced provider no longer fail with `"X is not supported by TracingProvider"`. These are now correctly delegated to the wrapped provider, same as `text()`.
+
 ## [1.0.0] - 2026-08-02
 
 Initial release as `cybernerdie/glint` (renamed from `cybernerdie/laravel-glint`).

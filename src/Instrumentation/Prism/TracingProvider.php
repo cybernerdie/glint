@@ -9,10 +9,23 @@ use Cybernerdie\Glint\Events\LlmCallFailed;
 use Cybernerdie\Glint\Events\LlmCallFinished;
 use Cybernerdie\Glint\Events\LlmCallStarted;
 use Cybernerdie\Glint\Support\GenerationFingerprint;
+use Generator;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Str;
+use Prism\Prism\Audio\AudioResponse as TextToSpeechResponse;
+use Prism\Prism\Audio\SpeechToTextRequest;
+use Prism\Prism\Audio\TextResponse as SpeechToTextResponse;
+use Prism\Prism\Audio\TextToSpeechRequest;
+use Prism\Prism\Embeddings\Request as EmbeddingsRequest;
+use Prism\Prism\Embeddings\Response as EmbeddingsResponse;
+use Prism\Prism\Images\Request as ImagesRequest;
+use Prism\Prism\Images\Response as ImagesResponse;
+use Prism\Prism\Moderation\Request as ModerationRequest;
+use Prism\Prism\Moderation\Response as ModerationResponse;
 use Prism\Prism\Providers\Provider;
+use Prism\Prism\Structured\Request as StructuredRequest;
+use Prism\Prism\Structured\Response as StructuredResponse;
 use Prism\Prism\Text\Request as TextRequest;
 use Prism\Prism\Text\Response as TextResponse;
 
@@ -113,6 +126,54 @@ final class TracingProvider extends Provider
         }
     }
 
+    /**
+     * Prism's base Provider class defines concrete (non-abstract) default
+     * implementations for these actions that simply throw an "unsupported"
+     * exception naming the current class. Because they're concrete, PHP
+     * resolves calls to them directly against this class instead of falling
+     * through to __call(), which would otherwise misreport the error as
+     * coming from TracingProvider rather than the wrapped driver. Explicitly
+     * delegating here ensures the wrapped driver's own implementation (or
+     * its own accurate "unsupported" error) is used instead.
+     */
+    public function structured(StructuredRequest $request): StructuredResponse
+    {
+        return $this->assertInstanceOf($this->callInner('structured', $request), StructuredResponse::class);
+    }
+
+    public function embeddings(EmbeddingsRequest $request): EmbeddingsResponse
+    {
+        return $this->assertInstanceOf($this->callInner('embeddings', $request), EmbeddingsResponse::class);
+    }
+
+    public function images(ImagesRequest $request): ImagesResponse
+    {
+        return $this->assertInstanceOf($this->callInner('images', $request), ImagesResponse::class);
+    }
+
+    public function moderation(ModerationRequest $request): ModerationResponse
+    {
+        return $this->assertInstanceOf($this->callInner('moderation', $request), ModerationResponse::class);
+    }
+
+    public function textToSpeech(TextToSpeechRequest $request): TextToSpeechResponse
+    {
+        return $this->assertInstanceOf($this->callInner('textToSpeech', $request), TextToSpeechResponse::class);
+    }
+
+    public function speechToText(SpeechToTextRequest $request): SpeechToTextResponse
+    {
+        return $this->assertInstanceOf($this->callInner('speechToText', $request), SpeechToTextResponse::class);
+    }
+
+    /**
+     * @return Generator<int, mixed>
+     */
+    public function stream(TextRequest $request): Generator
+    {
+        return $this->assertInstanceOf($this->callInner('stream', $request), Generator::class);
+    }
+
     /** @param array<int, mixed> $arguments */
     public function __call(string $name, array $arguments): mixed
     {
@@ -126,6 +187,25 @@ final class TracingProvider extends Provider
         }
 
         throw new \BadMethodCallException("Call to undefined method {$method}() on ".get_class($this->inner));
+    }
+
+    /**
+     * @template T of object
+     *
+     * @param  class-string<T>  $class
+     * @return T
+     */
+    private function assertInstanceOf(mixed $value, string $class): object
+    {
+        if (! $value instanceof $class) {
+            throw new \UnexpectedValueException(sprintf(
+                'Prism provider %s must return a %s.',
+                get_class($this->inner),
+                $class,
+            ));
+        }
+
+        return $value;
     }
 
     private function resolveProviderName(): string
