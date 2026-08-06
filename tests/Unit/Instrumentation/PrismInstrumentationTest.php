@@ -185,8 +185,15 @@ it('TracingProvider throws BadMethodCallException for __call to unknown method',
     expect(fn () => $provider->nonExistentMethod())->toThrow(BadMethodCallException::class);
 });
 
-it('TracingProvider delegates structured() to the inner provider when supported', function () {
-    $response = new StructuredResponse(structured: ['answer' => 42]);
+it('TracingProvider fires LlmCallStarted and LlmCallFinished for structured()', function () {
+    Event::fake();
+
+    $response = new StructuredResponse(
+        structured: ['answer' => 42],
+        text: '{"answer":42}',
+        finishReason: 'stop',
+        usage: (object) ['promptTokens' => 20, 'completionTokens' => 8],
+    );
 
     $inner = new class($response) extends Provider
     {
@@ -201,11 +208,83 @@ it('TracingProvider delegates structured() to the inner provider when supported'
     $context = new TraceContext;
     $provider = new TracingProvider($inner, $context);
 
-    expect($provider->structured(new StructuredRequest))->toBe($response);
+    config()->set('glint.recording.store_bodies', true);
+
+    $result = $provider->structured(new StructuredRequest(model: 'gpt-4o', temperature: 0.3));
+
+    expect($result)->toBe($response);
+
+    Event::assertDispatched(LlmCallStarted::class, function (LlmCallStarted $e) {
+        return $e->model === 'gpt-4o'
+            && $e->temperature === 0.3
+            && ($e->metadata['glint_call_type'] ?? null) === 'structured';
+    });
+
+    Event::assertDispatched(LlmCallFinished::class, function (LlmCallFinished $e) {
+        return $e->promptTokens === 20
+            && $e->completionTokens === 8
+            && $e->finishReason === 'stop'
+            && $e->completion === '{"answer":42}';
+    });
 });
 
-it('TracingProvider delegates embeddings() to the inner provider when supported', function () {
-    $response = new EmbeddingsResponse(embeddings: [0.1, 0.2, 0.3]);
+it('TracingProvider fires LlmCallFailed and re-throws for structured() on error', function () {
+    Event::fake();
+
+    $inner = new class extends Provider
+    {
+        public function structured(mixed $request): never
+        {
+            throw new RuntimeException('structured error');
+        }
+    };
+
+    $context = new TraceContext;
+    $provider = new TracingProvider($inner, $context);
+
+    expect(fn () => $provider->structured(new StructuredRequest))
+        ->toThrow(RuntimeException::class, 'structured error');
+
+    Event::assertDispatched(LlmCallFailed::class, fn (LlmCallFailed $e) => $e->errorMessage === 'structured error');
+});
+
+it('TracingProvider stores json-encoded structured output as completion', function () {
+    Event::fake();
+
+    $response = new StructuredResponse(
+        structured: ['city' => 'Lagos', 'country' => 'Nigeria'],
+        usage: (object) ['promptTokens' => 5, 'completionTokens' => 3],
+    );
+
+    $inner = new class($response) extends Provider
+    {
+        public function __construct(private readonly StructuredResponse $response) {}
+
+        public function structured(StructuredRequest $request): StructuredResponse
+        {
+            return $this->response;
+        }
+    };
+
+    $context = new TraceContext;
+    $provider = new TracingProvider($inner, $context);
+
+    config()->set('glint.recording.store_bodies', true);
+
+    $provider->structured(new StructuredRequest);
+
+    Event::assertDispatched(LlmCallFinished::class, function (LlmCallFinished $e) {
+        return $e->completion === '{"city":"Lagos","country":"Nigeria"}';
+    });
+});
+
+it('TracingProvider fires LlmCallStarted and LlmCallFinished for embeddings()', function () {
+    Event::fake();
+
+    $response = new EmbeddingsResponse(
+        embeddings: [[0.1, 0.2, 0.3]],
+        usage: (object) ['tokens' => 12],
+    );
 
     $inner = new class($response) extends Provider
     {
@@ -220,7 +299,42 @@ it('TracingProvider delegates embeddings() to the inner provider when supported'
     $context = new TraceContext;
     $provider = new TracingProvider($inner, $context);
 
-    expect($provider->embeddings(new EmbeddingsRequest))->toBe($response);
+    $result = $provider->embeddings(new EmbeddingsRequest(model: 'text-embedding-3-small'));
+
+    expect($result)->toBe($response);
+
+    Event::assertDispatched(LlmCallStarted::class, function (LlmCallStarted $e) {
+        return $e->model === 'text-embedding-3-small'
+            && $e->messages === null
+            && ($e->metadata['glint_call_type'] ?? null) === 'embeddings';
+    });
+
+    Event::assertDispatched(LlmCallFinished::class, function (LlmCallFinished $e) {
+        return $e->promptTokens === 12
+            && $e->completionTokens === 0
+            && $e->completion === null
+            && $e->finishReason === 'stop';
+    });
+});
+
+it('TracingProvider fires LlmCallFailed and re-throws for embeddings() on error', function () {
+    Event::fake();
+
+    $inner = new class extends Provider
+    {
+        public function embeddings(mixed $request): never
+        {
+            throw new RuntimeException('embeddings error');
+        }
+    };
+
+    $context = new TraceContext;
+    $provider = new TracingProvider($inner, $context);
+
+    expect(fn () => $provider->embeddings(new EmbeddingsRequest))
+        ->toThrow(RuntimeException::class, 'embeddings error');
+
+    Event::assertDispatched(LlmCallFailed::class, fn (LlmCallFailed $e) => $e->errorMessage === 'embeddings error');
 });
 
 it('TracingProvider surfaces the wrapped provider name (not itself) for unsupported actions', function (string $method, object $request) {
@@ -315,4 +429,30 @@ it('TracingPrismManager is a PrismManager instance', function () {
     $manager = new TracingPrismManager($inner, $this->app);
 
     expect($manager)->toBeInstanceOf(PrismManager::class);
+});
+
+it('TracingPrismManager::extend() registers custom provider on the inner manager not itself', function () {
+    // PrismManager::extend() is a concrete method, so it would bypass __call() and
+    // store the creator on TracingPrismManager — but resolve() delegates to $inner,
+    // which would never see the registration. The override ensures extend() routes
+    // to $inner so custom providers are available when resolve() is called.
+    $inner = new PrismManager($this->app);
+    $manager = new TracingPrismManager($inner, $this->app);
+
+    $called = false;
+    $manager->extend('my-provider', function () use (&$called) {
+        $called = true;
+
+        return new class extends \Prism\Prism\Providers\Provider
+        {
+            public function text(\Prism\Prism\Text\Request $request): \Prism\Prism\Text\Response
+            {
+                return new \Prism\Prism\Text\Response;
+            }
+        };
+    });
+
+    $manager->resolve('my-provider');
+
+    expect($called)->toBeTrue();
 });

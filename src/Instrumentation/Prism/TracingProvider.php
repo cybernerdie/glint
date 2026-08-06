@@ -81,29 +81,77 @@ final class TracingProvider extends Provider
                 throw new \UnexpectedValueException('Prism provider text() must return a text response.');
             }
 
-            $promptTokens = 0;
-            $completionTokens = 0;
-            $finishReason = 'stop';
+            [$promptTokens, $completionTokens] = $this->extractTokenUsage($result->usage);
+            $completion = Config::boolean('glint.recording.store_bodies', true) ? $result->text : null;
+
+            event(new LlmCallFinished(
+                generationId: $generationId,
+                completion: $completion,
+                promptTokens: $promptTokens,
+                completionTokens: $completionTokens,
+                finishReason: $this->normalizeFinishReason($result->finishReason),
+                durationMs: (int) $startedAt->diffInMilliseconds(now()),
+            ));
+
+            return $result;
+        } catch (\Throwable $e) {
+            event(LlmCallFailed::fromThrowable(
+                generationId: $generationId,
+                exception: $e,
+                durationMs: (int) $startedAt->diffInMilliseconds(now()),
+            ));
+            throw $e;
+        }
+    }
+
+    public function structured(StructuredRequest $request): StructuredResponse
+    {
+        $generationId = (string) Str::ulid();
+        $startedAt = now();
+        $provider = $this->resolveProviderName();
+        $model = $request->model();
+        $temperatureRaw = $request->temperature();
+        $temperature = is_float($temperatureRaw) ? $temperatureRaw : (is_int($temperatureRaw) ? (float) $temperatureRaw : null);
+        $maxTokens = $request->maxTokens();
+        $topPRaw = $request->topP();
+        $topP = is_float($topPRaw) ? $topPRaw : (is_int($topPRaw) ? (float) $topPRaw : null);
+        $messages = $this->messages($request);
+        $dedupeKey = GenerationFingerprint::make(
+            provider: $provider,
+            model: $model,
+            messages: $messages,
+            temperature: $temperature,
+            maxTokens: $maxTokens,
+            isStreaming: false,
+        );
+
+        event(new LlmCallStarted(
+            generationId: $generationId,
+            provider: $provider,
+            model: $model,
+            messages: Config::boolean('glint.recording.store_bodies', true) ? $messages : null,
+            temperature: $temperature,
+            maxTokens: $maxTokens,
+            isStreaming: false,
+            traceId: $this->context->traceId(),
+            parentSpanId: $this->context->activeSpanId(),
+            metadata: [
+                'glint_driver' => 'prism',
+                'glint_call_type' => 'structured',
+                'glint_dedupe_key' => $dedupeKey,
+            ],
+            topP: $topP,
+        ));
+
+        try {
+            $result = $this->assertInstanceOf($this->callInner('structured', $request), StructuredResponse::class);
+
+            [$promptTokens, $completionTokens] = $this->extractTokenUsage($result->usage);
             $completion = null;
-
-            if (is_object($result->usage)) {
-                $promptTokensRaw = property_exists($result->usage, 'promptTokens') ? $result->usage->promptTokens : 0;
-                $promptTokens = is_numeric($promptTokensRaw) ? (int) $promptTokensRaw : 0;
-                $completionTokensRaw = property_exists($result->usage, 'completionTokens') ? $result->usage->completionTokens : 0;
-                $completionTokens = is_numeric($completionTokensRaw) ? (int) $completionTokensRaw : 0;
-            }
-
-            $finishReasonRaw = $result->finishReason;
-            if (is_string($finishReasonRaw)) {
-                $finishReason = $finishReasonRaw;
-            } elseif ($finishReasonRaw instanceof \BackedEnum) {
-                $finishReason = (string) $finishReasonRaw->value;
-            } else {
-                $finishReason = 'stop';
-            }
-
             if (Config::boolean('glint.recording.store_bodies', true)) {
-                $completion = $result->text;
+                $completion = is_array($result->structured)
+                    ? (string) json_encode($result->structured)
+                    : $result->text;
             }
 
             event(new LlmCallFinished(
@@ -111,7 +159,59 @@ final class TracingProvider extends Provider
                 completion: $completion,
                 promptTokens: $promptTokens,
                 completionTokens: $completionTokens,
-                finishReason: $finishReason,
+                finishReason: $this->normalizeFinishReason($result->finishReason),
+                durationMs: (int) $startedAt->diffInMilliseconds(now()),
+            ));
+
+            return $result;
+        } catch (\Throwable $e) {
+            event(LlmCallFailed::fromThrowable(
+                generationId: $generationId,
+                exception: $e,
+                durationMs: (int) $startedAt->diffInMilliseconds(now()),
+            ));
+            throw $e;
+        }
+    }
+
+    public function embeddings(EmbeddingsRequest $request): EmbeddingsResponse
+    {
+        $generationId = (string) Str::ulid();
+        $startedAt = now();
+        $provider = $this->resolveProviderName();
+        $model = $request->model();
+
+        event(new LlmCallStarted(
+            generationId: $generationId,
+            provider: $provider,
+            model: $model,
+            messages: null,
+            temperature: null,
+            maxTokens: null,
+            isStreaming: false,
+            traceId: $this->context->traceId(),
+            parentSpanId: $this->context->activeSpanId(),
+            metadata: [
+                'glint_driver' => 'prism',
+                'glint_call_type' => 'embeddings',
+            ],
+            topP: null,
+        ));
+
+        try {
+            $result = $this->assertInstanceOf($this->callInner('embeddings', $request), EmbeddingsResponse::class);
+
+            $tokensRaw = is_object($result->usage) && property_exists($result->usage, 'tokens')
+                ? $result->usage->tokens
+                : 0;
+            $tokens = is_numeric($tokensRaw) ? (int) $tokensRaw : 0;
+
+            event(new LlmCallFinished(
+                generationId: $generationId,
+                completion: null,
+                promptTokens: $tokens,
+                completionTokens: 0,
+                finishReason: 'stop',
                 durationMs: (int) $startedAt->diffInMilliseconds(now()),
             ));
 
@@ -136,16 +236,6 @@ final class TracingProvider extends Provider
      * delegating here ensures the wrapped driver's own implementation (or
      * its own accurate "unsupported" error) is used instead.
      */
-    public function structured(StructuredRequest $request): StructuredResponse
-    {
-        return $this->assertInstanceOf($this->callInner('structured', $request), StructuredResponse::class);
-    }
-
-    public function embeddings(EmbeddingsRequest $request): EmbeddingsResponse
-    {
-        return $this->assertInstanceOf($this->callInner('embeddings', $request), EmbeddingsResponse::class);
-    }
-
     public function images(ImagesRequest $request): ImagesResponse
     {
         return $this->assertInstanceOf($this->callInner('images', $request), ImagesResponse::class);
@@ -208,6 +298,37 @@ final class TracingProvider extends Provider
         return $value;
     }
 
+    /**
+     * @return array{0: int, 1: int}
+     */
+    private function extractTokenUsage(mixed $usage): array
+    {
+        if (! is_object($usage)) {
+            return [0, 0];
+        }
+
+        $promptTokensRaw = property_exists($usage, 'promptTokens') ? $usage->promptTokens : 0;
+        $promptTokens = is_numeric($promptTokensRaw) ? (int) $promptTokensRaw : 0;
+
+        $completionTokensRaw = property_exists($usage, 'completionTokens') ? $usage->completionTokens : 0;
+        $completionTokens = is_numeric($completionTokensRaw) ? (int) $completionTokensRaw : 0;
+
+        return [$promptTokens, $completionTokens];
+    }
+
+    private function normalizeFinishReason(mixed $finishReason): string
+    {
+        if (is_string($finishReason)) {
+            return $finishReason;
+        }
+
+        if ($finishReason instanceof \BackedEnum) {
+            return (string) $finishReason->value;
+        }
+
+        return 'stop';
+    }
+
     private function resolveProviderName(): string
     {
         $class = get_class($this->inner);
@@ -237,7 +358,7 @@ final class TracingProvider extends Provider
     /**
      * @return array<int, array<string, mixed>>|null
      */
-    private function messages(TextRequest $request): ?array
+    private function messages(TextRequest|StructuredRequest $request): ?array
     {
         $messages = $request->messages();
 

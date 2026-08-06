@@ -29,6 +29,13 @@ final class TracingPrismManager extends PrismManager
         return new TracingProvider($provider, $this->app->make(TraceContext::class));
     }
 
+    public function extend(string $provider, \Closure $callback): static
+    {
+        $this->inner->extend($provider, $callback);
+
+        return $this;
+    }
+
     /** @param array<int, mixed> $arguments */
     public function __call(string $name, array $arguments): mixed
     {

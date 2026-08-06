@@ -1963,7 +1963,7 @@
 
         <div class="sidebar-footer">
             <div class="sidebar-version">
-                v{{ \Composer\InstalledVersions::getPrettyVersion('cybernerdie/glint') ?? 'dev' }}
+                v{{ \Composer\InstalledVersions::isInstalled('cybernerdie/glint') ? (\Composer\InstalledVersions::getPrettyVersion('cybernerdie/glint') ?? 'dev') : 'dev' }}
             </div>
         </div>
     </aside>

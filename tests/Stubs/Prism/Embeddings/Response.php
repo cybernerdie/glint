@@ -8,5 +8,6 @@ final class Response
 {
     public function __construct(
         public array $embeddings = [],
+        public mixed $usage = null,
     ) {}
 }

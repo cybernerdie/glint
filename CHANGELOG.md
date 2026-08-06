@@ -7,9 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-08-06
+
 ### Fixed
 
 - Prism driver: calls to `structured()`, `embeddings()`, `images()`, `moderation()`, `textToSpeech()`, `speechToText()`, and `stream()` on a traced provider no longer fail with `"X is not supported by TracingProvider"`. These are now correctly delegated to the wrapped provider, same as `text()`.
+- Prism driver: `structured()` and `embeddings()` now fire `LlmCallStarted`, `LlmCallFinished`, and `LlmCallFailed` events, so calls using those action types are recorded in Glint with full trace, cost, and latency data.
+- Prism driver: `TracingPrismManager::extend()` parameter type corrected from `callable` to `Closure` to match the real `PrismManager` signature, preventing a fatal declaration error on boot.
+- Dashboard: version display in the sidebar no longer throws `OutOfBoundsException` when the package is not registered in Composer's installed manifest (e.g. during package development).
 
 ## [1.0.0] - 2026-08-02
 
