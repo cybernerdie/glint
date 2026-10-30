@@ -21,6 +21,7 @@ use Cybernerdie\Glint\Pricing\PricingRegistry;
 use Cybernerdie\Glint\Recorders\GlintRecorder;
 use Cybernerdie\Glint\Support\Redactor;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 function makeRecorder(?TraceContext $context = null, ?PricingRegistry $pricing = null): GlintRecorder
 {
@@ -114,8 +115,8 @@ it('auto-creates a headless trace when traceId is null and no trace is open', fu
 
 it('attaches a headless tool span to its generation trace', function (): void {
     $recorder = makeRecorder(new TraceContext);
-    $generationId = '00000000000000gen-tool-trace';
-    $spanId = '00000000000000span-tool-trace';
+    $generationId = (string) Str::ulid();
+    $spanId = (string) Str::ulid();
 
     $recorder->handleLlmCallStarted(new LlmCallStarted(
         generationId: $generationId,
