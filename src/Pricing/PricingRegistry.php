@@ -152,11 +152,7 @@ final class PricingRegistry
      */
     private function mergeOverrides(array $prices): array
     {
-        $overrides = Config::get('glint.pricing_overrides', []);
-
-        if (! is_array($overrides)) {
-            return $prices;
-        }
+        $overrides = Config::array('glint.pricing_overrides', []);
 
         $parsedOverrides = $this->parsePrices($overrides);
 

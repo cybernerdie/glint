@@ -67,11 +67,7 @@ final class Redactor
     /** @return array<int, string> */
     private function patterns(): array
     {
-        $patterns = Config::get('glint.privacy.redact_patterns', []);
-
-        if (! is_array($patterns)) {
-            return [];
-        }
+        $patterns = Config::array('glint.privacy.redact_patterns', []);
 
         return array_values(array_filter($patterns, is_string(...)));
     }

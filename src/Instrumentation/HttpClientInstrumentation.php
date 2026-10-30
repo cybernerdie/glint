@@ -39,17 +39,16 @@ final class HttpClientInstrumentation implements InstrumentationDriver
 
     public function register(): void
     {
-        Event::listen(RequestSending::class, fn (RequestSending $e) => app(self::class)->onRequestSending($e));
-        Event::listen(ResponseReceived::class, fn (ResponseReceived $e) => app(self::class)->onResponseReceived($e));
-        Event::listen(ConnectionFailed::class, fn (ConnectionFailed $e) => app(self::class)->onConnectionFailed($e));
+        Event::listen(RequestSending::class, [self::class, 'onRequestSending']);
+        Event::listen(ResponseReceived::class, [self::class, 'onResponseReceived']);
+        Event::listen(ConnectionFailed::class, [self::class, 'onConnectionFailed']);
     }
 
     public function onRequestSending(RequestSending $event): void
     {
         $host = (string) parse_url($event->request->url(), PHP_URL_HOST);
         $port = parse_url($event->request->url(), PHP_URL_PORT);
-        $llmHostsRaw = Config::get('glint.llm_hosts', []);
-        $llmHosts = is_array($llmHostsRaw) ? $llmHostsRaw : [];
+        $llmHosts = Config::array('glint.llm_hosts', []);
         $hostWithPort = is_int($port) ? "{$host}:{$port}" : $host;
         $providerRaw = $llmHosts[$hostWithPort] ?? $llmHosts[$host] ?? null;
         $provider = is_string($providerRaw) ? $providerRaw : null;
@@ -81,7 +80,7 @@ final class HttpClientInstrumentation implements InstrumentationDriver
 
         try {
             $rawBody = $event->request->body();
-            if (! empty($rawBody)) {
+            if (filled($rawBody)) {
                 $decoded = json_decode($rawBody, true);
                 $body = is_array($decoded) ? $decoded : [];
             }

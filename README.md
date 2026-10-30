@@ -3,6 +3,7 @@
 [![Tests](https://github.com/cybernerdie/glint/actions/workflows/tests.yml/badge.svg)](https://github.com/cybernerdie/glint/actions/workflows/tests.yml)
 [![PHPStan](https://github.com/cybernerdie/glint/actions/workflows/phpstan.yml/badge.svg)](https://github.com/cybernerdie/glint/actions/workflows/phpstan.yml)
 [![Code Style](https://github.com/cybernerdie/glint/actions/workflows/pint.yml/badge.svg)](https://github.com/cybernerdie/glint/actions/workflows/pint.yml)
+[![Total Downloads](https://img.shields.io/packagist/dt/cybernerdie/glint)](https://packagist.org/packages/cybernerdie/glint)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE.md)
 
 Glint is an LLM observability package for Laravel applications. It records LLM calls in your application database and provides a local dashboard for traces, generations, cost, latency, errors, users, and alerts.

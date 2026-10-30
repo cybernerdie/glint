@@ -6,7 +6,7 @@ The Glint dashboard is available at `/glint` (configurable via `GLINT_PATH`).
 
 **Dashboard** (`/glint`) — Summary stats: total generations, total cost, average latency, error rate, recent traces, and cost by provider.
 
-**Traces** (`/glint/traces`) — All HTTP request traces. Each trace shows the route, user, duration, status, and how many LLM generations happened within it. Only available when `GlintMiddleware` is registered.
+**Traces** (`/glint/traces`) — Request traces with recorded generations or spans, plus manual and automatic traces. Request traces show the route, user, duration, and status when `GlintMiddleware` is registered.
 
 **Trace detail** (`/glint/traces/{id}`) — Expanded view of a single trace with all its child spans and generations.
 

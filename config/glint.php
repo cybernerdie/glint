@@ -84,6 +84,7 @@ return [
     'recording' => [
         'mode' => env('GLINT_MODE', 'queue'),
         'store_bodies' => filter_var(env('GLINT_STORE_BODIES', true), FILTER_VALIDATE_BOOLEAN),
+        'store_http_responses' => filter_var(env('GLINT_STORE_HTTP_RESPONSES', false), FILTER_VALIDATE_BOOLEAN),
         'max_completion_chars' => (int) env('GLINT_MAX_COMPLETION_CHARS', 65535),
     ],
 

@@ -9,7 +9,9 @@ use Cybernerdie\Glint\Context\TraceContext;
 use Cybernerdie\Glint\Enums\RecordStatus;
 use Cybernerdie\Glint\Models\GlintTrace;
 use Cybernerdie\Glint\Support\Redactor;
+use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
@@ -19,6 +21,7 @@ final readonly class GlintMiddleware
     public function __construct(
         private TraceContext $context,
         private Redactor $redactor,
+        private Application $app,
     ) {}
 
     /**
@@ -38,9 +41,7 @@ final readonly class GlintMiddleware
         $traceId = (string) Str::ulid();
         $startedAt = now();
 
-        $this->context->openTrace($traceId);
-
-        rescue(fn () => GlintTrace::create([
+        $this->context->openRequestTrace($traceId, fn (): bool => rescue(fn () => GlintTrace::create([
             'id' => $traceId,
             'name' => substr($request->route()?->getName() ?? $request->path(), 0, 255),
             'user_id' => is_scalar($key = $request->user()?->getKey()) ? substr((string) $key, 0, 255) : null,
@@ -50,11 +51,11 @@ final readonly class GlintMiddleware
                 'path' => substr($request->path(), 0, 2048),
                 'ip' => Config::boolean('glint.privacy.store_ip', false) ? $request->ip() : null,
                 'user_agent' => $this->sanitizeUserAgent($request->userAgent()),
-                'env' => app()->environment(),
+                'env' => $this->app->environment(),
             ],
             'status' => RecordStatus::Pending,
             'started_at' => $startedAt,
-        ]));
+        ]), null) !== null);
 
         try {
             $response = $next($request);
@@ -63,19 +64,34 @@ final readonly class GlintMiddleware
                 ? RecordStatus::Error
                 : RecordStatus::Success;
 
-            rescue(fn () => GlintTrace::where('id', $traceId)->update([
-                'status' => $status,
-                'ended_at' => now(),
-                'duration_ms' => (int) $startedAt->diffInMilliseconds(now()),
-                'output' => Config::boolean('glint.recording.store_bodies', true)
-                    ? substr($this->redactor->string($response->getContent() ?: '') ?? '', 0, 10000)
-                    : null,
-            ]));
+            $this->finishTrace($traceId, $startedAt, $status, $response);
 
             return $response;
+        } catch (\Throwable $exception) {
+            $this->finishTrace($traceId, $startedAt, RecordStatus::Error);
+
+            throw $exception;
         } finally {
-            $this->context->closeTrace();
+            $this->context->closeTrace($traceId);
         }
+    }
+
+    private function finishTrace(string $traceId, Carbon $startedAt, RecordStatus $status, ?Response $response = null): void
+    {
+        if (! $this->context->isTraceMaterialized($traceId)) {
+            return;
+        }
+
+        rescue(fn () => GlintTrace::where('id', $traceId)->update([
+            'status' => $status,
+            'ended_at' => now(),
+            'duration_ms' => (int) $startedAt->diffInMilliseconds(now()),
+            'output' => $response !== null
+                && Config::boolean('glint.recording.store_bodies', true)
+                && Config::boolean('glint.recording.store_http_responses', false)
+                ? substr($this->redactor->string($response->getContent() ?: '') ?? '', 0, 10000)
+                : null,
+        ]));
     }
 
     private function sanitizeUserAgent(?string $userAgent): ?string

@@ -22,7 +22,7 @@ final readonly class CostBreakdownQuery
         return GlintGeneration::query()
             ->selectRaw('provider, model, SUM(cost_usd) as total_cost, COUNT(*) as total_requests, SUM(total_tokens) as total_tokens')
             ->whereNotNull('cost_usd')
-            ->when($this->provider !== '', fn ($q) => $q->where('provider', $this->provider))
+            ->when(filled($this->provider), fn ($q) => $q->where('provider', $this->provider))
             ->when($this->fromDt, fn ($q) => $q->where('started_at', '>=', $this->fromDt))
             ->when($this->toDt, fn ($q) => $q->where('started_at', '<=', $this->toDt))
             ->groupBy('provider', 'model')

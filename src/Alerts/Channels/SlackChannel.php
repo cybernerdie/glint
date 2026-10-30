@@ -4,22 +4,27 @@ declare(strict_types=1);
 
 namespace Cybernerdie\Glint\Alerts\Channels;
 
+use Cybernerdie\Glint\Enums\AlertChannel;
 use Cybernerdie\Glint\Enums\AlertRuleType;
 use Cybernerdie\Glint\Events\GlintAlertTriggered;
 use Cybernerdie\Glint\Models\GlintAlertRule;
+use Cybernerdie\Glint\Notifications\GlintAlertNotification;
 use Illuminate\Support\Facades\Http;
 
 final class SlackChannel
 {
-    public function handle(GlintAlertTriggered $event, GlintAlertRule $rule): void
+    public function send(GlintAlertRule $rule, GlintAlertNotification $notification): void
     {
-        if (! is_string($rule->slack_webhook_url) || $rule->slack_webhook_url === '') {
+        $destination = $rule->notificationDestination(AlertChannel::Slack);
+
+        if ($destination === null) {
             return;
         }
 
+        $event = $notification->event;
         $value = $this->formatValue($event);
 
-        Http::timeout(10)->post($rule->slack_webhook_url, [
+        Http::timeout(10)->post($destination, [
             'text' => "🚨 *Glint Alert: {$rule->name}*",
             'blocks' => [
                 [

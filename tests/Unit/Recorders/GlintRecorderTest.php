@@ -112,6 +112,52 @@ it('auto-creates a headless trace when traceId is null and no trace is open', fu
         ->and($trace->status)->toBe(RecordStatus::Pending);
 });
 
+it('attaches a headless tool span to its generation trace', function (): void {
+    $recorder = makeRecorder(new TraceContext);
+    $generationId = '00000000000000gen-tool-trace';
+    $spanId = '00000000000000span-tool-trace';
+
+    $recorder->handleLlmCallStarted(new LlmCallStarted(
+        generationId: $generationId,
+        provider: 'openai',
+        model: 'gpt-4o',
+        messages: null,
+        temperature: null,
+        maxTokens: null,
+        isStreaming: false,
+    ));
+
+    $recorder->handleLlmToolCalled(new LlmToolCalled(
+        spanId: $spanId,
+        traceId: $spanId,
+        parentSpanId: $generationId,
+        toolName: 'search',
+        arguments: [],
+        result: null,
+        durationMs: 10,
+    ));
+
+    $generation = GlintGeneration::findOrFail($generationId);
+    expect(GlintSpan::findOrFail($spanId)->trace_id)->toBe($generation->trace_id)
+        ->and(GlintTrace::where('id', $spanId)->exists())->toBeFalse();
+});
+
+it('does not persist a headless tool when its generation was filtered out', function (): void {
+    $spanId = '000000000000span-filtered-tool';
+
+    makeRecorder(new TraceContext)->handleLlmToolCalled(new LlmToolCalled(
+        spanId: $spanId,
+        traceId: $spanId,
+        parentSpanId: 'missing-generation',
+        toolName: 'search',
+        arguments: [],
+        result: null,
+        durationMs: 10,
+    ));
+
+    expect(GlintSpan::where('id', $spanId)->exists())->toBeFalse();
+});
+
 it('closes the headless trace with status=success when LlmCallFinished fires', function () {
     $context = new TraceContext;
     $recorder = makeRecorder($context);
@@ -441,6 +487,50 @@ it('redacts tool input output and metadata on LlmToolCalled', function () {
         ->and($row->metadata['header'])->toBe('[REDACTED]');
 });
 
+it('does not store event prompt completion or tool bodies when body storage is disabled', function () {
+    config()->set('glint.recording.store_bodies', false);
+    $recorder = makeRecorder();
+
+    $recorder->handleLlmCallStarted(new LlmCallStarted(
+        generationId: '0000000gen-no-event-bodies',
+        provider: 'openai',
+        model: 'gpt-4o',
+        messages: [['role' => 'user', 'content' => 'Private prompt']],
+        temperature: null,
+        maxTokens: null,
+        isStreaming: false,
+        traceId: '000000000000trace-test-001',
+    ));
+
+    $recorder->handleLlmCallFinished(new LlmCallFinished(
+        generationId: '0000000gen-no-event-bodies',
+        completion: 'Private answer',
+        promptTokens: 12,
+        completionTokens: 8,
+        finishReason: 'stop',
+        durationMs: 100,
+    ));
+
+    $recorder->handleLlmToolCalled(new LlmToolCalled(
+        spanId: '000000span-no-event-bodies',
+        traceId: '000000000000trace-test-001',
+        parentSpanId: null,
+        toolName: 'lookup',
+        arguments: ['query' => 'Private query'],
+        result: ['answer' => 'Private result'],
+        durationMs: 10,
+    ));
+
+    $generation = GlintGeneration::find('0000000gen-no-event-bodies');
+    $span = GlintSpan::find('000000span-no-event-bodies');
+
+    expect($generation->prompt)->toBeNull()
+        ->and($generation->completion)->toBeNull()
+        ->and($generation->total_tokens)->toBe(20)
+        ->and($span->input)->toBeNull()
+        ->and($span->output)->toBeNull();
+});
+
 it('is silent when a duplicate generation_id causes a DB error on handleLlmCallStarted', function () {
     $context = tap(new TraceContext, fn ($ctx) => $ctx->openTrace('00000000000000trace-silent'));
     $pricing = new PricingRegistry(__DIR__.'/../../../pricing/providers.json');
@@ -496,7 +586,7 @@ it('is silent when handleLlmCallFailed is called with unknown generation_id', fu
 });
 
 it('skips recording when a filter rejects the entry', function () {
-    GlintManager::filter(
+    app(GlintManager::class)->filter(
         fn (FilterEntry $e) => $e->provider !== 'openai'
     );
 
@@ -723,7 +813,7 @@ it('keeps aggregate counters consistent across successful and failed generations
 it('aliases duplicate generation starts with the same dedupe key', function () {
     $recorder = makeRecorder();
 
-    $metadata = ['glint_dedupe_key' => hash('sha256', 'same-request')];
+    $dedupeKey = hash('sha256', 'same-request');
 
     $recorder->handleLlmCallStarted(new LlmCallStarted(
         generationId: '000000gen-dedupe-canonical',
@@ -734,7 +824,7 @@ it('aliases duplicate generation starts with the same dedupe key', function () {
         maxTokens: null,
         isStreaming: false,
         traceId: '000000000000trace-test-001',
-        metadata: $metadata,
+        metadata: ['glint_dedupe_key' => $dedupeKey, 'glint_driver' => 'prism'],
     ));
 
     $recorder->handleLlmCallStarted(new LlmCallStarted(
@@ -746,17 +836,72 @@ it('aliases duplicate generation starts with the same dedupe key', function () {
         maxTokens: null,
         isStreaming: false,
         traceId: '000000000000trace-test-001',
-        metadata: $metadata,
+        metadata: ['glint_dedupe_key' => $dedupeKey, 'glint_driver' => 'http'],
     ));
 
-    expect(GlintGeneration::where('dedupe_key', $metadata['glint_dedupe_key'])->count())->toBe(1)
+    expect(GlintGeneration::where('dedupe_key', $dedupeKey)->count())->toBe(1)
         ->and(GlintGeneration::where('id', '000000gen-dedupe-duplicate')->exists())->toBeFalse();
+});
+
+it('keeps identical calls from the same driver as separate generations', function () {
+    $recorder = makeRecorder();
+    $metadata = [
+        'glint_dedupe_key' => hash('sha256', 'repeated-prompt'),
+        'glint_driver' => 'laravel-ai',
+    ];
+
+    foreach (['000000gen-repeat-first', '000000gen-repeat-second'] as $generationId) {
+        $recorder->handleLlmCallStarted(new LlmCallStarted(
+            generationId: $generationId,
+            provider: 'openai',
+            model: 'gpt-4o',
+            messages: null,
+            temperature: null,
+            maxTokens: null,
+            isStreaming: false,
+            traceId: '000000000000trace-test-001',
+            metadata: $metadata,
+        ));
+    }
+
+    expect(GlintGeneration::where('dedupe_key', $metadata['glint_dedupe_key'])->count())->toBe(2);
+});
+
+it('keeps identical calls on separate request traces', function () {
+    $recorder = makeRecorder();
+    $dedupeKey = hash('sha256', 'separate-requests');
+
+    $recorder->handleLlmCallStarted(new LlmCallStarted(
+        generationId: '000000gen-first-request',
+        provider: 'openai',
+        model: 'gpt-4o',
+        messages: null,
+        temperature: null,
+        maxTokens: null,
+        isStreaming: false,
+        traceId: '000000000000trace-test-001',
+        metadata: ['glint_dedupe_key' => $dedupeKey, 'glint_driver' => 'prism'],
+    ));
+
+    $recorder->handleLlmCallStarted(new LlmCallStarted(
+        generationId: '000000gen-next-request',
+        provider: 'openai',
+        model: 'gpt-4o',
+        messages: null,
+        temperature: null,
+        maxTokens: null,
+        isStreaming: false,
+        traceId: '000000000000trace-test-002',
+        metadata: ['glint_dedupe_key' => $dedupeKey, 'glint_driver' => 'http'],
+    ));
+
+    expect(GlintGeneration::where('dedupe_key', $dedupeKey)->count())->toBe(2);
 });
 
 it('maps duplicate terminal events to the canonical generation without double-counting', function () {
     $recorder = makeRecorder();
 
-    $metadata = ['glint_dedupe_key' => hash('sha256', 'same-terminal-request')];
+    $dedupeKey = hash('sha256', 'same-terminal-request');
 
     $recorder->handleLlmCallStarted(new LlmCallStarted(
         generationId: '0000gen-terminal-canonical',
@@ -767,7 +912,7 @@ it('maps duplicate terminal events to the canonical generation without double-co
         maxTokens: null,
         isStreaming: false,
         traceId: '000000000000trace-test-001',
-        metadata: $metadata,
+        metadata: ['glint_dedupe_key' => $dedupeKey, 'glint_driver' => 'prism'],
     ));
 
     $recorder->handleLlmCallStarted(new LlmCallStarted(
@@ -779,7 +924,7 @@ it('maps duplicate terminal events to the canonical generation without double-co
         maxTokens: null,
         isStreaming: false,
         traceId: '000000000000trace-test-001',
-        metadata: $metadata,
+        metadata: ['glint_dedupe_key' => $dedupeKey, 'glint_driver' => 'http'],
     ));
 
     $recorder->handleLlmCallFinished(new LlmCallFinished(

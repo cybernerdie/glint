@@ -34,7 +34,7 @@ final readonly class TracePercentilesQuery
             if ($row->duration_ms === null) {
                 continue;
             }
-            $grouped[trim((string) $row->name) !== '' ? (string) $row->name : 'unnamed'][] = $row->duration_ms;
+            $grouped[filled($row->name) ? (string) $row->name : 'unnamed'][] = $row->duration_ms;
         }
 
         /** @var list<PercentileRow> $result */

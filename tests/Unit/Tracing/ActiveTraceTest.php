@@ -3,12 +3,14 @@
 declare(strict_types=1);
 
 use Carbon\Carbon;
+use Cybernerdie\Glint\Aggregates\GenerationAggregateRecorder;
 use Cybernerdie\Glint\Context\TraceContext;
 use Cybernerdie\Glint\Enums\RecordStatus;
 use Cybernerdie\Glint\Models\GlintGeneration;
 use Cybernerdie\Glint\Models\GlintSpan;
 use Cybernerdie\Glint\Models\GlintTrace;
 use Cybernerdie\Glint\Pricing\PricingRegistry;
+use Cybernerdie\Glint\Support\Redactor;
 use Cybernerdie\Glint\Tracing\ActiveGeneration;
 use Cybernerdie\Glint\Tracing\ActiveSpan;
 use Cybernerdie\Glint\Tracing\ActiveTrace;
@@ -21,7 +23,7 @@ function makeActiveTrace(?string $traceId = null): array
     $context = app(TraceContext::class);
     $context->openTrace($traceId);
     $pricing = app(PricingRegistry::class);
-    $trace = new ActiveTrace($traceId, $context, Carbon::now(), $pricing);
+    $trace = new ActiveTrace($traceId, $context, Carbon::now(), $pricing, app(Redactor::class), app(GenerationAggregateRecorder::class));
 
     return [$trace, $traceId, $context];
 }
@@ -69,7 +71,7 @@ it('tag returns self when trace row does not exist', function (): void {
     $context = app(TraceContext::class);
     $context->openTrace($fakeId);
     $pricing = app(PricingRegistry::class);
-    $trace = new ActiveTrace($fakeId, $context, Carbon::now(), $pricing);
+    $trace = new ActiveTrace($fakeId, $context, Carbon::now(), $pricing, app(Redactor::class), app(GenerationAggregateRecorder::class));
 
     $result = $trace->tag('key', 'value');
 
@@ -110,6 +112,26 @@ it('span creates a span row and calls callback with ActiveSpan', function (): vo
         ->and(GlintSpan::where('trace_id', $traceId)->count())->toBe(1);
 });
 
+it('attaches nested work to the active span and restores context afterwards', function (): void {
+    [$trace, $traceId, $context] = makeActiveTrace();
+
+    $trace->span('outer', function () use ($trace, $context): void {
+        $parentSpanId = $context->activeSpanId();
+
+        $trace->span('inner', function () use ($context): void {
+            expect($context->activeSpanId())->not->toBeNull();
+        });
+
+        expect($context->activeSpanId())->toBe($parentSpanId);
+    });
+
+    $outer = GlintSpan::where('trace_id', $traceId)->where('name', 'outer')->first();
+    $inner = GlintSpan::where('trace_id', $traceId)->where('name', 'inner')->first();
+
+    expect($inner->parent_span_id)->toBe($outer->id)
+        ->and($context->activeSpanId())->toBeNull();
+});
+
 it('span auto-ends the span after callback', function (): void {
     [$trace, $traceId] = makeActiveTrace();
 
@@ -146,6 +168,16 @@ it('generation passes ActiveGeneration to callback', function (): void {
     expect($genRef)->toBeInstanceOf(ActiveGeneration::class);
 });
 
+it('activates its generation span during the callback', function (): void {
+    [$trace, $traceId, $context] = makeActiveTrace();
+
+    $trace->generation('outer-generation', function () use ($context): void {
+        expect($context->activeSpanId())->not->toBeNull();
+    });
+
+    expect($context->activeSpanId())->toBeNull();
+});
+
 it('span marks span as error and re-throws when callback throws', function (): void {
     [$trace, $traceId] = makeActiveTrace();
 
@@ -157,6 +189,23 @@ it('span marks span as error and re-throws when callback throws', function (): v
     expect($span->status)->toBe(RecordStatus::Error)
         ->and($span->ended_at)->not->toBeNull()
         ->and($span->duration_ms)->toBeGreaterThanOrEqual(0);
+});
+
+it('does not reopen a failed callback span when its handle is retained', function (): void {
+    [$trace, $traceId] = makeActiveTrace();
+    $handle = null;
+
+    expect(function () use ($trace, &$handle): void {
+        $trace->span('failing', function ($span) use (&$handle): never {
+            $handle = $span;
+
+            throw new RuntimeException('span failed');
+        });
+    })->toThrow(RuntimeException::class);
+
+    $handle->end();
+
+    expect(GlintSpan::where('trace_id', $traceId)->firstOrFail()->status)->toBe(RecordStatus::Error);
 });
 
 it('generation stores provider and model when supplied', function (): void {
@@ -228,7 +277,7 @@ it('tags() returns self when trace row does not exist', function (): void {
     $context = app(TraceContext::class);
     $context->openTrace($fakeId);
     $pricing = app(PricingRegistry::class);
-    $trace = new ActiveTrace($fakeId, $context, Carbon::now(), $pricing);
+    $trace = new ActiveTrace($fakeId, $context, Carbon::now(), $pricing, app(Redactor::class), app(GenerationAggregateRecorder::class));
 
     $result = $trace->tags(['env' => 'testing', 'version' => '1']);
 
@@ -237,7 +286,7 @@ it('tags() returns self when trace row does not exist', function (): void {
 
 it('ActiveSpan tags() returns self when span row does not exist', function (): void {
     $fakeSpanId = Str::ulid()->toString();
-    $span = new ActiveSpan($fakeSpanId, Carbon::now());
+    $span = new ActiveSpan($fakeSpanId, Carbon::now(), app(Redactor::class));
 
     $result = $span->tags(['env' => 'testing']);
 
@@ -247,7 +296,7 @@ it('ActiveSpan tags() returns self when span row does not exist', function (): v
 it('ActiveGeneration tags() returns self when generation row does not exist', function (): void {
     $fakeGenId = Str::ulid()->toString();
     $pricing = app(PricingRegistry::class);
-    $gen = new ActiveGeneration($fakeGenId, $pricing, 'openai', 'gpt-4o', Carbon::now());
+    $gen = new ActiveGeneration($fakeGenId, $pricing, 'openai', 'gpt-4o', Carbon::now(), app(Redactor::class), app(GenerationAggregateRecorder::class));
 
     $result = $gen->tags(['env' => 'testing']);
 

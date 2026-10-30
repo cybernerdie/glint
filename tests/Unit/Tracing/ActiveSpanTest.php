@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Carbon\Carbon;
 use Cybernerdie\Glint\Enums\RecordStatus;
 use Cybernerdie\Glint\Models\GlintSpan;
+use Cybernerdie\Glint\Support\Redactor;
 use Cybernerdie\Glint\Tracing\ActiveSpan;
 use Illuminate\Support\Str;
 
@@ -12,7 +13,7 @@ function makeActiveSpan(?string $spanId = null): array
 {
     $spanId ??= Str::ulid()->toString();
     GlintSpan::factory()->pending()->create(['id' => $spanId, 'name' => 'test-span']);
-    $span = new ActiveSpan($spanId, Carbon::now());
+    $span = new ActiveSpan($spanId, Carbon::now(), app(Redactor::class));
 
     return [$span, $spanId];
 }
@@ -57,7 +58,7 @@ it('tag appends to existing tags', function (): void {
 
 it('tag returns self when span row does not exist', function (): void {
     $fakeId = Str::ulid()->toString();
-    $span = new ActiveSpan($fakeId, Carbon::now());
+    $span = new ActiveSpan($fakeId, Carbon::now(), app(Redactor::class));
 
     $result = $span->tag('key', 'value');
 

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Cybernerdie\Glint\Context\TraceContext;
 use Cybernerdie\Glint\Instrumentation\Prism\TracingPrismManager;
 use Cybernerdie\Glint\Instrumentation\Prism\TracingProvider;
 use Prism\Prism\PrismManager;
@@ -9,7 +10,7 @@ use Prism\Prism\Providers\Anthropic;
 
 it('resolve wraps the inner provider in a TracingProvider', function () {
     $inner = new PrismManager(app());
-    $manager = new TracingPrismManager($inner, app());
+    $manager = new TracingPrismManager($inner, app(), fn (): TraceContext => app(TraceContext::class));
 
     $result = $manager->resolve('openai');
 
@@ -18,7 +19,7 @@ it('resolve wraps the inner provider in a TracingProvider', function () {
 
 it('extend delegates to inner PrismManager and returns self', function () {
     $inner = new PrismManager(app());
-    $manager = new TracingPrismManager($inner, app());
+    $manager = new TracingPrismManager($inner, app(), fn (): TraceContext => app(TraceContext::class));
 
     $result = $manager->extend('custom', fn () => new Anthropic);
 
@@ -34,7 +35,7 @@ it('__call forwards unknown method calls to inner manager', function () {
         }
     };
 
-    $manager = new TracingPrismManager($inner, app());
+    $manager = new TracingPrismManager($inner, app(), fn (): TraceContext => app(TraceContext::class));
 
     $result = $manager->testMethod('hello');
 

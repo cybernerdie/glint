@@ -3,9 +3,11 @@
 declare(strict_types=1);
 
 use Cybernerdie\Glint\Context\TraceContext;
+use Cybernerdie\Glint\Events\LlmCallFailed;
 use Cybernerdie\Glint\Events\LlmCallFinished;
 use Cybernerdie\Glint\Events\LlmCallStarted;
 use Cybernerdie\Glint\Events\LlmToolCalled;
+use Cybernerdie\Glint\Instrumentation\LaravelAi\GlintPromptMiddleware;
 use Cybernerdie\Glint\Instrumentation\LaravelAiInstrumentation;
 use Illuminate\Support\Facades\Event;
 use Laravel\Ai\AgentPrompt;
@@ -17,6 +19,10 @@ use Laravel\Ai\Events\PromptingAgent;
 use Laravel\Ai\Events\StreamingAgent;
 use Laravel\Ai\Events\ToolInvoked;
 use Laravel\Ai\Meta;
+use Laravel\Ai\Prompts\AgentPrompt as MiddlewarePrompt;
+use Laravel\Ai\Responses\Data\Meta as StreamMeta;
+use Laravel\Ai\Responses\StreamableAgentResponse;
+use Laravel\Ai\Streaming\Events\Error as StreamError;
 use Laravel\Ai\Usage;
 
 it('isAvailable returns true when the AI stub class exists', function () {
@@ -29,6 +35,26 @@ it('register attaches event listeners without throwing', function () {
     $instrumentation = new LaravelAiInstrumentation(new TraceContext);
 
     expect(fn () => $instrumentation->register())->not->toThrow(Throwable::class);
+});
+
+it('keeps invocation state in the current scoped listener', function (): void {
+    Event::fake([LlmCallStarted::class, LlmCallFinished::class]);
+    app(LaravelAiInstrumentation::class)->register();
+
+    $prompt = new AgentPrompt(prompt: 'Hello', model: 'gpt-4o');
+    Event::dispatch(new PromptingAgent('scoped-invocation', $prompt));
+    Event::dispatch(new AgentPrompted(
+        'scoped-invocation',
+        $prompt,
+        new AgentResponse(
+            text: 'Answer',
+            usage: new Usage(promptTokens: 10, completionTokens: 5),
+            meta: new Meta,
+        ),
+    ));
+
+    Event::assertDispatched(LlmCallStarted::class);
+    Event::assertDispatched(LlmCallFinished::class);
 });
 
 it('onPrompting fires LlmCallStarted with resolved provider and model', function () {
@@ -180,6 +206,115 @@ it('onAgentPrompted does nothing for untracked invocation IDs', function () {
     $instrumentation->onAgentPrompted(new AgentPrompted('inv-unknown', $prompt, $response));
 
     Event::assertNotDispatched(LlmCallFinished::class);
+});
+
+it('records the actual exception for the matching Laravel AI prompt', function () {
+    Event::fake();
+
+    $instrumentation = new LaravelAiInstrumentation(new TraceContext);
+    $middleware = new GlintPromptMiddleware($instrumentation);
+    $prompt = new MiddlewarePrompt(prompt: 'Hello', model: 'gpt-4o');
+    $otherPrompt = new MiddlewarePrompt(prompt: 'Other', model: 'gpt-4o');
+    $error = new RuntimeException('Provider rejected request');
+
+    $instrumentation->onPrompting(new PromptingAgent('invocation', $prompt));
+    $instrumentation->onPrompting(new PromptingAgent('other-invocation', $otherPrompt));
+
+    expect(fn () => $middleware->handle($prompt, fn () => throw $error))->toThrow($error);
+
+    Event::assertDispatchedTimes(LlmCallFailed::class, 1);
+    Event::assertDispatched(LlmCallFailed::class, fn (LlmCallFailed $event) => $event->errorMessage === 'Provider rejected request'
+        && $event->errorClass === RuntimeException::class);
+
+    $instrumentation->onPromptFailed($prompt, $error);
+    Event::assertDispatchedTimes(LlmCallFailed::class, 1);
+
+    $instrumentation->onAgentPrompted(new AgentPrompted('other-invocation', $otherPrompt, new AgentResponse(
+        text: 'Done',
+        usage: new Usage,
+        meta: new Meta,
+    )));
+
+    Event::assertDispatchedTimes(LlmCallFinished::class, 1);
+});
+
+it('records a streaming exception when the response is consumed', function () {
+    Event::fake();
+
+    $instrumentation = new LaravelAiInstrumentation(new TraceContext);
+    $middleware = new GlintPromptMiddleware($instrumentation);
+    $provider = new class
+    {
+        public function name(): string
+        {
+            return 'openai';
+        }
+    };
+    $prompt = new MiddlewarePrompt(prompt: 'Stream', model: 'gpt-4o', providerClass: $provider);
+    $exception = new RuntimeException('Stream disconnected');
+    $response = new StreamableAgentResponse('stream-invocation', function () use ($instrumentation, $prompt, $exception) {
+        $instrumentation->onPrompting(new StreamingAgent('stream-invocation', $prompt));
+
+        yield 'first chunk';
+
+        throw $exception;
+    }, new StreamMeta('openai', 'gpt-4o'));
+
+    $wrapped = $middleware->handle($prompt, fn () => $response);
+
+    expect($wrapped)->toBeInstanceOf(StreamableAgentResponse::class)
+        ->and(fn () => iterator_to_array($wrapped))->toThrow($exception);
+
+    Event::assertDispatchedTimes(LlmCallFailed::class, 1);
+    Event::assertDispatched(LlmCallFailed::class, fn (LlmCallFailed $event) => $event->errorMessage === 'Stream disconnected');
+});
+
+it('marks a terminal Laravel AI stream error event as failed', function () {
+    Event::fake();
+
+    $instrumentation = new LaravelAiInstrumentation(new TraceContext);
+    $middleware = new GlintPromptMiddleware($instrumentation);
+    $provider = new class
+    {
+        public function name(): string
+        {
+            return 'openai';
+        }
+    };
+    $prompt = new MiddlewarePrompt(prompt: 'Stream', model: 'gpt-4o', providerClass: $provider);
+    $response = new StreamableAgentResponse('error-invocation', function () use ($instrumentation, $prompt) {
+        $instrumentation->onPrompting(new StreamingAgent('error-invocation', $prompt));
+
+        yield new StreamError('Provider refused stream', 'provider_error');
+    }, new StreamMeta('openai', 'gpt-4o'));
+
+    $wrapped = $middleware->handle($prompt, fn () => $response);
+    iterator_to_array($wrapped);
+
+    Event::assertDispatched(LlmCallFailed::class, fn (LlmCallFailed $event) => $event->errorMessage === 'Provider refused stream'
+        && $event->errorClass === 'LaravelAiStreamError'
+        && $event->metadata['stream_error_type'] === 'provider_error');
+});
+
+it('preserves successful stream events and provider metadata', function () {
+    Event::fake();
+
+    $instrumentation = new LaravelAiInstrumentation(new TraceContext);
+    $middleware = new GlintPromptMiddleware($instrumentation);
+    $prompt = new MiddlewarePrompt(prompt: 'Stream', model: 'gpt-4o');
+    $response = new StreamableAgentResponse('successful-stream', function () {
+        yield 'first chunk';
+        yield 'second chunk';
+    }, new StreamMeta('openai', 'gpt-4o'));
+
+    $wrapped = $middleware->handle($prompt, fn () => $response);
+    $events = iterator_to_array($wrapped);
+
+    expect($events)->toBe(['first chunk', 'second chunk'])
+        ->and($wrapped->meta->provider)->toBe('openai')
+        ->and($wrapped->meta->model)->toBe('gpt-4o');
+
+    Event::assertNotDispatched(LlmCallFailed::class);
 });
 
 it('onAgentPrompted works for AgentStreamed events', function () {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cybernerdie\Glint\Events;
 
+use Cybernerdie\Glint\Enums\AlertChannel;
 use Cybernerdie\Glint\Enums\AlertRuleType;
 
 final readonly class GlintAlertTriggered
@@ -14,7 +15,7 @@ final readonly class GlintAlertTriggered
         public float $threshold,
         public float $currentValue,
         public string $period,
-        public string $channel,
+        public AlertChannel $channel,
         public int $alertEventId,
     ) {}
 }

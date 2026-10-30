@@ -23,6 +23,28 @@ See [Drivers](drivers.md) for the full reference on each driver and how to add a
 
 Auto-instrumentation is driver-specific. If your SDK uses its own Guzzle, PSR-18, cURL, or provider-managed transport, Glint may not see the call automatically. Use [manual tracing](manual-tracing.md) for unsupported clients.
 
+### Laravel AI failures
+
+Laravel AI does not emit a terminal event when an agent prompt or stream throws. Add Glint's prompt middleware to each agent whose failures you want recorded:
+
+```php
+use Cybernerdie\Glint\Instrumentation\LaravelAi\GlintPromptMiddleware;
+use Laravel\Ai\Contracts\Agent;
+use Laravel\Ai\Contracts\HasMiddleware;
+use Laravel\Ai\Promptable;
+
+final class MyAgent implements Agent, HasMiddleware
+{
+    use Promptable;
+
+    public function middleware(): array
+    {
+        return [GlintPromptMiddleware::class];
+    }
+}
+```
+
+If the agent already implements `HasMiddleware`, append `GlintPromptMiddleware::class` to its existing `middleware()` array. Put it last so it receives the prompt that Laravel AI sends to the provider. The middleware records the original exception on the matching generation, then rethrows it. It also wraps stream iteration so thrown errors and terminal stream error events close the matching generation as failed. A stream that is never consumed has not made an LLM call and has no generation to close.
 ## HTTP request context (optional)
 
 Register `GlintMiddleware` globally if you want LLM calls grouped by the HTTP request that triggered them:
@@ -34,7 +56,7 @@ Register `GlintMiddleware` globally if you want LLM calls grouped by the HTTP re
 })
 ```
 
-Without it, generations are still recorded, but they do not have a parent trace showing which route or user triggered them.
+Glint creates a request trace only when a generation or span is recorded during that request. Other requests do not create trace rows. Without the middleware, generations are still recorded, but they do not have a parent trace showing which route or user triggered them.
 
 ## Background jobs and console commands
 

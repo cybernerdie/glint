@@ -40,7 +40,7 @@ Open the Glint dashboard and click **Alerts** in the sidebar, then **New Rule**.
 |---------|---------|
 | Log | Nothing — always available |
 | Mail | `illuminate/mail` configured; enter a recipient email |
-| Slack | `laravel/slack-notification-channel` installed |
+| Slack | A Slack webhook URL |
 | Webhook | Any reachable URL; Glint POSTs a JSON payload |
 
 **Cooldown** — Minimum minutes between repeated firings of the same rule. Prevents alert storms during a sustained spike. Default: 60 minutes.
@@ -74,7 +74,7 @@ Event::listen(GlintAlertTriggered::class, function (GlintAlertTriggered $event) 
     // $event->threshold     float — the configured limit
     // $event->currentValue  float — the measured value that triggered the rule
     // $event->period        'hour' | 'day' | 'week' | 'month'
-    // $event->channel       string — the channel Glint attempted to deliver to
+    // $event->channel       AlertChannel enum — the selected delivery channel
     // $event->alertRuleId   int
     // $event->alertEventId  int
 });

@@ -31,6 +31,7 @@ final class RecordLlmCallJob implements ShouldQueue
 
     public function __construct(
         private readonly LlmCallStarted|LlmCallFinished|LlmToolCalled|LlmCallFailed $event,
+        private readonly bool $filterChecked = false,
     ) {}
 
     public function handle(GlintRecorder $recorder): void
@@ -42,7 +43,7 @@ final class RecordLlmCallJob implements ShouldQueue
         }
 
         match (true) {
-            $this->event instanceof LlmCallStarted => $recorder->handleLlmCallStarted($this->event),
+            $this->event instanceof LlmCallStarted => $recorder->handleLlmCallStarted($this->event, $this->filterChecked),
             $this->event instanceof LlmCallFinished => $recorder->handleLlmCallFinished($this->event),
             $this->event instanceof LlmToolCalled => $recorder->handleLlmToolCalled($this->event),
             $this->event instanceof LlmCallFailed => $recorder->handleLlmCallFailed($this->event),
@@ -51,15 +52,17 @@ final class RecordLlmCallJob implements ShouldQueue
 
     private function shouldWaitForStartedEvent(): bool
     {
-        if (! $this->event instanceof LlmCallFinished && ! $this->event instanceof LlmCallFailed) {
-            return false;
-        }
-
         if ($this->attempts() >= $this->tries) {
             return false;
         }
 
-        return ! GlintGeneration::where('id', $this->event->generationId)->exists();
+        $generationId = match (true) {
+            $this->event instanceof LlmCallFinished, $this->event instanceof LlmCallFailed => $this->event->generationId,
+            $this->event instanceof LlmToolCalled && $this->event->traceId === $this->event->spanId => $this->event->parentSpanId,
+            default => null,
+        };
+
+        return $generationId !== null && ! GlintGeneration::where('id', $generationId)->exists();
     }
 
     public function failed(\Throwable $e): void

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Cybernerdie\Glint\Enums\AlertChannel;
 use Cybernerdie\Glint\Enums\AlertRuleType;
 use Cybernerdie\Glint\Events\GlintAlertTriggered;
 use Cybernerdie\Glint\Mail\GlintAlertMail;
@@ -15,7 +16,7 @@ function makeAlertEvent(GlintAlertRule $rule, AlertRuleType $type = AlertRuleTyp
         threshold: 10.0,
         currentValue: 25.0,
         period: 'day',
-        channel: 'mail',
+        channel: AlertChannel::Mail,
         alertEventId: 1,
     );
 }

@@ -8,7 +8,9 @@ use Cybernerdie\Glint\Events\LlmCallFailed;
 use Cybernerdie\Glint\Events\LlmCallFinished;
 use Cybernerdie\Glint\Events\LlmCallStarted;
 use Cybernerdie\Glint\Events\LlmToolCalled;
+use Cybernerdie\Glint\Facades\Glint;
 use Cybernerdie\Glint\Filtering\FilterEntry;
+use Cybernerdie\Glint\Filtering\GlintFilterRegistry;
 use Cybernerdie\Glint\GlintManager;
 use Cybernerdie\Glint\Testing\FakeGeneration;
 use Cybernerdie\Glint\Testing\FakeSpan;
@@ -18,19 +20,19 @@ use Cybernerdie\Glint\Testing\RecordingStore;
 use PHPUnit\Framework\AssertionFailedError;
 
 it('isEnabled always returns true', function (): void {
-    $fake = new GlintFake(new RecordingStore);
+    $fake = new GlintFake(app(RecordingStore::class), app(GlintFilterRegistry::class));
 
     expect($fake->isEnabled())->toBeTrue();
 });
 
 it('trace returns FakeTrace', function (): void {
-    $fake = new GlintFake(new RecordingStore);
+    $fake = new GlintFake(app(RecordingStore::class), app(GlintFilterRegistry::class));
 
     expect($fake->trace('test'))->toBeInstanceOf(FakeTrace::class);
 });
 
 it('span returns FakeSpan', function (): void {
-    $fake = new GlintFake(new RecordingStore);
+    $fake = new GlintFake(app(RecordingStore::class), app(GlintFilterRegistry::class));
 
     expect($fake->span('test'))->toBeInstanceOf(FakeSpan::class);
 });
@@ -70,6 +72,19 @@ it('fake() swaps container binding', function (): void {
 
     expect(app('glint'))->toBe($fake)
         ->and(app(GlintClientInterface::class))->toBe($fake);
+});
+
+it('updates an already resolved facade when swapping and restoring', function (): void {
+    expect(Glint::getFacadeRoot())->not->toBeInstanceOf(GlintFake::class);
+
+    $fake = GlintFake::swap();
+
+    expect(Glint::getFacadeRoot())->toBe($fake);
+
+    GlintFake::restore();
+
+    expect(Glint::getFacadeRoot())->toBeInstanceOf(GlintManager::class)
+        ->and(app(GlintClientInterface::class))->toBeInstanceOf(GlintManager::class);
 });
 
 it('captures generations fired via events after swap', function (): void {
@@ -152,8 +167,8 @@ it('flush empties the store', function (): void {
 });
 
 it('store() returns the underlying RecordingStore', function (): void {
-    $store = new RecordingStore;
-    $fake = new GlintFake($store);
+    $store = app(RecordingStore::class);
+    $fake = new GlintFake($store, app(GlintFilterRegistry::class));
 
     expect($fake->store())->toBe($store);
 });
@@ -265,16 +280,16 @@ it('filter() allows non-rejected generations through', function (): void {
     $fake->assertGenerationCount(1);
 });
 
-it('filter() delegates to GlintManager::filter()', function (): void {
+it('filter() registers callbacks in the shared filter registry', function (): void {
     $fake = GlintFake::swap();
 
     $fake->filter(fn (FilterEntry $e) => $e->provider !== 'openai');
 
     $entry = new FilterEntry(provider: 'openai', model: 'gpt-4o', traceId: null, metadata: []);
-    expect(GlintManager::shouldRecord($entry))->toBeFalse();
+    expect(app(GlintFilterRegistry::class)->shouldRecord($entry))->toBeFalse();
 
     $allowed = new FilterEntry(provider: 'anthropic', model: 'claude-3', traceId: null, metadata: []);
-    expect(GlintManager::shouldRecord($allowed))->toBeTrue();
+    expect(app(GlintFilterRegistry::class)->shouldRecord($allowed))->toBeTrue();
 });
 
 it('assertNoGenerations passes when no generations recorded', function (): void {

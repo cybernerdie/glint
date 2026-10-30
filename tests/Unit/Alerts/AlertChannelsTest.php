@@ -3,19 +3,21 @@
 declare(strict_types=1);
 
 use Cybernerdie\Glint\Alerts\Channels\LogChannel;
-use Cybernerdie\Glint\Alerts\Channels\MailChannel;
 use Cybernerdie\Glint\Alerts\Channels\SlackChannel;
 use Cybernerdie\Glint\Alerts\Channels\WebhookChannel;
+use Cybernerdie\Glint\Enums\AlertChannel;
 use Cybernerdie\Glint\Enums\AlertRuleType;
 use Cybernerdie\Glint\Events\GlintAlertTriggered;
 use Cybernerdie\Glint\Listeners\SendAlertNotification;
 use Cybernerdie\Glint\Mail\GlintAlertMail;
 use Cybernerdie\Glint\Models\GlintAlertRule;
+use Cybernerdie\Glint\Notifications\GlintAlertNotification;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
 
-function makeEvent(GlintAlertRule $rule, string $channel = 'log'): GlintAlertTriggered
+function makeEvent(GlintAlertRule $rule, AlertChannel $channel = AlertChannel::Log): GlintAlertTriggered
 {
     return new GlintAlertTriggered(
         alertRuleId: (int) $rule->id,
@@ -37,7 +39,7 @@ it('LogChannel logs a warning with rule name and context', function () {
 
     $rule = GlintAlertRule::factory()->create(['name' => 'High Cost']);
 
-    app(LogChannel::class)->handle(makeEvent($rule), $rule);
+    app(LogChannel::class)->send($rule, new GlintAlertNotification(makeEvent($rule)));
 
     Log::shouldHaveReceived('warning')
         ->once()
@@ -45,27 +47,22 @@ it('LogChannel logs a warning with rule name and context', function () {
 });
 
 // ---------------------------------------------------------------------------
-// MailChannel
+// Laravel mail notification channel
 // ---------------------------------------------------------------------------
 
-it('MailChannel sends a GlintAlertMail when mail_to is set', function () {
-    Mail::fake();
-
+it('the mail notification channel sends a GlintAlertMail when mail_to is set', function () {
     $rule = GlintAlertRule::factory()->create(['mail_to' => 'test@example.com']);
+    $notification = new GlintAlertNotification(makeEvent($rule, AlertChannel::Mail));
 
-    app(MailChannel::class)->handle(makeEvent($rule, 'mail'), $rule);
-
-    Mail::assertSent(GlintAlertMail::class, fn (GlintAlertMail $mail) => $mail->hasTo('test@example.com'));
+    expect($notification->via($rule))->toBe(['mail'])
+        ->and($notification->toMail($rule))->toBeInstanceOf(GlintAlertMail::class)
+        ->and($notification->toMail($rule)->hasTo('test@example.com'))->toBeTrue();
 });
 
-it('MailChannel skips when mail_to is empty', function () {
-    Mail::fake();
-
+it('the mail notification channel skips when mail_to is empty', function () {
     $rule = GlintAlertRule::factory()->create(['mail_to' => null]);
 
-    app(MailChannel::class)->handle(makeEvent($rule, 'mail'), $rule);
-
-    Mail::assertNothingSent();
+    expect((new GlintAlertNotification(makeEvent($rule, AlertChannel::Mail)))->via($rule))->toBe([]);
 });
 
 // ---------------------------------------------------------------------------
@@ -76,9 +73,9 @@ it('WebhookChannel posts payload to webhook_url', function () {
     Http::fake(['https://example.com/hook' => Http::response('', 200)]);
 
     $rule = GlintAlertRule::factory()->create(['webhook_url' => 'https://example.com/hook']);
-    $event = makeEvent($rule, 'webhook');
+    $event = makeEvent($rule, AlertChannel::Webhook);
 
-    app(WebhookChannel::class)->handle($event, $rule);
+    app(WebhookChannel::class)->send($rule, new GlintAlertNotification($event));
 
     Http::assertSent(fn ($request) => $request->url() === 'https://example.com/hook' &&
         $request['type'] === 'cost_threshold' &&
@@ -92,7 +89,7 @@ it('WebhookChannel skips when webhook_url is empty', function () {
 
     $rule = GlintAlertRule::factory()->create(['webhook_url' => null]);
 
-    app(WebhookChannel::class)->handle(makeEvent($rule, 'webhook'), $rule);
+    $rule->notify(new GlintAlertNotification(makeEvent($rule, AlertChannel::Webhook)));
 
     Http::assertNothingSent();
 });
@@ -106,7 +103,7 @@ it('SlackChannel posts blocks payload to slack_webhook_url', function () {
 
     $rule = GlintAlertRule::factory()->create(['slack_webhook_url' => 'https://hooks.slack.com/test']);
 
-    app(SlackChannel::class)->handle(makeEvent($rule, 'slack'), $rule);
+    app(SlackChannel::class)->send($rule, new GlintAlertNotification(makeEvent($rule, AlertChannel::Slack)));
 
     Http::assertSent(fn ($request) => $request->url() === 'https://hooks.slack.com/test' &&
         isset($request['blocks'])
@@ -118,7 +115,7 @@ it('SlackChannel skips when slack_webhook_url is empty', function () {
 
     $rule = GlintAlertRule::factory()->create(['slack_webhook_url' => null]);
 
-    app(SlackChannel::class)->handle(makeEvent($rule, 'slack'), $rule);
+    $rule->notify(new GlintAlertNotification(makeEvent($rule, AlertChannel::Slack)));
 
     Http::assertNothingSent();
 });
@@ -132,19 +129,19 @@ it('SendAlertNotification routes log channel and logs a warning', function () {
 
     $rule = GlintAlertRule::factory()->create(['name' => 'Test Rule']);
 
-    app(SendAlertNotification::class)->handle(makeEvent($rule, 'log'));
+    app(SendAlertNotification::class)->handle(makeEvent($rule, AlertChannel::Log));
 
     Log::shouldHaveReceived('warning')->once();
 });
 
 it('SendAlertNotification routes mail channel and sends a mail', function () {
-    Mail::fake();
+    Notification::fake();
 
     $rule = GlintAlertRule::factory()->create(['mail_to' => 'test@example.com']);
 
-    app(SendAlertNotification::class)->handle(makeEvent($rule, 'mail'));
+    app(SendAlertNotification::class)->handle(makeEvent($rule, AlertChannel::Mail));
 
-    Mail::assertSent(GlintAlertMail::class);
+    Notification::assertSentTo($rule, GlintAlertNotification::class, fn ($notification, $channels) => $channels === ['mail']);
 });
 
 it('SendAlertNotification routes webhook channel and posts to URL', function () {
@@ -152,7 +149,7 @@ it('SendAlertNotification routes webhook channel and posts to URL', function () 
 
     $rule = GlintAlertRule::factory()->create(['webhook_url' => 'https://example.com/hook']);
 
-    app(SendAlertNotification::class)->handle(makeEvent($rule, 'webhook'));
+    app(SendAlertNotification::class)->handle(makeEvent($rule, AlertChannel::Webhook));
 
     Http::assertSentCount(1);
 });
@@ -162,7 +159,7 @@ it('SendAlertNotification routes slack channel and posts to URL', function () {
 
     $rule = GlintAlertRule::factory()->create(['slack_webhook_url' => 'https://hooks.slack.com/test']);
 
-    app(SendAlertNotification::class)->handle(makeEvent($rule, 'slack'));
+    app(SendAlertNotification::class)->handle(makeEvent($rule, AlertChannel::Slack));
 
     Http::assertSentCount(1);
 });
@@ -178,25 +175,11 @@ it('SendAlertNotification does nothing when the rule no longer exists', function
         threshold: 10.0,
         currentValue: 25.0,
         period: 'day',
-        channel: 'log',
+        channel: AlertChannel::Log,
         alertEventId: 1,
     );
 
     app(SendAlertNotification::class)->handle($event);
-
-    Log::shouldNotHaveReceived('warning');
-    Mail::assertNothingSent();
-    Http::assertNothingSent();
-});
-
-it('SendAlertNotification does nothing for an unknown channel', function () {
-    Log::spy();
-    Mail::fake();
-    Http::fake();
-
-    $rule = GlintAlertRule::factory()->create();
-
-    app(SendAlertNotification::class)->handle(makeEvent($rule, 'unknown'));
 
     Log::shouldNotHaveReceived('warning');
     Mail::assertNothingSent();

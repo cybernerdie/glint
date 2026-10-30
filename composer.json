@@ -24,6 +24,7 @@
     "require": {
         "php": "^8.3",
         "illuminate/contracts": "^11.0|^12.0|^13.0",
+        "illuminate/notifications": "^11.0|^12.0|^13.0",
         "illuminate/support": "^11.0|^12.0|^13.0"
     },
     "require-dev": {
@@ -39,9 +40,8 @@
         "echolabsdev/prism": "Required for Prism auto-instrumentation driver (^0.100)",
         "useiconic/neuron-ai": "Required for the neuron-ai auto-instrumentation driver",
         "laravel/ai": "Required for the laravel-ai auto-instrumentation driver",
-        "illuminate/notifications": "Required for alert notification delivery",
-        "laravel/pulse": "Required for the Glint Pulse dashboard card (^1.0)",
-        "laravel/slack-notification-channel": "Required for Slack alert channel"
+        "illuminate/mail": "Required for mail alert delivery",
+        "laravel/pulse": "Required for the Glint Pulse dashboard card (^1.0)"
     },
     "autoload": {
         "psr-4": {

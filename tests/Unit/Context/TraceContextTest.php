@@ -18,6 +18,31 @@ it('openTrace sets traceId', function () {
     expect($context->traceId())->toBe('trace-123');
 });
 
+it('materializes a request trace only on first use', function () {
+    $context = new TraceContext;
+    $writes = 0;
+
+    $context->openRequestTrace('trace-123', function () use (&$writes): bool {
+        $writes++;
+
+        return true;
+    });
+
+    expect($context->isTraceMaterialized('trace-123'))->toBeFalse()
+        ->and($context->materializeTrace())->toBeTrue()
+        ->and($context->materializeTrace())->toBeTrue()
+        ->and($context->isTraceMaterialized('trace-123'))->toBeTrue()
+        ->and($writes)->toBe(1);
+});
+
+it('does not materialize a request trace when the write fails', function () {
+    $context = new TraceContext;
+    $context->openRequestTrace('trace-123', fn (): bool => false);
+
+    expect($context->materializeTrace())->toBeFalse()
+        ->and($context->isTraceMaterialized('trace-123'))->toBeFalse();
+});
+
 it('closeTrace resets all state', function () {
     $context = new TraceContext;
     $context->openTrace('trace-123');
@@ -64,4 +89,31 @@ it('setActiveSpan can clear the active span with null', function () {
     $context->setActiveSpan(null);
 
     expect($context->activeSpanId())->toBeNull();
+});
+
+it('restores the parent span when nested spans close', function () {
+    $context = new TraceContext;
+    $context->openTrace('trace-123');
+    $context->openSpan('parent');
+    $context->openSpan('child');
+
+    expect($context->activeSpanId())->toBe('child');
+
+    $context->closeSpan('child');
+
+    expect($context->activeSpanId())->toBe('parent');
+});
+
+it('keeps spans isolated between nested traces', function () {
+    $context = new TraceContext;
+    $context->openTrace('outer');
+    $context->openSpan('outer-span');
+    $context->openTrace('inner');
+
+    expect($context->activeSpanId())->toBeNull();
+
+    $context->openSpan('inner-span');
+    $context->closeTrace();
+
+    expect($context->activeSpanId())->toBe('outer-span');
 });

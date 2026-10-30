@@ -12,6 +12,8 @@ GLINT_STORE_BODIES=false
 
 Glint applies redaction patterns before writing bodies to the database.
 
+Application HTTP response bodies are not stored by default. To include them on request traces, opt in with `GLINT_STORE_HTTP_RESPONSES=true`. This also requires `GLINT_STORE_BODIES=true`; Glint redacts and truncates captured responses to 10,000 characters.
+
 ## IP address
 
 The requester's IP address is not stored by default. Enable it only when you need it and your privacy policy allows it:

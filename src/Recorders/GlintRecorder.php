@@ -37,12 +37,12 @@ final readonly class GlintRecorder
         private GenerationAggregateRecorder $aggregates,
     ) {}
 
-    public function handleLlmCallStarted(LlmCallStarted $event): void
+    public function handleLlmCallStarted(LlmCallStarted $event, bool $filterChecked = false): void
     {
-        $this->safeWrite('LlmCallStarted', function () use ($event) {
+        $this->safeWrite('LlmCallStarted', function () use ($event, $filterChecked) {
             $traceId = $event->traceId ?? $this->context->traceId();
 
-            if (! $this->filters->shouldRecord(new FilterEntry(
+            if (! $filterChecked && ! $this->filters->shouldRecord(new FilterEntry(
                 provider: $event->provider,
                 model: $event->model,
                 traceId: $traceId,
@@ -52,10 +52,13 @@ final readonly class GlintRecorder
             }
 
             $dedupeKey = $this->dedupeKeyFromMetadata($event->metadata);
+            $driver = $event->metadata['glint_driver'] ?? null;
 
-            if ($dedupeKey !== null) {
+            if ($dedupeKey !== null && $traceId !== null && is_string($driver) && filled($driver)) {
                 $duplicate = GlintGeneration::query()
                     ->where('dedupe_key', $dedupeKey)
+                    ->where('trace_id', $traceId)
+                    ->where('metadata->glint_driver', '!=', $driver)
                     ->where('status', RecordStatus::Pending)
                     ->where('started_at', '>=', now()->subSeconds(30))
                     ->first();
@@ -82,6 +85,8 @@ final readonly class GlintRecorder
                 $this->context->registerAutoTrace($event->generationId, $traceId);
             }
 
+            $this->context->materializeTrace($traceId);
+
             GlintGeneration::firstOrCreate(
                 ['id' => $event->generationId],
                 [
@@ -91,7 +96,9 @@ final readonly class GlintRecorder
                     'provider' => $event->provider,
                     'model' => $event->model,
                     'dedupe_key' => $dedupeKey,
-                    'prompt' => $event->messages === null ? null : $this->redactor->metadata($event->messages),
+                    'prompt' => Config::boolean('glint.recording.store_bodies', true) && $event->messages !== null
+                        ? $this->redactor->metadata($event->messages)
+                        : null,
                     'temperature' => $event->temperature,
                     'max_tokens' => $event->maxTokens,
                     'top_p' => $event->topP,
@@ -127,7 +134,9 @@ final readonly class GlintRecorder
             );
 
             $generation->update([
-                'completion' => $this->truncate($this->redactor->string($event->completion)),
+                'completion' => Config::boolean('glint.recording.store_bodies', true)
+                    ? $this->truncate($this->redactor->string($event->completion))
+                    : null,
                 'prompt_tokens' => $event->promptTokens,
                 'completion_tokens' => $event->completionTokens,
                 'total_tokens' => $event->promptTokens + $event->completionTokens,
@@ -171,15 +180,35 @@ final readonly class GlintRecorder
     public function handleLlmToolCalled(LlmToolCalled $event): void
     {
         $this->safeWrite('LlmToolCalled', function () use ($event) {
+            $traceId = $event->traceId;
+
+            if ($traceId === $event->spanId) {
+                if ($event->parentSpanId === null) {
+                    return;
+                }
+
+                $traceId = GlintGeneration::where('id', $event->parentSpanId)->value('trace_id');
+
+                if (! is_string($traceId) || blank($traceId)) {
+                    return;
+                }
+            }
+
+            $this->context->materializeTrace($traceId);
+
             GlintSpan::firstOrCreate(
                 ['id' => $event->spanId],
                 [
-                    'trace_id' => $event->traceId,
+                    'trace_id' => $traceId,
                     'parent_span_id' => $event->parentSpanId,
                     'name' => $event->toolName,
                     'type' => SpanType::ToolCall,
-                    'input' => json_encode($this->redactor->metadata($event->arguments)),
-                    'output' => json_encode($this->redactor->value($event->result)),
+                    'input' => Config::boolean('glint.recording.store_bodies', true)
+                        ? json_encode($this->redactor->metadata($event->arguments))
+                        : null,
+                    'output' => Config::boolean('glint.recording.store_bodies', true)
+                        ? json_encode($this->redactor->value($event->result))
+                        : null,
                     'metadata' => $this->redactedMetadata($event->metadata),
                     'status' => RecordStatus::Success,
                     'duration_ms' => $event->durationMs,
@@ -232,7 +261,7 @@ final readonly class GlintRecorder
 
         $canonicalGenerationId = Cache::get(self::AliasCachePrefix.$generationId);
 
-        if (! is_string($canonicalGenerationId) || $canonicalGenerationId === '') {
+        if (! is_string($canonicalGenerationId) || blank($canonicalGenerationId)) {
             return null;
         }
 
@@ -246,7 +275,7 @@ final readonly class GlintRecorder
     {
         $dedupeKey = $metadata[self::DedupeKeyMetadata] ?? null;
 
-        return is_string($dedupeKey) && $dedupeKey !== '' ? $dedupeKey : null;
+        return is_string($dedupeKey) && filled($dedupeKey) ? $dedupeKey : null;
     }
 
     private function autoTraceIdFromGeneration(?GlintGeneration $generation): ?string

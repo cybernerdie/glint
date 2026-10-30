@@ -29,7 +29,7 @@ final readonly class TopTraceUseCasesQuery
             ])
             ->leftJoin('glint_generations', 'glint_generations.trace_id', '=', 'glint_traces.id')
             ->whereNotNull('glint_traces.name')
-            ->when($this->provider !== '', fn ($q) => $q->where('glint_generations.provider', $this->provider))
+            ->when(filled($this->provider), fn ($q) => $q->where('glint_generations.provider', $this->provider))
             ->when($this->fromDt, fn ($q) => $q->where('glint_traces.started_at', '>=', $this->fromDt))
             ->when($this->toDt, fn ($q) => $q->where('glint_traces.started_at', '<=', $this->toDt))
             ->groupBy('glint_traces.name')

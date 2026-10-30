@@ -8,6 +8,7 @@ use Illuminate\Auth\Middleware\Authorize;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Routing\Router;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -29,9 +30,9 @@ abstract class GlintApplicationServiceProvider extends ServiceProvider
     protected function gate(): void
     {
         Gate::define('viewGlint', function (Authenticatable $user): bool {
-            $emails = config('glint.admin_emails', []);
+            $emails = Config::array('glint.admin_emails', []);
 
-            if (! is_array($emails) || $emails === [] || ! $user instanceof Model) {
+            if ($emails === [] || ! $user instanceof Model) {
                 return false;
             }
 

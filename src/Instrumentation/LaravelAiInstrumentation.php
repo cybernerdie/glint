@@ -6,6 +6,7 @@ namespace Cybernerdie\Glint\Instrumentation;
 
 use Cybernerdie\Glint\Context\TraceContext;
 use Cybernerdie\Glint\Contracts\InstrumentationDriver;
+use Cybernerdie\Glint\Events\LlmCallFailed;
 use Cybernerdie\Glint\Events\LlmCallFinished;
 use Cybernerdie\Glint\Events\LlmCallStarted;
 use Cybernerdie\Glint\Events\LlmToolCalled;
@@ -16,7 +17,7 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
 
 /**
- * @phpstan-type PendingGeneration array{generationId: string, startedAt: Carbon, provider: string, model: string, traceId: string|null}
+ * @phpstan-type PendingGeneration array{generationId: string, startedAt: Carbon, provider: string, model: string, traceId: string|null, prompt: object}
  * @phpstan-type PendingTool array{spanId: string, startedAt: Carbon, toolName: string, invocationId: string}
  */
 final class LaravelAiInstrumentation implements InstrumentationDriver
@@ -77,37 +78,37 @@ final class LaravelAiInstrumentation implements InstrumentationDriver
     {
         foreach (self::EventClassPairs['prompting'] as $eventClass) {
             if (class_exists($eventClass)) {
-                Event::listen($eventClass, fn (object $e) => app(self::class)->onPrompting($e));
+                Event::listen($eventClass, [self::class, 'onPrompting']);
             }
         }
 
         foreach (self::EventClassPairs['streaming'] as $eventClass) {
             if (class_exists($eventClass)) {
-                Event::listen($eventClass, fn (object $e) => app(self::class)->onPrompting($e));
+                Event::listen($eventClass, [self::class, 'onPrompting']);
             }
         }
 
         foreach (self::EventClassPairs['prompted'] as $eventClass) {
             if (class_exists($eventClass)) {
-                Event::listen($eventClass, fn (object $e) => app(self::class)->onAgentPrompted($e));
+                Event::listen($eventClass, [self::class, 'onAgentPrompted']);
             }
         }
 
         foreach (self::EventClassPairs['streamed'] as $eventClass) {
             if (class_exists($eventClass)) {
-                Event::listen($eventClass, fn (object $e) => app(self::class)->onAgentPrompted($e));
+                Event::listen($eventClass, [self::class, 'onAgentPrompted']);
             }
         }
 
         foreach (self::EventClassPairs['invokingTool'] as $eventClass) {
             if (class_exists($eventClass)) {
-                Event::listen($eventClass, fn (object $e) => app(self::class)->onInvokingTool($e));
+                Event::listen($eventClass, [self::class, 'onInvokingTool']);
             }
         }
 
         foreach (self::EventClassPairs['toolInvoked'] as $eventClass) {
             if (class_exists($eventClass)) {
-                Event::listen($eventClass, fn (object $e) => app(self::class)->onToolInvoked($e));
+                Event::listen($eventClass, [self::class, 'onToolInvoked']);
             }
         }
     }
@@ -124,7 +125,7 @@ final class LaravelAiInstrumentation implements InstrumentationDriver
         $generationId = (string) Str::ulid();
         $provider = $this->resolveProvider($this->providerHint($prompt));
         $modelRaw = $this->objectValue($prompt, 'model');
-        $model = is_string($modelRaw) && $modelRaw !== ''
+        $model = is_string($modelRaw) && filled($modelRaw)
             ? $modelRaw
             : 'unknown';
         $promptText = $this->stringValue($this->objectValue($prompt, 'prompt')) ?? '';
@@ -147,6 +148,7 @@ final class LaravelAiInstrumentation implements InstrumentationDriver
             'provider' => $provider,
             'model' => $model,
             'traceId' => $this->context->traceId(),
+            'prompt' => $prompt,
         ];
 
         event(new LlmCallStarted(
@@ -199,6 +201,42 @@ final class LaravelAiInstrumentation implements InstrumentationDriver
             finishReason: 'stop',
             durationMs: (int) $pending['startedAt']->diffInMilliseconds(now()),
         ));
+    }
+
+    public function onPromptFailed(object $prompt, \Throwable $exception): void
+    {
+        $this->failPrompt($prompt, $exception->getMessage(), $exception::class);
+    }
+
+    public function onStreamFailed(object $prompt, string $message, string $type): void
+    {
+        $this->failPrompt($prompt, $message, 'LaravelAiStreamError', ['stream_error_type' => $type]);
+    }
+
+    /** @param  array<string, mixed>  $metadata */
+    private function failPrompt(object $prompt, string $message, string $errorClass, array $metadata = []): void
+    {
+        foreach ($this->pending as $invocationId => $pending) {
+            if ($pending['prompt'] !== $prompt) {
+                continue;
+            }
+
+            unset($this->pending[$invocationId]);
+
+            foreach ($this->toolStartTimes as $toolInvocationId => $tool) {
+                if ($tool['invocationId'] === $invocationId) {
+                    unset($this->toolStartTimes[$toolInvocationId]);
+                }
+            }
+
+            event(new LlmCallFailed(
+                generationId: $pending['generationId'],
+                errorMessage: $message,
+                errorClass: $errorClass,
+                durationMs: (int) $pending['startedAt']->diffInMilliseconds(now()),
+                metadata: $metadata,
+            ));
+        }
     }
 
     public function onInvokingTool(object $event): void
@@ -268,7 +306,7 @@ final class LaravelAiInstrumentation implements InstrumentationDriver
             $hint = get_class($hint);
         }
 
-        if (! is_string($hint) || $hint === '') {
+        if (! is_string($hint) || blank($hint)) {
             return 'unknown';
         }
 
@@ -287,7 +325,7 @@ final class LaravelAiInstrumentation implements InstrumentationDriver
             return class_basename($agent);
         }
 
-        if (is_string($agent) && $agent !== '') {
+        if (is_string($agent) && filled($agent)) {
             return class_basename($agent);
         }
 
@@ -321,7 +359,7 @@ final class LaravelAiInstrumentation implements InstrumentationDriver
 
     private function stringValue(mixed $value): ?string
     {
-        if (is_string($value) && $value !== '') {
+        if (is_string($value) && filled($value)) {
             return $value;
         }
 

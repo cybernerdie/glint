@@ -12,6 +12,8 @@ use Cybernerdie\Glint\Events\LlmCallFailed;
 use Cybernerdie\Glint\Events\LlmCallFinished;
 use Cybernerdie\Glint\Events\LlmCallStarted;
 use Cybernerdie\Glint\Events\LlmToolCalled;
+use Cybernerdie\Glint\Facades\Glint;
+use Cybernerdie\Glint\Filtering\GlintFilterRegistry;
 use Cybernerdie\Glint\GlintManager;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Event;
@@ -21,28 +23,31 @@ final class GlintFake implements GlintClientInterface
 {
     public function __construct(
         private readonly RecordingStore $store,
+        private readonly GlintFilterRegistry $filters,
     ) {}
 
     public static function swap(): self
     {
-        GlintManager::flushFilters();
+        $filters = app(GlintFilterRegistry::class);
+        $filters->flush();
 
         Event::forget(LlmCallStarted::class);
         Event::forget(LlmCallFinished::class);
         Event::forget(LlmCallFailed::class);
         Event::forget(LlmToolCalled::class);
 
-        $store = new RecordingStore;
+        $store = app(RecordingStore::class);
 
         Event::listen(LlmCallStarted::class, [$store, 'handleLlmCallStarted']);
         Event::listen(LlmCallFinished::class, [$store, 'handleLlmCallFinished']);
         Event::listen(LlmCallFailed::class, [$store, 'handleLlmCallFailed']);
         Event::listen(LlmToolCalled::class, [$store, 'handleLlmToolCalled']);
 
-        $fake = new self($store);
+        $fake = new self($store, $filters);
 
         app()->instance('glint', $fake);
         app()->instance(GlintClientInterface::class, $fake);
+        Glint::clearResolvedInstance('glint');
 
         return $fake;
     }
@@ -53,7 +58,7 @@ final class GlintFake implements GlintClientInterface
      */
     public static function restore(): void
     {
-        GlintManager::flushFilters();
+        app(GlintFilterRegistry::class)->flush();
 
         Event::forget(LlmCallStarted::class);
         Event::forget(LlmCallFinished::class);
@@ -62,6 +67,9 @@ final class GlintFake implements GlintClientInterface
 
         app()->forgetInstance('glint');
         app()->forgetInstance(GlintClientInterface::class);
+        app()->alias(GlintManager::class, 'glint');
+        app()->alias(GlintManager::class, GlintClientInterface::class);
+        Glint::clearResolvedInstance('glint');
     }
 
     public function isEnabled(): bool
@@ -180,7 +188,7 @@ final class GlintFake implements GlintClientInterface
 
     public function filter(callable $callback): void
     {
-        GlintManager::filter($callback);
+        $this->filters->push($callback);
     }
 
     /** @return Collection<int, CapturedGeneration> */

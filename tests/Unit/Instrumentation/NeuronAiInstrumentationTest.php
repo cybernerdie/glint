@@ -64,7 +64,7 @@ function makeTool(string $name, string $result = 'ok', array $inputs = []): Tool
 }
 
 it('isAvailable returns true when the NeuronAI Agent stub class exists', function () {
-    $instrumentation = new NeuronAiInstrumentation;
+    $instrumentation = new NeuronAiInstrumentation(app());
 
     expect($instrumentation->isAvailable())->toBeTrue();
 });
@@ -72,7 +72,7 @@ it('isAvailable returns true when the NeuronAI Agent stub class exists', functio
 it('register attaches a global observer to the NeuronAI EventBus', function () {
     EventBus::clear();
 
-    $instrumentation = new NeuronAiInstrumentation;
+    $instrumentation = new NeuronAiInstrumentation(app());
     $instrumentation->register();
 
     expect(fn () => EventBus::emit('unknown-event', new stdClass))->not->toThrow(Throwable::class);
@@ -245,12 +245,6 @@ it('onEvent ignores unknown event types without throwing', function () {
     $observer = new GlintNeuronAiObserver($context);
 
     expect(fn () => $observer->onEvent('some-unknown-event', new stdClass))->not->toThrow(Throwable::class);
-});
-
-it('make() resolves from the container', function () {
-    $observer = GlintNeuronAiObserver::make();
-
-    expect($observer)->toBeInstanceOf(GlintNeuronAiObserver::class);
 });
 
 it('onToolCalling ignores non-ToolCalling data without throwing', function () {

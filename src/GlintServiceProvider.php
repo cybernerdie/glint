@@ -11,7 +11,7 @@ use Cybernerdie\Glint\Events\LlmCallFailed;
 use Cybernerdie\Glint\Events\LlmCallFinished;
 use Cybernerdie\Glint\Events\LlmCallStarted;
 use Cybernerdie\Glint\Events\LlmToolCalled;
-use Cybernerdie\Glint\Jobs\RecordLlmCallJob;
+use Cybernerdie\Glint\Listeners\DispatchLlmCallRecording;
 use Cybernerdie\Glint\Listeners\SendAlertNotification;
 use Cybernerdie\Glint\Recorders\GlintRecorder;
 use Illuminate\Auth\Middleware\Authorize;
@@ -104,16 +104,8 @@ final class GlintServiceProvider extends ServiceProvider
 
     private function registerQueueListeners(): void
     {
-        $rawConn = Config::get('glint.queue.connection');
-        $connection = is_string($rawConn) && $rawConn !== '' ? $rawConn : null;
-
-        $rawQueue = Config::get('glint.queue.queue');
-        $queue = is_string($rawQueue) && $rawQueue !== '' ? $rawQueue : null;
-
-        $dispatch = fn (LlmCallStarted|LlmCallFinished|LlmToolCalled|LlmCallFailed $e) => RecordLlmCallJob::dispatch($e)->onConnection($connection)->onQueue($queue);
-
         foreach ([LlmCallStarted::class, LlmCallFinished::class, LlmToolCalled::class, LlmCallFailed::class] as $event) {
-            Event::listen($event, $dispatch);
+            Event::listen($event, [DispatchLlmCallRecording::class, 'handle']);
         }
 
         Event::listen(GlintAlertTriggered::class, SendAlertNotification::class);
@@ -121,8 +113,7 @@ final class GlintServiceProvider extends ServiceProvider
 
     private function registerDrivers(): void
     {
-        $drivers = Config::get('glint.drivers', ['http']);
-        $enabled = is_array($drivers) ? $drivers : ['http'];
+        $enabled = Config::array('glint.drivers', ['http']);
 
         $driverMap = [
             'prism' => Instrumentation\PrismInstrumentation::class,

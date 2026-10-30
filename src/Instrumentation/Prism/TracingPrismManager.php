@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cybernerdie\Glint\Instrumentation\Prism;
 
+use Closure;
 use Cybernerdie\Glint\Context\TraceContext;
 use Illuminate\Contracts\Foundation\Application;
 use Prism\Prism\Enums\Provider as ProviderEnum;
@@ -15,6 +16,8 @@ final class TracingPrismManager extends PrismManager
     public function __construct(
         private readonly PrismManager $inner,
         Application $app,
+        /** @var Closure(): TraceContext */
+        private readonly Closure $traceContext,
     ) {
         parent::__construct($app);
     }
@@ -26,10 +29,10 @@ final class TracingPrismManager extends PrismManager
     {
         $provider = $this->inner->resolve($name, $providerConfig);
 
-        return new TracingProvider($provider, $this->app->make(TraceContext::class));
+        return new TracingProvider($provider, ($this->traceContext)());
     }
 
-    public function extend(string $provider, \Closure $callback): static
+    public function extend(string $provider, Closure $callback): static
     {
         $this->inner->extend($provider, $callback);
 

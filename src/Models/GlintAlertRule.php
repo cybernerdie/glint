@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace Cybernerdie\Glint\Models;
 
 use Cybernerdie\Glint\Database\Factories\GlintAlertRuleFactory;
+use Cybernerdie\Glint\Enums\AlertChannel;
 use Cybernerdie\Glint\Enums\AlertRuleType;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
 
 /**
@@ -28,6 +30,8 @@ class GlintAlertRule extends Model
 {
     /** @use HasFactory<GlintAlertRuleFactory> */
     use HasFactory;
+
+    use Notifiable;
 
     protected $table = 'glint_alert_rules';
 
@@ -75,5 +79,22 @@ class GlintAlertRule extends Model
         }
 
         return $this->last_triggered_at->addMinutes($this->cooldown_minutes)->isFuture();
+    }
+
+    public function notificationDestination(AlertChannel $channel): ?string
+    {
+        $destination = match ($channel) {
+            AlertChannel::Mail => $this->mail_to,
+            AlertChannel::Webhook => $this->webhook_url,
+            AlertChannel::Slack => $this->slack_webhook_url,
+            AlertChannel::Log => null,
+        };
+
+        return blank($destination) ? null : $destination;
+    }
+
+    public function hasNotificationDestination(AlertChannel $channel): bool
+    {
+        return $this->notificationDestination($channel) !== null;
     }
 }

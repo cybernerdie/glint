@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Cybernerdie\Glint\Enums\AlertChannel;
 use Cybernerdie\Glint\Models\GlintAlertRule;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -42,4 +43,21 @@ it('isWithinCooldown returns false when cooldown has elapsed', function () {
     $rule = GlintAlertRule::factory()->cooldownElapsed()->create(['cooldown_minutes' => 10]);
 
     expect($rule->isWithinCooldown())->toBeFalse();
+});
+
+it('owns and validates notification destinations', function (): void {
+    $rule = new GlintAlertRule([
+        'mail_to' => 'alerts@example.com',
+        'webhook_url' => 'https://example.com/hook',
+        'slack_webhook_url' => null,
+    ]);
+
+    expect($rule->notificationDestination(AlertChannel::Mail))->toBe('alerts@example.com')
+        ->and($rule->hasNotificationDestination(AlertChannel::Webhook))->toBeTrue()
+        ->and($rule->hasNotificationDestination(AlertChannel::Slack))->toBeFalse()
+        ->and($rule->notificationDestination(AlertChannel::Log))->toBeNull();
+
+    $rule->mail_to = '   ';
+
+    expect($rule->hasNotificationDestination(AlertChannel::Mail))->toBeFalse();
 });

@@ -319,6 +319,20 @@ it('register attaches event listeners', function () {
     expect(fn () => $instrumentation->register())->not->toThrow(Throwable::class);
 });
 
+it('resolves the current scoped instrumentation when an HTTP event is dispatched', function (): void {
+    Event::fake([LlmCallStarted::class]);
+    config()->set('glint.llm_hosts', ['api.openai.com' => 'openai']);
+
+    app(HttpClientInstrumentation::class)->register();
+
+    Event::dispatch(new RequestSending(makeHttpRequest(
+        'https://api.openai.com/v1/chat/completions',
+        json_encode(['model' => 'gpt-4o']),
+    )));
+
+    Event::assertDispatched(LlmCallStarted::class);
+});
+
 it('onRequestSending catches body() exceptions gracefully', function () {
     Event::fake();
 

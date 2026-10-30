@@ -161,3 +161,20 @@ it('handles LlmToolCalled event by calling the recorder', function () {
 
     expect(fn () => $job->handle($recorder))->not->toThrow(Throwable::class);
 });
+
+it('releases a headless tool event until its generation is recorded', function (): void {
+    $event = new LlmToolCalled(
+        spanId: 'span-before-generation',
+        traceId: 'span-before-generation',
+        parentSpanId: 'generation-after-tool',
+        toolName: 'search',
+        arguments: [],
+        result: null,
+        durationMs: 10,
+    );
+
+    $job = (new RecordLlmCallJob($event))->withFakeQueueInteractions();
+    $job->handle(app(GlintRecorder::class));
+
+    $job->assertReleased(delay: 1);
+});

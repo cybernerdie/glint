@@ -47,4 +47,5 @@ arch('instrumentation drivers implement the driver contract')
     ->ignoring('Cybernerdie\Glint\Instrumentation\Prism\TracingPrismManager')
     ->ignoring('Cybernerdie\Glint\Instrumentation\Prism\TracingProvider')
     ->ignoring('Cybernerdie\Glint\Instrumentation\Http\ResponseParser')
-    ->ignoring('Cybernerdie\Glint\Instrumentation\NeuronAi\GlintNeuronAiObserver');
+    ->ignoring('Cybernerdie\Glint\Instrumentation\NeuronAi\GlintNeuronAiObserver')
+    ->ignoring('Cybernerdie\Glint\Instrumentation\LaravelAi\GlintPromptMiddleware');

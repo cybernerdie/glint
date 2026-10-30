@@ -50,11 +50,6 @@ final class GlintNeuronAiObserver implements ObserverInterface
 
     public function __construct(private readonly TraceContext $context) {}
 
-    public static function make(): self
-    {
-        return app(self::class);
-    }
-
     public function onEvent(string $event, object $source, mixed $data = null, ?string $branchId = null): void
     {
         $invocationKey = spl_object_id($source);
@@ -254,7 +249,7 @@ final class GlintNeuronAiObserver implements ObserverInterface
                 $modelProp = new \ReflectionProperty($provider, 'model');
                 $modelProp->setAccessible(true);
                 $modelValue = $modelProp->getValue($provider);
-                $model = is_string($modelValue) && $modelValue !== '' ? $modelValue : 'unknown';
+                $model = is_string($modelValue) && filled($modelValue) ? $modelValue : 'unknown';
             } catch (\Throwable) {
                 $model = 'unknown';
             }

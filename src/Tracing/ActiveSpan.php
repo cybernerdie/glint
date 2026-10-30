@@ -6,9 +6,11 @@ namespace Cybernerdie\Glint\Tracing;
 
 use Carbon\Carbon;
 use Cybernerdie\Glint\Concerns\ProtectsWrites;
+use Cybernerdie\Glint\Context\TraceContext;
 use Cybernerdie\Glint\Contracts\SpanInterface;
 use Cybernerdie\Glint\Enums\RecordStatus;
 use Cybernerdie\Glint\Models\GlintSpan;
+use Cybernerdie\Glint\Models\GlintTrace;
 use Cybernerdie\Glint\Support\Redactor;
 use Illuminate\Support\Facades\DB;
 
@@ -16,10 +18,17 @@ final class ActiveSpan implements SpanInterface
 {
     use ProtectsWrites;
 
+    private bool $ended = false;
+
     public function __construct(
         private readonly string $spanId,
         private readonly Carbon $startedAt,
-    ) {}
+        private readonly Redactor $redactor,
+        private readonly ?TraceContext $context = null,
+        private readonly ?string $ownedTraceId = null,
+    ) {
+        $this->context?->openSpan($this->spanId);
+    }
 
     /**
      * Add a key/value tag to the span's metadata.
@@ -42,7 +51,7 @@ final class ActiveSpan implements SpanInterface
                 $metadata = (array) ($span->metadata ?? []);
                 /** @var array<string, mixed> $tags */
                 $tags = is_array($metadata['tags'] ?? null) ? $metadata['tags'] : [];
-                $tags[$key] = $this->redactor()->string($value);
+                $tags[$key] = $this->redactor->string($value);
                 $metadata['tags'] = $tags;
 
                 $span->update(['metadata' => $metadata]);
@@ -77,7 +86,7 @@ final class ActiveSpan implements SpanInterface
                 /** @var array<string, mixed> $existing */
                 $existing = is_array($metadata['tags'] ?? null) ? $metadata['tags'] : [];
                 /** @var array<string, string> $redactedTags */
-                $redactedTags = $this->redactor()->metadata($tags) ?? [];
+                $redactedTags = $this->redactor->metadata($tags) ?? [];
                 $metadata['tags'] = array_merge($existing, $redactedTags);
 
                 $span->update(['metadata' => $metadata]);
@@ -89,23 +98,49 @@ final class ActiveSpan implements SpanInterface
 
     public function end(): void
     {
-        $this->protectedWrite(function (): void {
-            $now = now();
-            GlintSpan::where('id', $this->spanId)->update([
-                'status' => RecordStatus::Success,
-                'ended_at' => $now,
-                'duration_ms' => (int) $this->startedAt->diffInMilliseconds($now),
-            ]);
-        });
+        $this->complete(RecordStatus::Success);
+    }
+
+    public function fail(): void
+    {
+        $this->complete(RecordStatus::Error);
+    }
+
+    private function complete(RecordStatus $status): void
+    {
+        if ($this->ended) {
+            return;
+        }
+
+        try {
+            $this->protectedWrite(function () use ($status): void {
+                $now = now();
+                GlintSpan::where('id', $this->spanId)->update([
+                    'status' => $status,
+                    'ended_at' => $now,
+                    'duration_ms' => (int) $this->startedAt->diffInMilliseconds($now),
+                ]);
+
+                if ($this->ownedTraceId !== null) {
+                    GlintTrace::where('id', $this->ownedTraceId)->update([
+                        'status' => $status,
+                        'ended_at' => $now,
+                        'duration_ms' => (int) $this->startedAt->diffInMilliseconds($now),
+                    ]);
+                }
+            });
+        } finally {
+            $this->ended = true;
+            $this->context?->closeSpan($this->spanId);
+
+            if ($this->ownedTraceId !== null) {
+                $this->context?->closeTrace($this->ownedTraceId);
+            }
+        }
     }
 
     public function spanId(): string
     {
         return $this->spanId;
-    }
-
-    private function redactor(): Redactor
-    {
-        return app(Redactor::class);
     }
 }

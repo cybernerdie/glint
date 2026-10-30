@@ -23,11 +23,11 @@ final readonly class GenerationListQuery
     {
         $query = GlintGeneration::query()->latest('started_at');
 
-        if ($this->provider !== '') {
+        if (filled($this->provider)) {
             $query->where('provider', $this->provider);
         }
 
-        if ($this->model !== '') {
+        if (filled($this->model)) {
             $query->where('model', $this->model);
         }
 

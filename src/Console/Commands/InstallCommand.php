@@ -106,7 +106,7 @@ final class InstallCommand extends Command
         $mode = Config::string('glint.recording.mode', 'queue');
         if ($mode === 'queue') {
             $rawQueue = Config::get('glint.queue.queue');
-            $queue = is_string($rawQueue) && $rawQueue !== '' ? $rawQueue : 'default';
+            $queue = is_string($rawQueue) && filled($rawQueue) ? $rawQueue : 'default';
             $this->line('  <fg=yellow>Queue mode is active.</> Start a worker to process recordings:');
             $this->line("    php artisan queue:work --queue={$queue}");
             $this->newLine();

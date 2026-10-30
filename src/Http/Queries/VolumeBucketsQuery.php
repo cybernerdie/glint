@@ -41,7 +41,7 @@ final readonly class VolumeBucketsQuery
         foreach ($rows as $row) {
             $key = $row->getAttribute('hour_key');
             $total = $row->getAttribute('total');
-            if (is_string($key) && $key !== '') {
+            if (is_string($key) && filled($key)) {
                 $hourlyTotals[$key] = is_numeric($total) ? (int) $total : 0;
             }
         }
@@ -75,7 +75,7 @@ final readonly class VolumeBucketsQuery
         foreach ($rows as $row) {
             $date = $row->getAttribute('date');
             $total = $row->getAttribute('total');
-            if (is_string($date) && $date !== '') {
+            if (is_string($date) && filled($date)) {
                 $dailyTotals[$date] = is_numeric($total) ? (int) $total : 0;
             }
         }

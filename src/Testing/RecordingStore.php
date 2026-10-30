@@ -21,8 +21,6 @@ use PHPUnit\Framework\Assert;
  */
 final class RecordingStore
 {
-    private ?PricingRegistry $pricing = null;
-
     /** @var array<string, GenerationEntry> */
     private array $generations = [];
 
@@ -31,6 +29,11 @@ final class RecordingStore
 
     /** @var array<int, array{name: string}> */
     private array $spans = [];
+
+    public function __construct(
+        private readonly GlintFilterRegistry $filters,
+        private readonly PricingRegistry $pricing,
+    ) {}
 
     public function recordSpan(string $name): void
     {
@@ -66,9 +69,7 @@ final class RecordingStore
 
     public function handleLlmCallStarted(LlmCallStarted $event): void
     {
-        $registry = app(GlintFilterRegistry::class);
-
-        if (! $registry->shouldRecord(new FilterEntry(
+        if (! $this->filters->shouldRecord(new FilterEntry(
             provider: $event->provider,
             model: $event->model,
             traceId: $event->traceId,
@@ -101,7 +102,7 @@ final class RecordingStore
 
         $generation = $this->generations[$event->generationId];
 
-        $costUsd = $this->pricing()->costFor(
+        $costUsd = $this->pricing->costFor(
             $generation['provider'],
             $generation['model'],
             $event->promptTokens,
@@ -119,11 +120,6 @@ final class RecordingStore
                 'finishReason' => $event->finishReason,
             ]
         );
-    }
-
-    private function pricing(): PricingRegistry
-    {
-        return $this->pricing ??= app(PricingRegistry::class);
     }
 
     public function handleLlmCallFailed(LlmCallFailed $event): void

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cybernerdie\Glint\Alerts;
 
+use Cybernerdie\Glint\Enums\AlertChannel;
 use Cybernerdie\Glint\Enums\AlertEventStatus;
 use Cybernerdie\Glint\Enums\AlertRuleType;
 use Cybernerdie\Glint\Events\GlintAlertTriggered;
@@ -14,7 +15,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
- * @phpstan-type DispatchEntry array{event: GlintAlertEvent, channel: string}
+ * @phpstan-type DispatchEntry array{event: GlintAlertEvent, channel: AlertChannel}
  */
 final class AlertDispatcher
 {
@@ -116,20 +117,27 @@ final class AlertDispatcher
 
         if ($currentValue >= $threshold) {
             $channels = $rule->channels ?? [];
-            $channels = count($channels) > 0 ? $channels : ['log'];
+            $channels = $channels !== [] ? $channels : [AlertChannel::Log->value];
 
             /** @var array<int, DispatchEntry> $dispatched */
             $dispatched = [];
 
             DB::transaction(function () use ($rule, $threshold, $currentValue, $period, $channels, &$dispatched): void {
-                foreach ($channels as $channel) {
-                    $channel = (string) $channel;
+                foreach ($channels as $rawChannel) {
+                    $channelValue = (string) $rawChannel;
+                    $channel = AlertChannel::tryFrom($channelValue);
+                    $deliveryError = match (true) {
+                        $channel === null => "Unsupported alert channel: {$channelValue}",
+                        $channel !== AlertChannel::Log && ! $rule->hasNotificationDestination($channel) => "Missing destination for alert channel: {$channelValue}",
+                        default => null,
+                    };
 
                     $alertEvent = GlintAlertEvent::create([
                         'alert_rule_id' => $rule->id,
                         'triggered_at' => now(),
-                        'channel' => $channel,
-                        'status' => AlertEventStatus::Sent,
+                        'channel' => $channelValue,
+                        'status' => $deliveryError === null ? AlertEventStatus::Sent : AlertEventStatus::Failed,
+                        'error' => $deliveryError,
                         'context' => [
                             'type' => $rule->type->value,
                             'threshold' => $threshold,
@@ -138,7 +146,9 @@ final class AlertDispatcher
                         ],
                     ]);
 
-                    $dispatched[] = ['event' => $alertEvent, 'channel' => $channel];
+                    if ($channel !== null && $deliveryError === null) {
+                        $dispatched[] = ['event' => $alertEvent, 'channel' => $channel];
+                    }
                 }
 
                 $rule->update(['last_triggered_at' => now()]);

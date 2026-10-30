@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cybernerdie\Glint;
 
+use Cybernerdie\Glint\Aggregates\GenerationAggregateRecorder;
 use Cybernerdie\Glint\Concerns\ProtectsWrites;
 use Cybernerdie\Glint\Context\TraceContext;
 use Cybernerdie\Glint\Contracts\GenerationInterface;
@@ -21,6 +22,7 @@ use Cybernerdie\Glint\Null\NullGeneration;
 use Cybernerdie\Glint\Null\NullSpan;
 use Cybernerdie\Glint\Null\NullTrace;
 use Cybernerdie\Glint\Pricing\PricingRegistry;
+use Cybernerdie\Glint\Support\Redactor;
 use Cybernerdie\Glint\Testing\GlintFake;
 use Cybernerdie\Glint\Tracing\ActiveGeneration;
 use Cybernerdie\Glint\Tracing\ActiveSpan;
@@ -37,6 +39,9 @@ final class GlintManager implements GlintClientInterface
     public function __construct(
         private readonly TraceContext $context,
         private readonly PricingRegistry $pricing,
+        private readonly Redactor $redactor,
+        private readonly GenerationAggregateRecorder $aggregates,
+        private readonly GlintFilterRegistry $filters,
     ) {}
 
     public static function fake(): GlintFake
@@ -50,28 +55,21 @@ final class GlintManager implements GlintClientInterface
      *
      * @param  callable(FilterEntry): bool  $callback
      */
-    public static function filter(callable $callback): void
+    public function filter(callable $callback): void
     {
-        app(GlintFilterRegistry::class)->push($callback);
+        $this->filters->push($callback);
     }
 
-    /**
-     * @internal Used by GlintRecorder to test registered filters.
-     *           Not part of the public API — subject to change without notice.
-     */
-    public static function shouldRecord(FilterEntry $entry): bool
+    /** @internal Test the registered filters. */
+    public function shouldRecord(FilterEntry $entry): bool
     {
-        return app(GlintFilterRegistry::class)->shouldRecord($entry);
+        return $this->filters->shouldRecord($entry);
     }
 
-    /**
-     * @internal Reset all registered filters.
-     *           Called by GlintFake::swap() and test tear-down helpers.
-     *           Not part of the public API — subject to change without notice.
-     */
-    public static function flushFilters(): void
+    /** @internal Reset all registered filters. */
+    public function flushFilters(): void
     {
-        app(GlintFilterRegistry::class)->flush();
+        $this->filters->flush();
     }
 
     public function isEnabled(): bool
@@ -94,12 +92,12 @@ final class GlintManager implements GlintClientInterface
         $this->protectedWrite(fn () => GlintTrace::create([
             'id' => $traceId,
             'name' => $name,
-            'metadata' => $metadata,
+            'metadata' => $this->redactor->metadata($metadata),
             'status' => RecordStatus::Pending,
             'started_at' => $startedAt,
         ]));
 
-        return new ActiveTrace($traceId, $this->context, $startedAt, $this->pricing);
+        return new ActiveTrace($traceId, $this->context, $startedAt, $this->pricing, $this->redactor, $this->aggregates);
     }
 
     /** @param array<string, mixed> $metadata */
@@ -110,20 +108,30 @@ final class GlintManager implements GlintClientInterface
         }
 
         $spanId = (string) Str::ulid();
-        $traceId = $this->context->traceId() ?? $this->createHeadlessTrace($name);
+        $traceId = $this->context->traceId();
+        $ownsTrace = $traceId === null;
+        $traceId ??= $this->createHeadlessTrace($name);
+
+        if ($ownsTrace) {
+            $this->context->openTrace($traceId);
+        }
+
         $startedAt = now();
+
+        $this->context->materializeTrace($traceId);
 
         $this->protectedWrite(fn () => GlintSpan::create([
             'id' => $spanId,
             'trace_id' => $traceId,
+            'parent_span_id' => $this->context->activeSpanId(),
             'name' => $name,
             'type' => SpanType::Span,
-            'metadata' => $metadata,
+            'metadata' => $this->redactor->metadata($metadata),
             'status' => RecordStatus::Pending,
             'started_at' => $startedAt,
         ]));
 
-        return new ActiveSpan($spanId, $startedAt);
+        return new ActiveSpan($spanId, $startedAt, $this->redactor, $this->context, $ownsTrace ? $traceId : null);
     }
 
     /** @param array<string, mixed> $metadata */
@@ -134,21 +142,26 @@ final class GlintManager implements GlintClientInterface
         }
 
         $generationId = (string) Str::ulid();
-        $traceId = $this->context->traceId() ?? $this->createHeadlessTrace($name);
+        $traceId = $this->context->traceId();
+        $ownsTrace = $traceId === null;
+        $traceId ??= $this->createHeadlessTrace($name);
         $startedAt = now();
+
+        $this->context->materializeTrace($traceId);
 
         $this->protectedWrite(fn () => GlintGeneration::create([
             'id' => $generationId,
             'trace_id' => $traceId,
+            'parent_span_id' => $this->context->activeSpanId(),
             'name' => $name,
             'provider' => $provider,
             'model' => $model,
-            'metadata' => $metadata,
+            'metadata' => $this->redactor->metadata($metadata),
             'status' => RecordStatus::Pending,
             'started_at' => $startedAt,
         ]));
 
-        return new ActiveGeneration($generationId, $this->pricing, $provider, $model, $startedAt);
+        return new ActiveGeneration($generationId, $this->pricing, $provider, $model, $startedAt, $this->redactor, $this->aggregates, $ownsTrace ? $traceId : null);
     }
 
     /**

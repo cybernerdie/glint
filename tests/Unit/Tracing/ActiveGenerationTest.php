@@ -3,10 +3,12 @@
 declare(strict_types=1);
 
 use Carbon\Carbon;
+use Cybernerdie\Glint\Aggregates\GenerationAggregateRecorder;
 use Cybernerdie\Glint\Enums\RecordStatus;
 use Cybernerdie\Glint\Models\GlintAggregate;
 use Cybernerdie\Glint\Models\GlintGeneration;
 use Cybernerdie\Glint\Pricing\PricingRegistry;
+use Cybernerdie\Glint\Support\Redactor;
 use Cybernerdie\Glint\Tracing\ActiveGeneration;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -21,7 +23,7 @@ function makeActiveGeneration(?string $genId = null, string $provider = 'openai'
         'model' => $model,
     ]);
     $pricing = app(PricingRegistry::class);
-    $generation = new ActiveGeneration($genId, $pricing, $provider, $model, Carbon::now());
+    $generation = new ActiveGeneration($genId, $pricing, $provider, $model, Carbon::now(), app(Redactor::class), app(GenerationAggregateRecorder::class));
 
     return [$generation, $genId];
 }
@@ -67,7 +69,7 @@ it('tag appends to existing tags', function (): void {
 it('tag returns self when generation row does not exist', function (): void {
     $fakeId = Str::ulid()->toString();
     $pricing = app(PricingRegistry::class);
-    $generation = new ActiveGeneration($fakeId, $pricing, 'openai', 'gpt-4o', Carbon::now());
+    $generation = new ActiveGeneration($fakeId, $pricing, 'openai', 'gpt-4o', Carbon::now(), app(Redactor::class), app(GenerationAggregateRecorder::class));
 
     $result = $generation->tag('key', 'value');
 
@@ -129,6 +131,21 @@ it('redacts manually recorded prompts', function (): void {
             'content' => 'Use [REDACTED]',
         ],
     ]);
+});
+
+it('keeps manual prompt and completion bodies empty when body storage is disabled', function (): void {
+    config()->set('glint.recording.store_bodies', false);
+    [$generation, $genId] = makeActiveGeneration();
+
+    $generation->prompt('Private prompt');
+    $generation->finish('Private answer', 12, 8);
+
+    $row = GlintGeneration::find($genId);
+
+    expect($row->prompt)->toBeNull()
+        ->and($row->completion)->toBeNull()
+        ->and($row->total_tokens)->toBe(20)
+        ->and($row->status)->toBe(RecordStatus::Success);
 });
 
 it('options updates manually recorded generation options', function (): void {
@@ -211,7 +228,7 @@ it('finish updates aggregate buckets for manual generations', function (): void 
 });
 
 it('finish only increments manual aggregates once', function (): void {
-    [$generation] = makeActiveGeneration(provider: 'openai', model: 'gpt-4o-mini');
+    [$generation, $generationId] = makeActiveGeneration(provider: 'openai', model: 'gpt-4o-mini');
 
     $generation->finish('First answer', 100, 50, 'stop');
     $generation->finish('Second answer', 200, 75, 'stop');
@@ -227,6 +244,30 @@ it('finish only increments manual aggregates once', function (): void {
         ->and((int) $hour->successful_requests)->toBe(1)
         ->and((int) $hour->prompt_tokens)->toBe(100)
         ->and((int) $hour->completion_tokens)->toBe(50);
+
+    $saved = GlintGeneration::findOrFail($generationId);
+    expect($saved->completion)->toBe('First answer')
+        ->and($saved->prompt_tokens)->toBe(100);
+});
+
+it('does not change a successful generation to an error', function (): void {
+    [$generation, $generationId] = makeActiveGeneration();
+
+    $generation->finish('Answer', 10, 5);
+    $generation->fail(new RuntimeException('late error'));
+
+    expect(GlintGeneration::findOrFail($generationId)->status)->toBe(RecordStatus::Success);
+});
+
+it('does not change a failed generation to success', function (): void {
+    [$generation, $generationId] = makeActiveGeneration();
+
+    $generation->fail(new RuntimeException('provider error'));
+    $generation->finish('late answer', 10, 5);
+
+    $saved = GlintGeneration::findOrFail($generationId);
+    expect($saved->status)->toBe(RecordStatus::Error)
+        ->and($saved->completion)->toBeNull();
 });
 
 it('redacts completion when manually finishing a generation', function (): void {

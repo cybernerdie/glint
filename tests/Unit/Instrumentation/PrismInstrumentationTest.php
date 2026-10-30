@@ -426,7 +426,7 @@ it('resolves provider name using hardcoded map for Provider-suffixed class names
 
 it('TracingPrismManager is a PrismManager instance', function () {
     $inner = new PrismManager($this->app);
-    $manager = new TracingPrismManager($inner, $this->app);
+    $manager = new TracingPrismManager($inner, $this->app, fn (): TraceContext => $this->app->make(TraceContext::class));
 
     expect($manager)->toBeInstanceOf(PrismManager::class);
 });
@@ -437,17 +437,17 @@ it('TracingPrismManager::extend() registers custom provider on the inner manager
     // which would never see the registration. The override ensures extend() routes
     // to $inner so custom providers are available when resolve() is called.
     $inner = new PrismManager($this->app);
-    $manager = new TracingPrismManager($inner, $this->app);
+    $manager = new TracingPrismManager($inner, $this->app, fn (): TraceContext => $this->app->make(TraceContext::class));
 
     $called = false;
     $manager->extend('my-provider', function () use (&$called) {
         $called = true;
 
-        return new class extends \Prism\Prism\Providers\Provider
+        return new class extends Provider
         {
-            public function text(\Prism\Prism\Text\Request $request): \Prism\Prism\Text\Response
+            public function text(Request $request): Response
             {
-                return new \Prism\Prism\Text\Response;
+                return new Response;
             }
         };
     });

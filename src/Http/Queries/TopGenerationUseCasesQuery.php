@@ -28,7 +28,7 @@ final readonly class TopGenerationUseCasesQuery
                 DB::raw('SUM(total_tokens) as total_tokens'),
             ])
             ->whereNotNull('name')
-            ->when($this->provider !== '', fn ($q) => $q->where('provider', $this->provider))
+            ->when(filled($this->provider), fn ($q) => $q->where('provider', $this->provider))
             ->when($this->fromDt, fn ($q) => $q->where('started_at', '>=', $this->fromDt))
             ->when($this->toDt, fn ($q) => $q->where('started_at', '<=', $this->toDt))
             ->groupBy('name')

@@ -10,10 +10,10 @@ class AgentPrompt
         public readonly string $prompt = '',
         public readonly ?string $model = null,
         public readonly mixed $agent = null,
-        private readonly ?string $providerClass = null,
+        private readonly mixed $providerClass = null,
     ) {}
 
-    public function provider(): ?string
+    public function provider(): mixed
     {
         return $this->providerClass;
     }

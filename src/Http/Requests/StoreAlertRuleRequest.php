@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cybernerdie\Glint\Http\Requests;
 
 use Cybernerdie\Glint\Enums\AggregatePeriod;
+use Cybernerdie\Glint\Enums\AlertChannel;
 use Cybernerdie\Glint\Enums\AlertRuleType;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -26,17 +27,17 @@ final class StoreAlertRuleRequest extends FormRequest
             'period' => ['required', Rule::in(array_column(AggregatePeriod::cases(), 'value'))],
             'provider' => ['nullable', 'string', 'max:255'],
             'channels' => ['required', 'array', 'min:1'],
-            'channels.*' => [Rule::in(['mail', 'webhook', 'slack', 'log'])],
+            'channels.*' => [Rule::in(array_column(AlertChannel::cases(), 'value'))],
             'mail_to' => [
-                Rule::requiredIf(fn () => in_array('mail', (array) $this->input('channels', []), true)),
+                Rule::requiredIf(fn () => in_array(AlertChannel::Mail->value, (array) $this->input('channels', []), true)),
                 'nullable', 'email', 'max:255',
             ],
             'webhook_url' => [
-                Rule::requiredIf(fn () => in_array('webhook', (array) $this->input('channels', []), true)),
+                Rule::requiredIf(fn () => in_array(AlertChannel::Webhook->value, (array) $this->input('channels', []), true)),
                 'nullable', 'url', 'max:500',
             ],
             'slack_webhook_url' => [
-                Rule::requiredIf(fn () => in_array('slack', (array) $this->input('channels', []), true)),
+                Rule::requiredIf(fn () => in_array(AlertChannel::Slack->value, (array) $this->input('channels', []), true)),
                 'nullable', 'url', 'max:500',
             ],
             'cooldown_minutes' => ['required', 'integer', 'min:1', 'max:10080'],
@@ -61,9 +62,9 @@ final class StoreAlertRuleRequest extends FormRequest
                 'provider' => $this->string('provider')->toString() ?: null,
             ],
             'channels' => $channels,
-            'mail_to' => in_array('mail', $channels, true) ? ($this->string('mail_to')->toString() ?: null) : null,
-            'webhook_url' => in_array('webhook', $channels, true) ? ($this->string('webhook_url')->toString() ?: null) : null,
-            'slack_webhook_url' => in_array('slack', $channels, true) ? ($this->string('slack_webhook_url')->toString() ?: null) : null,
+            'mail_to' => in_array(AlertChannel::Mail->value, $channels, true) ? ($this->string('mail_to')->toString() ?: null) : null,
+            'webhook_url' => in_array(AlertChannel::Webhook->value, $channels, true) ? ($this->string('webhook_url')->toString() ?: null) : null,
+            'slack_webhook_url' => in_array(AlertChannel::Slack->value, $channels, true) ? ($this->string('slack_webhook_url')->toString() ?: null) : null,
             'cooldown_minutes' => $this->integer('cooldown_minutes'),
             'enabled' => (bool) $this->input('enabled', true),
         ];

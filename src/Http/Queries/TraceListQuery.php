@@ -23,7 +23,7 @@ final readonly class TraceListQuery
     {
         $query = GlintTrace::query()->latest('started_at');
 
-        if ($this->search !== '') {
+        if (filled($this->search)) {
             $query->where('name', 'like', '%'.$this->search.'%');
         }
 
@@ -31,7 +31,7 @@ final readonly class TraceListQuery
             $query->where('status', $this->status);
         }
 
-        if ($this->userId !== '') {
+        if (filled($this->userId)) {
             $query->where('user_id', $this->userId);
         }
 

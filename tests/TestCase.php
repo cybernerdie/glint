@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests;
 
-use Cybernerdie\Glint\GlintManager;
+use Cybernerdie\Glint\Filtering\GlintFilterRegistry;
 use Cybernerdie\Glint\GlintServiceProvider;
 use Illuminate\Support\Facades\DB;
 use Orchestra\Testbench\TestCase as Orchestra;
@@ -15,7 +15,7 @@ class TestCase extends Orchestra
     {
         parent::setUp();
 
-        GlintManager::flushFilters();
+        app(GlintFilterRegistry::class)->flush();
     }
 
     protected function tearDown(): void

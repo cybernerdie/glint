@@ -12,6 +12,7 @@ After installation, the full configuration file is available at `config/glint.ph
 | `drivers` | `GLINT_DRIVERS` | `http` | Comma-separated list of active instrumentation drivers. Accepts built-in names (`http`, `prism`, `laravel-ai`, `neuron-ai`) or a custom driver FQCN. |
 | `recording.mode` | `GLINT_MODE` | `queue` | `queue` dispatches a job; `sync` writes inline. |
 | `recording.store_bodies` | `GLINT_STORE_BODIES` | `true` | Store raw prompt and completion text. Set `false` for metadata-only recording. |
+| `recording.store_http_responses` | `GLINT_STORE_HTTP_RESPONSES` | `false` | Also store the application's HTTP response body on a request trace, up to 10,000 characters. Requires `store_bodies=true`. |
 | `recording.max_completion_chars` | `GLINT_MAX_COMPLETION_CHARS` | `65535` | Truncate stored completion/error text to this many characters. `0` disables the limit. |
 | `queue.connection` | `GLINT_QUEUE_CONNECTION` | `QUEUE_CONNECTION` | Queue connection for recording jobs. |
 | `queue.queue` | `GLINT_QUEUE` | *(default queue)* | Named queue for recording jobs. Set to `glint` to isolate from application jobs. |
@@ -98,7 +99,16 @@ Use `pricing_overrides` for private models, newly released models, or provider p
 ],
 ```
 
-Prices are USD per 1 million tokens. Overrides win over the published JSON file.
+Prices are USD per 1 million tokens. The bundled registry was checked against the providers' published rates
+on October 30, 2026: [OpenAI](https://developers.openai.com/api/docs/pricing),
+[Anthropic](https://platform.claude.com/docs/en/about-claude/pricing),
+[Gemini](https://ai.google.dev/gemini-api/docs/pricing), [Groq](https://console.groq.com/docs/models),
+and [Mistral](https://docs.mistral.ai/inference/pricing). Retired model IDs remain for historical traces.
+Entries represent standard, uncached token prices. The registry has one input and one output rate per model,
+so estimates do not account for cached tokens, long-context or modality-specific rates, batch or priority
+processing, regional surcharges, or separate tool charges. Promotional rates need review when they expire.
+
+Overrides win over the published JSON file. Existing installations use their published `config/glint_pricing.json`; a package update does not replace it. After reviewing any local edits, refresh that file with `php artisan glint:publish --pricing --force`.
 
 To find recorded models that are missing prices:
 

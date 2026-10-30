@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cybernerdie\Glint\Tracing;
 
 use Carbon\Carbon;
+use Cybernerdie\Glint\Aggregates\GenerationAggregateRecorder;
 use Cybernerdie\Glint\Concerns\ProtectsWrites;
 use Cybernerdie\Glint\Context\TraceContext;
 use Cybernerdie\Glint\Contracts\TraceInterface;
@@ -27,6 +28,8 @@ final class ActiveTrace implements TraceInterface
         private readonly TraceContext $context,
         private readonly Carbon $startedAt,
         private readonly PricingRegistry $pricing,
+        private readonly Redactor $redactor,
+        private readonly GenerationAggregateRecorder $aggregates,
     ) {}
 
     public function span(string $name, callable $callback): mixed
@@ -37,13 +40,14 @@ final class ActiveTrace implements TraceInterface
         $this->protectedWrite(fn () => GlintSpan::create([
             'id' => $spanId,
             'trace_id' => $this->traceId,
+            'parent_span_id' => $this->context->activeSpanId(),
             'name' => $name,
             'type' => SpanType::Span,
             'status' => RecordStatus::Pending,
             'started_at' => $spanStartedAt,
         ]));
 
-        $span = new ActiveSpan($spanId, $spanStartedAt);
+        $span = new ActiveSpan($spanId, $spanStartedAt, $this->redactor, $this->context);
 
         $thrown = null;
         $result = null;
@@ -55,11 +59,7 @@ final class ActiveTrace implements TraceInterface
         }
 
         if ($thrown !== null) {
-            $this->protectedWrite(fn () => GlintSpan::where('id', $spanId)->update([
-                'status' => RecordStatus::Error,
-                'ended_at' => now(),
-                'duration_ms' => (int) $spanStartedAt->diffInMilliseconds(now()),
-            ]));
+            $span->fail();
             throw $thrown;
         }
 
@@ -76,6 +76,7 @@ final class ActiveTrace implements TraceInterface
         $this->protectedWrite(fn () => GlintSpan::create([
             'id' => $spanId,
             'trace_id' => $this->traceId,
+            'parent_span_id' => $this->context->activeSpanId(),
             'name' => $name,
             'type' => SpanType::Generation,
             'status' => RecordStatus::Pending,
@@ -95,15 +96,19 @@ final class ActiveTrace implements TraceInterface
             'started_at' => $genStartedAt,
         ]));
 
-        $generation = new ActiveGeneration($generationId, $this->pricing, $provider, $model, $genStartedAt);
+        $generation = new ActiveGeneration($generationId, $this->pricing, $provider, $model, $genStartedAt, $this->redactor, $this->aggregates);
 
         $thrown = null;
         $result = null;
+
+        $this->context->openSpan($spanId);
 
         try {
             $result = $callback($generation);
         } catch (\Throwable $e) {
             $thrown = $e;
+        } finally {
+            $this->context->closeSpan($spanId);
         }
 
         $endedAt = now();
@@ -118,11 +123,7 @@ final class ActiveTrace implements TraceInterface
 
         // Only mark error on throw — on success the callback calls $generation->finish() itself.
         if ($thrown !== null) {
-            $this->protectedWrite(fn () => GlintGeneration::where('id', $generationId)->update([
-                'status' => RecordStatus::Error,
-                'ended_at' => $endedAt,
-                'duration_ms' => $durationMs,
-            ]));
+            $generation->fail($thrown);
 
             throw $thrown;
         }
@@ -144,7 +145,7 @@ final class ActiveTrace implements TraceInterface
                 $metadata = (array) ($trace->metadata ?? []);
                 /** @var array<string, mixed> $tags */
                 $tags = is_array($metadata['tags'] ?? null) ? $metadata['tags'] : [];
-                $tags[$key] = $this->redactor()->string($value);
+                $tags[$key] = $this->redactor->string($value);
                 $metadata['tags'] = $tags;
 
                 $trace->update(['metadata' => $metadata]);
@@ -176,7 +177,7 @@ final class ActiveTrace implements TraceInterface
                 /** @var array<string, mixed> $existing */
                 $existing = is_array($metadata['tags'] ?? null) ? $metadata['tags'] : [];
                 /** @var array<string, string> $redactedTags */
-                $redactedTags = $this->redactor()->metadata($tags) ?? [];
+                $redactedTags = $this->redactor->metadata($tags) ?? [];
                 $metadata['tags'] = array_merge($existing, $redactedTags);
 
                 $trace->update(['metadata' => $metadata]);
@@ -197,16 +198,11 @@ final class ActiveTrace implements TraceInterface
             ]);
         });
 
-        $this->context->closeTrace();
+        $this->context->closeTrace($this->traceId);
     }
 
     public function traceId(): string
     {
         return $this->traceId;
-    }
-
-    private function redactor(): Redactor
-    {
-        return app(Redactor::class);
     }
 }

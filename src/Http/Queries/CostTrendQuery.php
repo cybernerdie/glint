@@ -22,7 +22,7 @@ final readonly class CostTrendQuery
         return GlintGeneration::query()
             ->selectRaw('DATE(started_at) as date, SUM(cost_usd) as total')
             ->whereNotNull('cost_usd')
-            ->when($this->provider !== '', fn ($q) => $q->where('provider', $this->provider))
+            ->when(filled($this->provider), fn ($q) => $q->where('provider', $this->provider))
             ->when($this->fromDt, fn ($q) => $q->where('started_at', '>=', $this->fromDt))
             ->when($this->toDt, fn ($q) => $q->where('started_at', '<=', $this->toDt))
             ->when($this->fromDt === null && $this->toDt === null, fn ($q) => $q->where('started_at', '>=', now()->subDays(30)->startOfDay()))

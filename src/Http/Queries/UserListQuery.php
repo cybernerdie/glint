@@ -31,7 +31,7 @@ final readonly class UserListQuery
             ])
             ->leftJoin('glint_generations', 'glint_generations.trace_id', '=', 'glint_traces.id')
             ->whereNotNull('glint_traces.user_id')
-            ->when($this->search !== '', fn ($q) => $q->where('glint_traces.user_id', 'like', '%'.$this->search.'%'))
+            ->when(filled($this->search), fn ($q) => $q->where('glint_traces.user_id', 'like', '%'.$this->search.'%'))
             ->when($this->fromDt, fn ($q) => $q->where('glint_traces.started_at', '>=', $this->fromDt))
             ->when($this->toDt, fn ($q) => $q->where('glint_traces.started_at', '<=', $this->toDt))
             ->groupBy('glint_traces.user_id')

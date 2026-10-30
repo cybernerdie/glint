@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Cybernerdie\Glint\Alerts\AlertDispatcher;
+use Cybernerdie\Glint\Enums\AlertChannel;
 use Cybernerdie\Glint\Enums\AlertEventStatus;
 use Cybernerdie\Glint\Enums\AlertRuleType;
 use Cybernerdie\Glint\Events\GlintAlertTriggered;
@@ -11,6 +12,7 @@ use Cybernerdie\Glint\Models\GlintAlertEvent;
 use Cybernerdie\Glint\Models\GlintAlertRule;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
     $this->dispatcher = new AlertDispatcher;
@@ -39,7 +41,7 @@ it('skips a rule that is within its cooldown period', function () {
 it('creates an alert event when threshold is crossed', function () {
     GlintAlertRule::factory()->create([
         'threshold_config' => ['threshold' => 10.0, 'period' => 'day'],
-        'channels' => ['email'],
+        'channels' => [AlertChannel::Log->value],
     ]);
 
     GlintAggregate::factory()->create(['total_cost_usd' => 15.00]);
@@ -50,7 +52,7 @@ it('creates an alert event when threshold is crossed', function () {
 
     $event = GlintAlertEvent::first();
 
-    expect($event->channel)->toBe('email')
+    expect($event->channel)->toBe(AlertChannel::Log->value)
         ->and($event->status)->toBe(AlertEventStatus::Sent)
         ->and($event->context['type'])->toBe('cost_threshold')
         ->and((float) $event->context['threshold'])->toBe(10.0)
@@ -213,7 +215,7 @@ it('dispatches GlintAlertTriggered event when threshold is crossed', function ()
 
     GlintAlertRule::factory()->create([
         'threshold_config' => ['threshold' => 10.0, 'period' => 'day'],
-        'channels' => ['email'],
+        'channels' => [AlertChannel::Log->value],
     ]);
 
     GlintAggregate::factory()->create(['total_cost_usd' => 15.00]);
@@ -224,7 +226,7 @@ it('dispatches GlintAlertTriggered event when threshold is crossed', function ()
         return $event->type === AlertRuleType::CostThreshold
             && $event->threshold === 10.0
             && $event->currentValue === 15.0
-            && $event->channel === 'email'
+            && $event->channel === AlertChannel::Log
             && $event->period === 'day';
     });
 });
@@ -263,10 +265,26 @@ it('marks an alert event as failed when channel dispatch throws', function () {
     expect(GlintAlertEvent::first()->status)->toBe(AlertEventStatus::Failed);
 });
 
+it('marks an alert event as failed when a notification webhook fails', function (): void {
+    Http::fake(['https://example.com/hook' => Http::response('unavailable', 503)]);
+
+    GlintAlertRule::factory()->create([
+        'threshold_config' => ['threshold' => 1.0, 'period' => 'day'],
+        'channels' => ['webhook'],
+        'webhook_url' => 'https://example.com/hook',
+    ]);
+
+    GlintAggregate::factory()->create(['total_cost_usd' => 15.00]);
+
+    $this->dispatcher->evaluate();
+
+    expect(GlintAlertEvent::firstOrFail()->status)->toBe(AlertEventStatus::Failed);
+});
+
 it('records one alert event per configured channel', function () {
     GlintAlertRule::factory()->create([
         'threshold_config' => ['threshold' => 10.0, 'period' => 'day'],
-        'channels' => ['email', 'slack'],
+        'channels' => [AlertChannel::Log->value, AlertChannel::Slack->value],
     ]);
 
     GlintAggregate::factory()->create(['total_cost_usd' => 15.00]);
@@ -274,5 +292,38 @@ it('records one alert event per configured channel', function () {
     $this->dispatcher->evaluate();
 
     expect(GlintAlertEvent::count())->toBe(2)
-        ->and(GlintAlertEvent::pluck('channel')->sort()->values()->toArray())->toBe(['email', 'slack']);
+        ->and(GlintAlertEvent::pluck('channel')->sort()->values()->toArray())->toBe(['log', 'slack']);
+});
+
+it('records an unsupported stored channel as failed without dispatching it', function (): void {
+    Event::fake([GlintAlertTriggered::class]);
+
+    GlintAlertRule::factory()->create([
+        'threshold_config' => ['threshold' => 1.0, 'period' => 'day'],
+        'channels' => ['legacy-email'],
+    ]);
+    GlintAggregate::factory()->create(['total_cost_usd' => 15.00]);
+
+    $this->dispatcher->evaluate();
+
+    expect(GlintAlertEvent::firstOrFail()->status)->toBe(AlertEventStatus::Failed);
+    Event::assertNotDispatched(GlintAlertTriggered::class);
+});
+
+it('records a missing notification destination as failed', function (): void {
+    Event::fake([GlintAlertTriggered::class]);
+
+    GlintAlertRule::factory()->create([
+        'threshold_config' => ['threshold' => 1.0, 'period' => 'day'],
+        'channels' => [AlertChannel::Slack->value],
+        'slack_webhook_url' => null,
+    ]);
+    GlintAggregate::factory()->create(['total_cost_usd' => 15.00]);
+
+    $this->dispatcher->evaluate();
+
+    $alertEvent = GlintAlertEvent::firstOrFail();
+    expect($alertEvent->status)->toBe(AlertEventStatus::Failed)
+        ->and($alertEvent->error)->toContain('Missing destination');
+    Event::assertNotDispatched(GlintAlertTriggered::class);
 });

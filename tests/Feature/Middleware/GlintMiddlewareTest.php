@@ -3,24 +3,65 @@
 declare(strict_types=1);
 
 use Cybernerdie\Glint\Enums\RecordStatus;
+use Cybernerdie\Glint\Events\LlmCallStarted;
+use Cybernerdie\Glint\GlintManager;
 use Cybernerdie\Glint\Models\GlintTrace;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
+
+function respondWithLlmCall(string $content, int $status = 200): Response
+{
+    event(new LlmCallStarted(
+        generationId: (string) Str::ulid(),
+        provider: 'openai',
+        model: 'gpt-4o',
+        messages: null,
+        temperature: null,
+        maxTokens: null,
+        isStreaming: false,
+    ));
+
+    return response($content, $status);
+}
 
 beforeEach(function () {
     config()->set('glint.enabled', true);
     config()->set('glint.recording.store_bodies', true);
+    config()->set('glint.recording.store_http_responses', false);
 });
 
-it('creates a glint_traces row when a request goes through the middleware', function () {
+it('does not create a trace for a request without an LLM call', function () {
     Route::get('/glint-test-route', fn () => response('OK'))->middleware('glint');
 
     $this->get('/glint-test-route');
 
+    expect(GlintTrace::count())->toBe(0);
+});
+
+it('creates a trace when an LLM call occurs in the request', function () {
+    Route::get('/glint-llm-route', fn () => respondWithLlmCall('OK'))->middleware('glint');
+
+    $this->get('/glint-llm-route');
+
     expect(GlintTrace::count())->toBe(1);
 });
 
+it('creates a trace when a manual span occurs in the request', function () {
+    Route::get('/glint-span-route', function () {
+        app(GlintManager::class)->span('lookup')->end();
+
+        return response('OK');
+    })->middleware('glint');
+
+    $this->get('/glint-span-route');
+
+    expect(GlintTrace::count())->toBe(1)
+        ->and(GlintTrace::first()->spans()->count())->toBe(1);
+});
+
 it('closes the trace with status=success after the response', function () {
-    Route::get('/glint-status-check', fn () => response('Done'))->middleware('glint');
+    Route::get('/glint-status-check', fn () => respondWithLlmCall('Done'))->middleware('glint');
 
     $this->get('/glint-status-check');
 
@@ -42,7 +83,7 @@ it('passes through without recording when glint.enabled = false', function () {
 });
 
 it('stores request metadata on the trace (method, path, ip)', function () {
-    Route::get('/glint-meta-route', fn () => response('meta'))->middleware('glint');
+    Route::get('/glint-meta-route', fn () => respondWithLlmCall('meta'))->middleware('glint');
 
     $this->get('/glint-meta-route');
 
@@ -57,8 +98,18 @@ it('stores request metadata on the trace (method, path, ip)', function () {
         ->and(array_key_exists('env', $metadata))->toBeTrue();
 });
 
-it('stores the response body when store_bodies = true', function () {
-    Route::get('/glint-body-test', fn () => response('response body here'))->middleware('glint');
+it('does not store the HTTP response body by default', function () {
+    Route::get('/glint-body-default', fn () => respondWithLlmCall('application response'))->middleware('glint');
+
+    $this->get('/glint-body-default');
+
+    expect(GlintTrace::first()->output)->toBeNull();
+});
+
+it('stores the HTTP response body when explicitly enabled', function () {
+    config()->set('glint.recording.store_http_responses', true);
+
+    Route::get('/glint-body-test', fn () => respondWithLlmCall('response body here'))->middleware('glint');
 
     $this->get('/glint-body-test');
 
@@ -67,10 +118,11 @@ it('stores the response body when store_bodies = true', function () {
     expect($trace->output)->toBe('response body here');
 });
 
-it('redacts the response body when store_bodies = true', function () {
+it('redacts an explicitly stored HTTP response body', function () {
+    config()->set('glint.recording.store_http_responses', true);
     config()->set('glint.privacy.redact_patterns', ['/secret-token-\w+/']);
 
-    Route::get('/glint-redacted-body', fn () => response('response secret-token-abc123'))->middleware('glint');
+    Route::get('/glint-redacted-body', fn () => respondWithLlmCall('response secret-token-abc123'))->middleware('glint');
 
     $this->get('/glint-redacted-body');
 
@@ -79,10 +131,11 @@ it('redacts the response body when store_bodies = true', function () {
     expect($trace->output)->toBe('response [REDACTED]');
 });
 
-it('does not store the response body when store_bodies = false', function () {
+it('does not store the HTTP response body when store_bodies = false', function () {
     config()->set('glint.recording.store_bodies', false);
+    config()->set('glint.recording.store_http_responses', true);
 
-    Route::get('/glint-no-body', fn () => response('response body'))->middleware('glint');
+    Route::get('/glint-no-body', fn () => respondWithLlmCall('response body'))->middleware('glint');
 
     $this->get('/glint-no-body');
 
@@ -102,7 +155,7 @@ it('handles null user-agent gracefully', function () {
 it('skips non-string values in redact_patterns without crashing', function () {
     config()->set('glint.privacy.redact_patterns', [null, 42, '/foo/']);
 
-    Route::get('/glint-redact-test', fn () => response('ok'))->middleware('glint');
+    Route::get('/glint-redact-test', fn () => respondWithLlmCall('ok'))->middleware('glint');
 
     $this->withHeader('User-Agent', 'Mozilla/5.0 foo bar');
     $this->get('/glint-redact-test');
@@ -115,7 +168,7 @@ it('skips non-string values in redact_patterns without crashing', function () {
 it('applies a valid redaction pattern to the user-agent', function () {
     config()->set('glint.privacy.redact_patterns', ['/secret-token-\w+/']);
 
-    Route::get('/glint-redact-pattern', fn () => response('ok'))->middleware('glint');
+    Route::get('/glint-redact-pattern', fn () => respondWithLlmCall('ok'))->middleware('glint');
 
     $this->withHeader('User-Agent', 'MyApp/1.0 secret-token-abc123 OtherInfo');
     $this->get('/glint-redact-pattern');
@@ -127,13 +180,33 @@ it('applies a valid redaction pattern to the user-agent', function () {
 });
 
 it('marks trace status as error when response is 5xx', function () {
-    Route::get('/glint-500-route', fn () => response('Internal Server Error', 500))->middleware('glint');
+    Route::get('/glint-500-route', fn () => respondWithLlmCall('Internal Server Error', 500))->middleware('glint');
 
     $this->get('/glint-500-route');
 
     $trace = GlintTrace::first();
 
     expect($trace->status)->toBe(RecordStatus::Error);
+});
+
+it('closes a materialized trace as failed when the request throws', function () {
+    Route::get('/glint-throw-route', function () {
+        respondWithLlmCall('unreachable');
+
+        throw new RuntimeException('Request failed');
+    })->middleware('glint');
+
+    $this->withoutExceptionHandling();
+
+    expect(fn () => $this->get('/glint-throw-route'))
+        ->toThrow(RuntimeException::class, 'Request failed');
+
+    $trace = GlintTrace::first();
+
+    expect($trace)->not->toBeNull()
+        ->and($trace->status)->toBe(RecordStatus::Error)
+        ->and($trace->ended_at)->not->toBeNull()
+        ->and($trace->duration_ms)->not->toBeNull();
 });
 
 it('does not create a trace for requests to the glint dashboard path', function () {
@@ -151,7 +224,7 @@ it('does not create a trace for requests to the glint dashboard path', function 
 it('does not store ip when store_ip = false', function () {
     config()->set('glint.privacy.store_ip', false);
 
-    Route::get('/glint-no-ip', fn () => response('ok'))->middleware('glint');
+    Route::get('/glint-no-ip', fn () => respondWithLlmCall('ok'))->middleware('glint');
 
     $this->get('/glint-no-ip');
 
@@ -163,7 +236,7 @@ it('does not store ip when store_ip = false', function () {
 it('stores ip when store_ip = true', function () {
     config()->set('glint.privacy.store_ip', true);
 
-    Route::get('/glint-with-ip', fn () => response('ok'))->middleware('glint');
+    Route::get('/glint-with-ip', fn () => respondWithLlmCall('ok'))->middleware('glint');
 
     $this->get('/glint-with-ip');
 
@@ -175,7 +248,7 @@ it('stores ip when store_ip = true', function () {
 it('logs debug message and continues when redact_pattern is invalid regex', function () {
     config()->set('glint.privacy.redact_patterns', ['/[invalid-regex/']);
 
-    Route::get('/glint-bad-regex', fn () => response('ok'))->middleware('glint');
+    Route::get('/glint-bad-regex', fn () => respondWithLlmCall('ok'))->middleware('glint');
 
     $this->withHeader('User-Agent', 'Mozilla/5.0 safe-ua');
 
@@ -187,7 +260,7 @@ it('logs debug message and continues when redact_pattern is invalid regex', func
 });
 
 it('marks trace status as success when response is 4xx', function () {
-    Route::get('/glint-404-route', fn () => response('Not Found', 404))->middleware('glint');
+    Route::get('/glint-404-route', fn () => respondWithLlmCall('Not Found', 404))->middleware('glint');
 
     $this->get('/glint-404-route');
 

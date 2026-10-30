@@ -10,8 +10,10 @@ use Cybernerdie\Glint\Concerns\ProtectsWrites;
 use Cybernerdie\Glint\Contracts\GenerationInterface;
 use Cybernerdie\Glint\Enums\RecordStatus;
 use Cybernerdie\Glint\Models\GlintGeneration;
+use Cybernerdie\Glint\Models\GlintTrace;
 use Cybernerdie\Glint\Pricing\PricingRegistry;
 use Cybernerdie\Glint\Support\Redactor;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 
 final class ActiveGeneration implements GenerationInterface
@@ -24,6 +26,9 @@ final class ActiveGeneration implements GenerationInterface
         private readonly string $provider,
         private readonly string $model,
         private readonly Carbon $startedAt,
+        private readonly Redactor $redactor,
+        private readonly GenerationAggregateRecorder $aggregates,
+        private readonly ?string $ownedTraceId = null,
     ) {}
 
     /**
@@ -47,7 +52,7 @@ final class ActiveGeneration implements GenerationInterface
                 $metadata = (array) ($generation->metadata ?? []);
                 /** @var array<string, mixed> $tags */
                 $tags = is_array($metadata['tags'] ?? null) ? $metadata['tags'] : [];
-                $tags[$key] = $this->redactor()->string($value);
+                $tags[$key] = $this->redactor->string($value);
                 $metadata['tags'] = $tags;
 
                 $generation->update(['metadata' => $metadata]);
@@ -82,7 +87,7 @@ final class ActiveGeneration implements GenerationInterface
                 /** @var array<string, mixed> $existing */
                 $existing = is_array($metadata['tags'] ?? null) ? $metadata['tags'] : [];
                 /** @var array<string, string> $redactedTags */
-                $redactedTags = $this->redactor()->metadata($tags) ?? [];
+                $redactedTags = $this->redactor->metadata($tags) ?? [];
                 $metadata['tags'] = array_merge($existing, $redactedTags);
 
                 $generation->update(['metadata' => $metadata]);
@@ -96,12 +101,12 @@ final class ActiveGeneration implements GenerationInterface
     {
         $this->protectedWrite(function () use ($prompt): void {
             GlintGeneration::where('id', $this->generationId)->update([
-                'prompt' => [
+                'prompt' => Config::boolean('glint.recording.store_bodies', true) ? [
                     [
                         'role' => 'user',
-                        'content' => $this->redactor()->string($prompt),
+                        'content' => $this->redactor->string($prompt),
                     ],
-                ],
+                ] : null,
             ]);
         });
 
@@ -146,59 +151,55 @@ final class ActiveGeneration implements GenerationInterface
     public function finish(string $completion, int $promptTokens, int $completionTokens, string $finishReason = 'stop'): void
     {
         $this->protectedWrite(function () use ($completion, $promptTokens, $completionTokens, $finishReason): void {
-            $now = now();
-            $generation = GlintGeneration::where('id', $this->generationId)->first();
+            DB::transaction(function () use ($completion, $promptTokens, $completionTokens, $finishReason): void {
+                $now = now();
+                $generation = GlintGeneration::where('id', $this->generationId)->lockForUpdate()->first();
 
-            if ($generation === null) {
-                return;
-            }
+                if ($generation === null || $generation->status !== RecordStatus::Pending) {
+                    return;
+                }
 
-            $shouldRecordAggregate = $generation->status === RecordStatus::Pending;
+                $generation->update([
+                    'completion' => Config::boolean('glint.recording.store_bodies', true)
+                        ? $this->redactor->string($completion)
+                        : null,
+                    'prompt_tokens' => $promptTokens,
+                    'completion_tokens' => $completionTokens,
+                    'total_tokens' => $promptTokens + $completionTokens,
+                    'finish_reason' => $finishReason,
+                    'status' => RecordStatus::Success,
+                    'cost_usd' => $this->pricing->costFor($this->provider, $this->model, $promptTokens, $completionTokens),
+                    'ended_at' => $now,
+                    'duration_ms' => (int) $this->startedAt->diffInMilliseconds($now),
+                ]);
 
-            $generation->update([
-                'completion' => $this->redactor()->string($completion),
-                'prompt_tokens' => $promptTokens,
-                'completion_tokens' => $completionTokens,
-                'total_tokens' => $promptTokens + $completionTokens,
-                'finish_reason' => $finishReason,
-                'status' => RecordStatus::Success,
-                'cost_usd' => $this->pricing->costFor($this->provider, $this->model, $promptTokens, $completionTokens),
-                'ended_at' => $now,
-                'duration_ms' => (int) $this->startedAt->diffInMilliseconds($now),
-            ]);
-
-            if (! $shouldRecordAggregate) {
-                return;
-            }
-
-            app(GenerationAggregateRecorder::class)->record($generation->refresh());
+                $this->finishOwnedTrace(RecordStatus::Success, $now);
+                $this->aggregates->record($generation->refresh());
+            });
         });
     }
 
     public function fail(\Throwable $e): void
     {
         $this->protectedWrite(function () use ($e): void {
-            $now = now();
-            $generation = GlintGeneration::where('id', $this->generationId)->first();
+            DB::transaction(function () use ($e): void {
+                $now = now();
+                $generation = GlintGeneration::where('id', $this->generationId)->lockForUpdate()->first();
 
-            if ($generation === null) {
-                return;
-            }
+                if ($generation === null || $generation->status !== RecordStatus::Pending) {
+                    return;
+                }
 
-            $shouldRecordAggregate = $generation->status === RecordStatus::Pending;
+                $generation->update([
+                    'status' => RecordStatus::Error,
+                    'error_message' => $this->redactor->string($e->getMessage()),
+                    'ended_at' => $now,
+                    'duration_ms' => (int) $this->startedAt->diffInMilliseconds($now),
+                ]);
 
-            $generation->update([
-                'status' => RecordStatus::Error,
-                'error_message' => $this->redactor()->string($e->getMessage()),
-                'ended_at' => $now,
-                'duration_ms' => (int) $this->startedAt->diffInMilliseconds($now),
-            ]);
-
-            if (! $shouldRecordAggregate) {
-                return;
-            }
-
-            app(GenerationAggregateRecorder::class)->record($generation->refresh());
+                $this->finishOwnedTrace(RecordStatus::Error, $now);
+                $this->aggregates->record($generation->refresh());
+            });
         });
     }
 
@@ -207,8 +208,16 @@ final class ActiveGeneration implements GenerationInterface
         return $this->generationId;
     }
 
-    private function redactor(): Redactor
+    private function finishOwnedTrace(RecordStatus $status, Carbon $endedAt): void
     {
-        return app(Redactor::class);
+        if ($this->ownedTraceId === null) {
+            return;
+        }
+
+        GlintTrace::where('id', $this->ownedTraceId)->update([
+            'status' => $status,
+            'ended_at' => $endedAt,
+            'duration_ms' => (int) $this->startedAt->diffInMilliseconds($endedAt),
+        ]);
     }
 }

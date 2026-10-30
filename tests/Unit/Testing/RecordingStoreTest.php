@@ -64,14 +64,14 @@ function makeToolCalledEvent(string $toolName = 'get_weather'): LlmToolCalled
 }
 
 it('starts empty', function (): void {
-    $store = new RecordingStore;
+    $store = app(RecordingStore::class);
 
     expect($store->generations())->toHaveCount(0)
         ->and($store->toolCalls())->toHaveCount(0);
 });
 
 it('records a generation on LlmCallStarted', function (): void {
-    $store = new RecordingStore;
+    $store = app(RecordingStore::class);
     $store->handleLlmCallStarted(makeStartedEvent());
 
     $generations = $store->generations();
@@ -94,7 +94,7 @@ it('records a generation on LlmCallStarted', function (): void {
 });
 
 it('updates generation on LlmCallFinished', function (): void {
-    $store = new RecordingStore;
+    $store = app(RecordingStore::class);
     $store->handleLlmCallStarted(makeStartedEvent());
     $store->handleLlmCallFinished(makeFinishedEvent());
 
@@ -108,7 +108,7 @@ it('updates generation on LlmCallFinished', function (): void {
 });
 
 it('updates generation status on LlmCallFailed', function (): void {
-    $store = new RecordingStore;
+    $store = app(RecordingStore::class);
     $store->handleLlmCallStarted(makeStartedEvent());
     $store->handleLlmCallFailed(makeFailedEvent(message: 'Rate limit'));
 
@@ -119,7 +119,7 @@ it('updates generation status on LlmCallFailed', function (): void {
 });
 
 it('records a tool call on LlmToolCalled', function (): void {
-    $store = new RecordingStore;
+    $store = app(RecordingStore::class);
     $store->handleLlmToolCalled(makeToolCalledEvent('get_weather'));
 
     $toolCalls = $store->toolCalls();
@@ -131,7 +131,7 @@ it('records a tool call on LlmToolCalled', function (): void {
 });
 
 it('hasGeneration returns true for matching provider and model', function (): void {
-    $store = new RecordingStore;
+    $store = app(RecordingStore::class);
     $store->handleLlmCallStarted(makeStartedEvent(provider: 'openai', model: 'gpt-4o'));
 
     expect($store->hasGeneration('openai', 'gpt-4o'))->toBeTrue()
@@ -139,7 +139,7 @@ it('hasGeneration returns true for matching provider and model', function (): vo
 });
 
 it('hasToolCall returns true for matching tool name', function (): void {
-    $store = new RecordingStore;
+    $store = app(RecordingStore::class);
     $store->handleLlmToolCalled(makeToolCalledEvent('get_weather'));
 
     expect($store->hasToolCall('get_weather'))->toBeTrue()
@@ -147,7 +147,7 @@ it('hasToolCall returns true for matching tool name', function (): void {
 });
 
 it('assertGenerationCount passes when count matches', function (): void {
-    $store = new RecordingStore;
+    $store = app(RecordingStore::class);
     $store->handleLlmCallStarted(makeStartedEvent('gen-001'));
     $store->handleLlmCallStarted(makeStartedEvent('gen-002'));
 
@@ -155,14 +155,14 @@ it('assertGenerationCount passes when count matches', function (): void {
 });
 
 it('assertGenerationCount fails when count does not match', function (): void {
-    $store = new RecordingStore;
+    $store = app(RecordingStore::class);
     $store->handleLlmCallStarted(makeStartedEvent('gen-001'));
 
     expect(fn () => $store->assertGenerationCount(3))->toThrow(AssertionFailedError::class);
 });
 
 it('flush clears all recordings', function (): void {
-    $store = new RecordingStore;
+    $store = app(RecordingStore::class);
     $store->handleLlmCallStarted(makeStartedEvent());
     $store->handleLlmToolCalled(makeToolCalledEvent());
 
@@ -173,7 +173,7 @@ it('flush clears all recordings', function (): void {
 });
 
 it('handleLlmCallFinished does nothing when generation id not found', function (): void {
-    $store = new RecordingStore;
+    $store = app(RecordingStore::class);
 
     $store->handleLlmCallFinished(makeFinishedEvent('non-existent-id'));
 
@@ -181,7 +181,7 @@ it('handleLlmCallFinished does nothing when generation id not found', function (
 });
 
 it('handleLlmCallFailed does nothing when generation id not found', function (): void {
-    $store = new RecordingStore;
+    $store = app(RecordingStore::class);
 
     $store->handleLlmCallFailed(makeFailedEvent('non-existent-id'));
 
@@ -189,7 +189,7 @@ it('handleLlmCallFailed does nothing when generation id not found', function ():
 });
 
 it('hasGenerationForName returns true for matching name', function (): void {
-    $store = new RecordingStore;
+    $store = app(RecordingStore::class);
     $store->handleLlmCallStarted(makeStartedEvent(name: 'my-special-gen'));
 
     expect($store->hasGenerationForName('my-special-gen'))->toBeTrue()
@@ -197,110 +197,110 @@ it('hasGenerationForName returns true for matching name', function (): void {
 });
 
 it('assertHasToolCall passes when tool call exists', function (): void {
-    $store = new RecordingStore;
+    $store = app(RecordingStore::class);
     $store->handleLlmToolCalled(makeToolCalledEvent('search_web'));
 
     expect(fn () => $store->assertHasToolCall('search_web'))->not->toThrow(Throwable::class);
 });
 
 it('assertHasToolCall fails when tool call does not exist', function (): void {
-    $store = new RecordingStore;
+    $store = app(RecordingStore::class);
 
     expect(fn () => $store->assertHasToolCall('missing_tool'))->toThrow(AssertionFailedError::class);
 });
 
 it('assertNothingRecorded passes on empty store', function (): void {
-    $store = new RecordingStore;
+    $store = app(RecordingStore::class);
 
     expect(fn () => $store->assertNothingRecorded())->not->toThrow(Throwable::class);
 });
 
 it('assertNothingRecorded fails when generations exist', function (): void {
-    $store = new RecordingStore;
+    $store = app(RecordingStore::class);
     $store->handleLlmCallStarted(makeStartedEvent());
 
     expect(fn () => $store->assertNothingRecorded())->toThrow(AssertionFailedError::class);
 });
 
 it('assertNothingRecorded fails when tool calls exist', function (): void {
-    $store = new RecordingStore;
+    $store = app(RecordingStore::class);
     $store->handleLlmToolCalled(makeToolCalledEvent());
 
     expect(fn () => $store->assertNothingRecorded())->toThrow(AssertionFailedError::class);
 });
 
 it('handleLlmCallStarted is skipped when a filter rejects the entry', function (): void {
-    GlintManager::filter(fn ($e) => $e->provider !== 'openai');
+    app(GlintManager::class)->filter(fn ($e) => $e->provider !== 'openai');
 
-    $store = new RecordingStore;
+    $store = app(RecordingStore::class);
     $store->handleLlmCallStarted(makeStartedEvent(provider: 'openai', model: 'gpt-4o'));
 
     expect($store->generations())->toHaveCount(0);
 });
 
 it('handleLlmCallStarted records when filter allows the entry', function (): void {
-    GlintManager::filter(fn ($e) => $e->provider !== 'openai');
+    app(GlintManager::class)->filter(fn ($e) => $e->provider !== 'openai');
 
-    $store = new RecordingStore;
+    $store = app(RecordingStore::class);
     $store->handleLlmCallStarted(makeStartedEvent(provider: 'anthropic', model: 'claude-3'));
 
     expect($store->generations())->toHaveCount(1);
 });
 
 it('assertNoGenerations passes on empty store', function (): void {
-    $store = new RecordingStore;
+    $store = app(RecordingStore::class);
 
     expect(fn () => $store->assertNoGenerations())->not->toThrow(Throwable::class);
 });
 
 it('assertNoGenerations fails when generations exist', function (): void {
-    $store = new RecordingStore;
+    $store = app(RecordingStore::class);
     $store->handleLlmCallStarted(makeStartedEvent());
 
     expect(fn () => $store->assertNoGenerations())->toThrow(AssertionFailedError::class);
 });
 
 it('assertMissingGeneration passes when generation does not exist', function (): void {
-    $store = new RecordingStore;
+    $store = app(RecordingStore::class);
 
     expect(fn () => $store->assertMissingGeneration('openai', 'gpt-4o'))->not->toThrow(Throwable::class);
 });
 
 it('assertMissingGeneration fails when generation exists', function (): void {
-    $store = new RecordingStore;
+    $store = app(RecordingStore::class);
     $store->handleLlmCallStarted(makeStartedEvent(provider: 'openai', model: 'gpt-4o'));
 
     expect(fn () => $store->assertMissingGeneration('openai', 'gpt-4o'))->toThrow(AssertionFailedError::class);
 });
 
 it('assertToolCallCount passes when count matches', function (): void {
-    $store = new RecordingStore;
+    $store = app(RecordingStore::class);
     $store->handleLlmToolCalled(makeToolCalledEvent());
 
     expect(fn () => $store->assertToolCallCount(1))->not->toThrow(Throwable::class);
 });
 
 it('assertToolCallCount fails when count does not match', function (): void {
-    $store = new RecordingStore;
+    $store = app(RecordingStore::class);
 
     expect(fn () => $store->assertToolCallCount(2))->toThrow(AssertionFailedError::class);
 });
 
 it('assertNoToolCalls passes on empty store', function (): void {
-    $store = new RecordingStore;
+    $store = app(RecordingStore::class);
 
     expect(fn () => $store->assertNoToolCalls())->not->toThrow(Throwable::class);
 });
 
 it('assertNoToolCalls fails when tool calls exist', function (): void {
-    $store = new RecordingStore;
+    $store = app(RecordingStore::class);
     $store->handleLlmToolCalled(makeToolCalledEvent());
 
     expect(fn () => $store->assertNoToolCalls())->toThrow(AssertionFailedError::class);
 });
 
 it('assertGenerationSucceeded passes when generation succeeded', function (): void {
-    $store = new RecordingStore;
+    $store = app(RecordingStore::class);
     $store->handleLlmCallStarted(makeStartedEvent(provider: 'openai', model: 'gpt-4o'));
     $store->handleLlmCallFinished(makeFinishedEvent());
 
@@ -308,20 +308,20 @@ it('assertGenerationSucceeded passes when generation succeeded', function (): vo
 });
 
 it('assertGenerationSucceeded fails when generation is still pending', function (): void {
-    $store = new RecordingStore;
+    $store = app(RecordingStore::class);
     $store->handleLlmCallStarted(makeStartedEvent(provider: 'openai', model: 'gpt-4o'));
 
     expect(fn () => $store->assertGenerationSucceeded('openai', 'gpt-4o'))->toThrow(AssertionFailedError::class);
 });
 
 it('assertGenerationSucceeded fails when generation does not exist', function (): void {
-    $store = new RecordingStore;
+    $store = app(RecordingStore::class);
 
     expect(fn () => $store->assertGenerationSucceeded('openai', 'gpt-4o'))->toThrow(AssertionFailedError::class);
 });
 
 it('assertGenerationFailed passes when generation failed', function (): void {
-    $store = new RecordingStore;
+    $store = app(RecordingStore::class);
     $store->handleLlmCallStarted(makeStartedEvent(provider: 'anthropic', model: 'claude-3-5-sonnet-20241022'));
     $store->handleLlmCallFailed(makeFailedEvent(message: 'Rate limit'));
 
@@ -329,7 +329,7 @@ it('assertGenerationFailed passes when generation failed', function (): void {
 });
 
 it('assertGenerationFailed fails when generation succeeded', function (): void {
-    $store = new RecordingStore;
+    $store = app(RecordingStore::class);
     $store->handleLlmCallStarted(makeStartedEvent(provider: 'openai', model: 'gpt-4o'));
     $store->handleLlmCallFinished(makeFinishedEvent());
 
@@ -337,7 +337,7 @@ it('assertGenerationFailed fails when generation succeeded', function (): void {
 });
 
 it('assertGenerationFailed fails when generation does not exist', function (): void {
-    $store = new RecordingStore;
+    $store = app(RecordingStore::class);
 
     expect(fn () => $store->assertGenerationFailed('openai', 'gpt-4o'))->toThrow(AssertionFailedError::class);
 });

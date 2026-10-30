@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-30
+
+### Added
+
+- Laravel AI prompt middleware records provider exceptions and terminal stream failures against the correct generation. Agents opt in through `HasMiddleware`.
+- Alert delivery uses Laravel notifications, with typed alert channels and destination checks on the alert rule.
+- Pricing entries for newly available models and updated provider rates.
+
+### Changed
+
+- HTTP request traces are created only when an LLM generation or span is recorded during the request. Ordinary routes, including health checks, no longer fill the traces table.
+- Application HTTP response bodies are excluded from traces by default. Set `GLINT_STORE_HTTP_RESPONSES=true` to opt in.
+
+### Fixed
+
+- Failed Laravel AI calls now close their generations and traces with the provider error, including failures during stream iteration.
+- Trace, span, and generation lifecycle handling now preserves parent context and avoids duplicate or incomplete records.
+- Recording, redaction, and alert dispatch now resolve their collaborators through dependency injection and use typed configuration accessors consistently.
+
 ## [1.0.1] - 2026-08-06
 
 ### Fixed
@@ -34,5 +53,7 @@ Initial release as `cybernerdie/glint` (renamed from `cybernerdie/laravel-glint`
 - Privacy redaction for prompts, completions, and metadata before storage
 - Laravel Octane compatibility
 
-[Unreleased]: https://github.com/cybernerdie/glint/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/cybernerdie/glint/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/cybernerdie/glint/compare/v1.0.1...v1.1.0
+[1.0.1]: https://github.com/cybernerdie/glint/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/cybernerdie/glint/releases/tag/v1.0.0

@@ -69,17 +69,17 @@ final class VerifyCommand extends Command
 
         if ($mode === 'queue') {
             $rawConn = Config::get('glint.queue.connection');
-            $conn = is_string($rawConn) && $rawConn !== '' ? $rawConn : 'default';
+            $conn = is_string($rawConn) && filled($rawConn) ? $rawConn : 'default';
             $rawQueue = Config::get('glint.queue.queue');
-            $queue = is_string($rawQueue) && $rawQueue !== '' ? $rawQueue : 'default';
+            $queue = is_string($rawQueue) && filled($rawQueue) ? $rawQueue : 'default';
             $this->components->twoColumnDetail('Queue', "<fg=cyan>{$conn} / {$queue}</>");
             $this->line("  <fg=yellow>Note:</> Ensure a worker is running: <fg=cyan>php artisan queue:work --queue={$queue}</>");
         }
 
-        $driversRaw = Config::get('glint.drivers', ['http']);
-        $drivers = is_array($driversRaw)
-            ? array_values(array_filter(array_map(fn (mixed $d): ?string => is_string($d) ? $d : null, $driversRaw)))
-            : ['http'];
+        $drivers = array_values(array_filter(array_map(
+            fn (mixed $driver): ?string => is_string($driver) ? $driver : null,
+            Config::array('glint.drivers', ['http']),
+        )));
         $this->components->twoColumnDetail('Active drivers', '<fg=cyan>'.implode(', ', $drivers).'</>');
 
         $count = 0;

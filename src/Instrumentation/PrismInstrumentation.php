@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cybernerdie\Glint\Instrumentation;
 
+use Cybernerdie\Glint\Context\TraceContext;
 use Cybernerdie\Glint\Contracts\InstrumentationDriver;
 use Cybernerdie\Glint\Instrumentation\Prism\TracingPrismManager;
 use Illuminate\Contracts\Foundation\Application;
@@ -23,7 +24,11 @@ final class PrismInstrumentation implements InstrumentationDriver
     {
         $this->app->extend(
             PrismManager::class,
-            fn (PrismManager $manager, Application $app) => new TracingPrismManager($manager, $app)
+            fn (PrismManager $manager, Application $app) => new TracingPrismManager(
+                $manager,
+                $app,
+                fn (): TraceContext => $app->make(TraceContext::class),
+            )
         );
     }
 }
